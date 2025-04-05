@@ -1,0 +1,15 @@
+[submodule "thirdparty/NVRHI"]
+	path = thirdparty/NVRHI
+	url = https://github.com/NVIDIA-RTX/NVRHI.git
+[submodule "thirdparty/GLFW"]
+	path = thirdparty/GLFW
+	url = https://github.com/glfw/glfw.git
+[submodule "thirdparty/SPDLOG"]
+	path = thirdparty/SPDLOG
+	url = https://github.com/gabime/spdlog.git
+[submodule "thirdparty/GLM"]
+	path = thirdparty/GLM
+	url = https://github.com/g-truc/glm.git
+[submodule "thirdparty/ShaderMake"]
+	path = thirdparty/ShaderMake
+	url = https://github.com/NVIDIA-RTX/ShaderMake.git
