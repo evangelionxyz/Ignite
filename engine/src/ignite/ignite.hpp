@@ -1,0 +1,26 @@
+#pragma once
+
+#include "core/imgui/imgui_nvrhi.hpp"
+#include "core/imgui/imgui_layer.hpp"
+#include "core/vfs/vfs.hpp"
+#include "core/application.hpp"
+#include "core/base.hpp"
+#include "core/device/device_manager.hpp"
+#include "core/device/device_manager_dx12.hpp"
+#include "core/input/event.hpp"
+#include "core/input/app_event.hpp"
+#include "core/input/key_event.hpp"
+#include "core/input/mouse_event.hpp"
+#include "core/input/key_codes.hpp"
+#include "core/input/mouse_codes.hpp"
+#include "core/layer.hpp"
+#include "core/layer_stack.hpp"
+#include "core/logger.hpp"
+#include "core/string_utils.hpp"
+#include "core/types.hpp"
+#include "core/time.hpp"
+
+#include "graphics/shader_factory.hpp"
+#include "graphics/window.hpp"
+
+#include "scene/scene.hpp"

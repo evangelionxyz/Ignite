@@ -16,7 +16,7 @@
 #include <sstream>
 #include <print>
 
-#include "logger.hpp"
+#include "core/logger.hpp"
 
 using nvrhi::RefCountPtr;
 
@@ -238,7 +238,7 @@ bool DeviceManager_DX12::CreateDevice()
 
         D3D12_DESCRIPTOR_HEAP_DESC desc = {};
         desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-        desc.NumDescriptors = m_DeviceParams.maxFramesInFligth;
+        desc.NumDescriptors = m_DeviceParams.maxFramesInFlight;
         desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
         desc.NodeMask = 1;
         hr = m_Device12->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_RtvDescHeap));
@@ -485,6 +485,8 @@ void DeviceManager_DX12::ReleaseRenderTargets()
 
 void DeviceManager_DX12::ResizeSwapChain()
 {
+    m_SwapChainFramebuffers.clear();
+
     ReleaseRenderTargets();
 
     if (!m_NvrhiDevice || !m_SwapChain)
@@ -497,12 +499,10 @@ void DeviceManager_DX12::ResizeSwapChain()
         m_SwapChainDesc.Format, 
         m_SwapChainDesc.Flags);
 
-    if (FAILED(hr))
-        LOG_ASSERT(false, "ResizeBuffers failed");
-    
-    bool ret = CreateRenderTargets();
-    if (!ret)
-        LOG_ASSERT(false, "CreateRenderTarget failed");
+    LOG_ASSERT(hr == S_OK, "ResizeBuffers failed");
+
+    const bool created = CreateRenderTargets();
+    LOG_ASSERT(created, "CreateRenderTarget failed");
 }
 
 bool DeviceManager_DX12::BeginFrame()
@@ -514,7 +514,6 @@ bool DeviceManager_DX12::BeginFrame()
     {
         if (m_FullScreenDesc.Windowed != newFullScreenDesc.Windowed)
         {
-            BackBufferResizing();
             m_FullScreenDesc = newFullScreenDesc;
             m_SwapChainDesc = newSwapChainDesc;
             m_DeviceParams.backBufferWidth = newSwapChainDesc.Width;
@@ -531,7 +530,7 @@ bool DeviceManager_DX12::BeginFrame()
             }
 
             ResizeSwapChain();
-            BackBufferResized();
+            CreateBackBuffers();
         }
     }
 

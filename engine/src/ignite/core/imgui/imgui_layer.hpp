@@ -1,9 +1,11 @@
 #pragma once
 
 #include "core/types.hpp"
-#include "core/device_manager.hpp"
-#include "core/irender_pass.hpp"
+#include "core/device/device_manager.hpp"
 #include "imgui_nvrhi.hpp"
+#include "core/input/event.hpp"
+#include "core/layer.hpp"
+#include "core/input/app_event.hpp"
 
 #include <filesystem>
 #include <optional>
@@ -35,11 +37,10 @@ public:
     }
 
     bool HasFontData() const { return m_Data != nullptr; }
-
-    ImFont *GetScaledFont() { return m_ImFont; }
+    ImFont *GetScaledFont() const { return m_ImFont; }
 
 protected:
-    friend class ImGui_Renderer;
+    friend class ImGuiLayer;
 
     Ref<vfs::IBlob> m_Data;
     bool const m_IsDefault;
@@ -51,35 +52,36 @@ protected:
     void ReleaseScaledFont();
 };
 
-class ImGui_Renderer : public IRenderPass
+class ImGuiLayer : public Layer
 {
 public:
-    ImGui_Renderer(DeviceManager *deviceManager);
+    virtual ~ImGuiLayer() = default;
 
-    bool LoadShaders(Ref<ShaderFactory> shaderFactory);
-    void Destroy() override;
+    ImGuiLayer(DeviceManager *deviceManager);
+    bool Init(Ref<ShaderFactory> shaderFactory);
+    void Destroy();
+
+    void BeginFrame();
+    void EndFrame();
+
+    void OnEvent(Event &event) override;
+    bool OnFramebufferResize(FramebufferResizeEvent &event) const;
 
     Ref<RegisteredFont> CreateFontFromFile(vfs::IFileSystem &fs, const std::filesystem::path &fontFile, f32 fontSize);
     Ref<RegisteredFont> CreateFontFromMemoryCompressed(void const *pData, size_t size, f32 fontSize);
     Ref<RegisteredFont> GetDefaultFont() { return m_DefaultFont; }
 
-    virtual void Animate(f32 elapsedTimeSeconds) override;
-    virtual void Render(nvrhi::IFramebuffer* framebuffer) override;
-    virtual void BackBufferResizing() override;
-    virtual void DisplayScaleChanged(f32 scaleX, f32 scaleY) override;
-
-protected:
-    virtual void RenderGui() = 0;
+private:
     void BeginFullScreenWindow();
     void DrawScreenCenteredText(const char *text);
     void EndFullScreenWindow();
 
-protected:
     Scope<ImGui_NVRHI> imgui_nvrhi;
     std::vector<Ref<RegisteredFont>> m_Fonts;
     Ref<RegisteredFont> m_DefaultFont;
     bool m_SupportExplicitDisplayScaling;
     bool m_BeginFrameCalled = false;
+    DeviceManager *m_DeviceManager = nullptr;
 private:
     Ref<RegisteredFont> CreateFontFromMemoryInternal(void const *pData, size_t size, bool compressed, f32 fontSize);
 };

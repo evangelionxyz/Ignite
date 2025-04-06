@@ -30,8 +30,8 @@
 #include <functional>
 #include <memory>
 
-#include "base.hpp"
-#include "types.hpp"
+#include "core/base.hpp"
+#include "core/types.hpp"
 
 struct DefaultMessageCallback final : public nvrhi::IMessageCallback
 {
@@ -73,7 +73,7 @@ struct DeviceCreationParameters : public InstanceParameters
     nvrhi::Format swapChainFormat = nvrhi::Format::RGBA8_UNORM;
     u32 swapChainSampleCount = 1;
     u32 swapChainSampleQuality = 0;
-    u32 maxFramesInFligth = 2;
+    u32 maxFramesInFlight = 2;
     bool enableNvrhiValidationLayer = false;
     bool vsyncEnable = false;
     bool enableRayTracingExtensions = false; // for vulkan
@@ -122,17 +122,7 @@ class DeviceManager
 public:
     static DeviceManager *Create(nvrhi::GraphicsAPI api);
 
-    bool CreateHeadlessDevice(const DeviceCreationParameters &params);
-    bool CreateWindowDeviceAndSwapChain(const DeviceCreationParameters &params, const char *windowTitle);
-
-    // Initializes device independent objects (DXGI factor, Vulkan instance).
-    // Calling CreateInstance() is required before EnumerateAdapters(), but optional if we don't use EnumerateAdapters().
-    // Note: if you call CreateInstance before Create*Device*(), the values in InstanceParameters must match those
-    // in DeviceCreationParameters passed to the device call.
     bool CreateInstance(const InstanceParameters &params);
-
-    // Enumerates adapters or physical devices present in the system.
-    // Note: a call to CreateInstance() or Create*Device*() is required before EnumerateAdapters().
     virtual bool EnumerateAdapters(std::vector<AdapterInfo> &outAdapters) = 0;
     virtual void WaitForIdle() = 0;
 
@@ -141,9 +131,8 @@ public:
     void RemoveRenderPass(IRenderPass *pController);
 
     void RunMessageLoop();
-
     void GetWindowDimensions(int &width, int &height);
-
+    bool IsUpdateDPIScaleFactor();
     void GetDPIScaleInfo(float &x, float &y) const
     {
         x = m_DPIScaleFactorX;
@@ -151,8 +140,8 @@ public:
     }
     
 protected:
-    // usefull for apps that require 2 frames worth of simulation data before first render
-    // apps should extend the DeviceManager classes, and consturct initialized this to true to opt in to the behavior
+    friend class Window;
+
     bool m_SkipRenderOnFirstFrame = false;
     bool m_WindowVisible = false;
     bool m_WindowIsInFocus = true;
@@ -160,17 +149,16 @@ protected:
     DeviceCreationParameters m_DeviceParams;
     GLFWwindow *m_Window = nullptr;
     bool m_EnableRenderDuringWindowMovement = false;
-    std::list<IRenderPass *> m_vRenderPasses;
-    
-    // set to true if running on NVIDIA GPU
+
     bool m_IsNvidia = false;
-    double m_PreviouseFrameTimestamp = 0.0f;
+    double m_PreviousFrameTimestamp = 0.0f;
     
     // current DPI scale info (update when window moves)
     float m_DPIScaleFactorX = 1.0f;
     float m_DPIScaleFactorY = 1.0f;
     float m_PrevDPIScaleFactorX = 1.0f;
     float m_PrevDPIScaleFactorY = 1.0f;
+
     bool m_RequestedVSync = false;
     bool m_InstanceCreated = false;
 
@@ -186,17 +174,11 @@ protected:
     DeviceManager();
 
     void UpdateWindowSize();
-    [[nodiscard]] bool ShouldRenderUnfocused() const;
 
-    void BackBufferResizing();
-    void BackBufferResized();
+    void CreateBackBuffers();
     void DisplayScaleChanged();
 
-    void Animate(double elapsedTime);
-    void Render();
-    void UpdateAverageFrameTime(double elapsedTime);
-    bool AnimateRenderPresent();
-
+public:
     // device specific methods
     virtual bool CreateInstanceInternal() = 0;
     virtual bool CreateDevice() = 0;
@@ -205,32 +187,18 @@ protected:
     virtual void ResizeSwapChain() = 0;
     virtual bool BeginFrame() = 0;
     virtual bool Present() = 0;
-    
-public:
+
     [[nodiscard]] virtual nvrhi::IDevice *GetDevice() const = 0;
     [[nodiscard]] virtual const char *GetRendererString() const = 0;
     [[nodiscard]] virtual nvrhi::GraphicsAPI GetGraphicsAPI() const = 0;
 
     const DeviceCreationParameters &GetDeviceParams();
     [[nodiscard]] double GetAverageFrameTimeSeconds() const { return m_AverageFrameTime; }
-    [[nodiscard]] double GetPreviousFrameTimestamp() const { return m_PreviouseFrameTimestamp; }
+    [[nodiscard]] double GetPreviousFrameTimestamp() const { return m_PreviousFrameTimestamp; }
     void SetFrameTimeUpdateInterval(double seconds) { m_AverageTimeUpdateInterval = seconds; }
     [[nodiscard]] bool IsVsyncEnabled() const { return m_DeviceParams.vsyncEnable; }
     virtual void ReportLiveObjects() { };
     void SetEnableRenderDuringWindowMovement(bool val) { m_EnableRenderDuringWindowMovement = val; }
-
-    // these are public in order to be called from the GLFW callback functions
-    void WindowCloseCallback() { }
-    void WindowIconifyCallback(int iconify) {}
-    void WindowFocusCallback(int focused) { }
-    void WindowRefreshCallback() { }
-    void WindowPosCallback(int xpos, int ypos);
-    
-    void KeyboardUpdate(int key, int scancode, int action, int mods);
-    void KeyboardCharInput(unsigned int unicode, int mods);
-    void MousePosUpdate(double xpos, double ypos);
-    void MouseButtonUpdate(int button, int action, int mods);
-    void MouseScrollUpdate(double xoffset, double yoffset);
 
     [[nodiscard]] GLFWwindow *GetWindow() const { return m_Window; }
     [[nodiscard]] u32 GetFrameIndex() const { return m_FrameIndex; }
@@ -245,27 +213,12 @@ public:
     virtual void Destroy();
     virtual ~DeviceManager() = default;
 
-    void SetWindowTitle(const char *title);
-    void SetInformativeWindowTitle(const char *applicationName, bool includeFramerate = true, const char *extraInfo = nullptr);
-    const char *GetWindowTitle();
-
     virtual bool IsVulkanInstanceExtensionEnabled(const char *extensionName) const { return false; }
     virtual bool IsVulkanDeviceExtensionEnabled(const char *extensionName) const { return false; }
     virtual bool IsVulkanLayerEnabled(const char *layerName) const { return false; }
     virtual void GetEnabledVulkanInstanceExtensions(std::vector<std::string> &extensions) const {}
     virtual void GetEnabledVulkanDeviceExtensions(std::vector<std::string> &extensions) const {}
     virtual void GetEnabledVulkanLayers(std::vector<std::string> &layers) const {}
-
-    struct PipelineCallbacks
-    {
-        std::function<void(DeviceManager &, u32)> beforeFrame = nullptr;
-        std::function<void(DeviceManager &, u32)> beforeAnimate = nullptr;
-        std::function<void(DeviceManager &, u32)> afterAnimate = nullptr;
-        std::function<void(DeviceManager &, u32)> beforeRender = nullptr;
-        std::function<void(DeviceManager &, u32)> afterRender = nullptr;
-        std::function<void(DeviceManager &, u32)> beforePresent = nullptr;
-        std::function<void(DeviceManager &, u32)> afterPresent = nullptr;
-    } m_Callbacks;
 
 private:
     static DeviceManager *CreateD3D11();

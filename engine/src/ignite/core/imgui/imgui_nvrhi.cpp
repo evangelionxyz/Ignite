@@ -1,7 +1,7 @@
 #include "imgui_nvrhi.hpp"
 #include "core/logger.hpp"
 
-#include "renderer/shader_factory.hpp"
+#include "graphics/shader_factory.hpp"
 
 struct VERTEX_CONSTANT_BUFFER
 {

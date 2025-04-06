@@ -5,15 +5,14 @@ ScenePanel::ScenePanel(const char *windowTitle)
 {
 }
 
-void ScenePanel::RenderGui()
+void ScenePanel::OnGuiRender()
 {
+    ImGui::ShowDemoWindow();
+
     ImGui::Begin(m_WindowTitle.c_str(), &m_IsOpen);
-
-
     ImGui::End();
 }
 
 void ScenePanel::Destroy()
 {
-    
 }

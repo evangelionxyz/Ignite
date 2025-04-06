@@ -1,12 +1,13 @@
-#include "imgui_renderer.hpp"
+#include "imgui_layer.hpp"
 #include "core/vfs/vfs.hpp"
 
 #include "core/logger.hpp"
 
 #include <backends/imgui_impl_glfw.h>
+#include <core/application.hpp>
 
 #ifdef _WIN32
-#include "core/device_manager_dx12.hpp"
+#include "core/device/device_manager_dx12.hpp"
 #include <backends/imgui_impl_win32.h>
 #include <backends/imgui_impl_dx11.h>
 #include <backends/imgui_impl_dx12.h>
@@ -42,11 +43,14 @@ void RegisteredFont::ReleaseScaledFont()
     m_ImFont = nullptr;
 }
 
-ImGui_Renderer::ImGui_Renderer(DeviceManager *deviceManager)
-    : IRenderPass(deviceManager)
+ImGuiLayer::ImGuiLayer(DeviceManager *deviceManager)
+    : Layer("ImGuiLayer")
+    , m_DeviceManager(deviceManager)
     , m_SupportExplicitDisplayScaling(deviceManager->GetDeviceParams().supportExplicitDisplayScaling)
 {
-    
+
+    LOG_ASSERT(m_DeviceManager, "Invalid device manager");
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
@@ -96,7 +100,7 @@ ImGui_Renderer::ImGui_Renderer(DeviceManager *deviceManager)
     ImGui_ImplDX12_InitInfo initInfo = {};
     initInfo.Device = d3d12.m_Device12;
     initInfo.CommandQueue = d3d12.m_GraphicsQueue;
-    initInfo.NumFramesInFlight = m_DeviceManager->GetDeviceParams().maxFramesInFligth;
+    initInfo.NumFramesInFlight = m_DeviceManager->GetDeviceParams().maxFramesInFlight;
     initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     initInfo.DSVFormat = DXGI_FORMAT_UNKNOWN;
     // Allocating SRV descriptors (for textures) is up to the application, so we provide callbacks.
@@ -114,13 +118,13 @@ ImGui_Renderer::ImGui_Renderer(DeviceManager *deviceManager)
     ImGui_ImplDX12_Init(&initInfo);
 }
 
-bool ImGui_Renderer::LoadShaders(Ref<ShaderFactory> shaderFactory)
+bool ImGuiLayer::Init(Ref<ShaderFactory> shaderFactory)
 {
     imgui_nvrhi = CreateScope<ImGui_NVRHI>();
-    return imgui_nvrhi->Init(GetDevice(), shaderFactory);
+    return imgui_nvrhi->Init(m_DeviceManager->GetDevice(), shaderFactory);
 }
 
-Ref<RegisteredFont> ImGui_Renderer::CreateFontFromFile(vfs::IFileSystem &fs, const std::filesystem::path &fontFile, f32 fontSize)
+Ref<RegisteredFont> ImGuiLayer::CreateFontFromFile(vfs::IFileSystem &fs, const std::filesystem::path &fontFile, f32 fontSize)
 {
     auto fontData = fs.ReadFile(fontFile);
 
@@ -133,7 +137,7 @@ Ref<RegisteredFont> ImGui_Renderer::CreateFontFromFile(vfs::IFileSystem &fs, con
     return std::move(font);
 }
 
-Ref<RegisteredFont> ImGui_Renderer::CreateFontFromMemoryInternal(void const *pData, size_t size, bool compressed, f32 fontSize)
+Ref<RegisteredFont> ImGuiLayer::CreateFontFromMemoryInternal(void const *pData, size_t size, bool compressed, f32 fontSize)
 {
     if (!pData || !size)
         return CreateRef<RegisteredFont>();
@@ -148,12 +152,41 @@ Ref<RegisteredFont> ImGui_Renderer::CreateFontFromMemoryInternal(void const *pDa
     return std::move(font);
 }
 
-Ref<RegisteredFont> ImGui_Renderer::CreateFontFromMemoryCompressed(void const *pData, size_t size, f32 fontSize)
+Ref<RegisteredFont> ImGuiLayer::CreateFontFromMemoryCompressed(void const *pData, size_t size, f32 fontSize)
 {
     return CreateFontFromMemoryInternal(pData, size, true, fontSize);
 }
 
-void ImGui_Renderer::Animate(f32 elapsedTimeInSeconds)
+void ImGuiLayer::OnEvent(Event &event)
+{
+    Layer::OnEvent(event);
+
+    EventDispatcher dispatcher(event);
+    dispatcher.Dispatch<FramebufferResizeEvent>(BIND_CLASS_EVENT_FN(ImGuiLayer::OnFramebufferResize));
+}
+
+bool ImGuiLayer::OnFramebufferResize(FramebufferResizeEvent &event) const
+{
+    if (imgui_nvrhi)
+        imgui_nvrhi->BackBufferResizing();
+
+    if (!m_SupportExplicitDisplayScaling)
+        return false;
+
+    ImGuiIO &io = ImGui::GetIO();
+    io.Fonts->Clear();
+    io.Fonts->TexID = 0;
+
+    for (auto &font : m_Fonts)
+        font->ReleaseScaledFont();
+
+    ImGui::GetStyle() = ImGui::GetStyle();
+    ImGui::GetStyle().ScaleAllSizes(event.GetWidth());
+
+    return true;
+}
+
+void ImGuiLayer::BeginFrame()
 {
     if (!imgui_nvrhi || m_BeginFrameCalled)
         return;
@@ -169,66 +202,21 @@ void ImGui_Renderer::Animate(f32 elapsedTimeInSeconds)
 
     imgui_nvrhi->UpdateFontTexture();
 
-    i32 w, h;
-    m_DeviceManager->GetWindowDimensions(w, h);
-
-    ImGuiIO &io = ImGui::GetIO();
-    io.DisplaySize = ImVec2(float(w), float(h));
-    if (!m_SupportExplicitDisplayScaling)
-    {
-        io.DisplayFramebufferScale.x = scaleX;
-        io.DisplayFramebufferScale.y = scaleY;
-    }
-
-    io.KeyCtrl = io.KeysData[GLFW_KEY_LEFT_CONTROL].Down || io.KeysData[GLFW_KEY_RIGHT_CONTROL].Down;
-    io.KeyShift = io.KeysData[GLFW_KEY_LEFT_SHIFT].Down || io.KeysData[GLFW_KEY_LEFT_SHIFT].Down;
-    io.KeyAlt = io.KeysData[GLFW_KEY_LEFT_ALT].Down || io.KeysData[GLFW_KEY_LEFT_ALT].Down;
-    io.KeySuper = io.KeysData[GLFW_KEY_LEFT_SUPER].Down || io.KeysData[GLFW_KEY_LEFT_SUPER].Down;
-    
-    io.DeltaTime = elapsedTimeInSeconds;
-    io.MouseDrawCursor = false;
-
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
     m_BeginFrameCalled = true;
 }
 
-void ImGui_Renderer::Render(nvrhi::IFramebuffer *framebuffer)
+void ImGuiLayer::EndFrame()
 {
-    if (!imgui_nvrhi || !m_BeginFrameCalled)
-        return;
-
-    RenderGui();
-
     ImGui::Render();
+    nvrhi::IFramebuffer* framebuffer = m_DeviceManager->GetCurrentFramebuffer();
     imgui_nvrhi->Render(framebuffer);
     m_BeginFrameCalled = false;
 }
 
-void ImGui_Renderer::BackBufferResizing()
-{
-    if (imgui_nvrhi)
-        imgui_nvrhi->BackBufferResizing();
-}
-
-void ImGui_Renderer::DisplayScaleChanged(f32 scaleX, f32 scaleY)
-{
-    if (!m_SupportExplicitDisplayScaling)
-        return;
-    
-    ImGuiIO &io = ImGui::GetIO();
-    io.Fonts->Clear();
-    io.Fonts->TexID = 0;
-
-    for (auto &font : m_Fonts)
-        font->ReleaseScaledFont();
-
-    ImGui::GetStyle() = ImGui::GetStyle();
-    ImGui::GetStyle().ScaleAllSizes(scaleX);
-}
-
-void ImGui_Renderer::BeginFullScreenWindow()
+void ImGuiLayer::BeginFullScreenWindow()
 {
     ImGuiIO const &io = ImGui::GetIO();
     ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always);
@@ -242,7 +230,7 @@ void ImGui_Renderer::BeginFullScreenWindow()
     ImGui::Begin(" ", nullptr, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar);
 }
 
-void ImGui_Renderer::DrawScreenCenteredText(const char *text)
+void ImGuiLayer::DrawScreenCenteredText(const char *text)
 {
     ImGuiIO const &io = ImGui::GetIO();
     ImVec2 textSize = ImGui::CalcTextSize(text);
@@ -251,13 +239,13 @@ void ImGui_Renderer::DrawScreenCenteredText(const char *text)
     ImGui::TextUnformatted(text);
 }
 
-void ImGui_Renderer::EndFullScreenWindow()
+void ImGuiLayer::EndFullScreenWindow()
 {
     ImGui::End();
     ImGui::PopStyleVar();
 }
 
-void ImGui_Renderer::Destroy()
+void ImGuiLayer::Destroy()
 {
     m_DeviceManager->WaitForIdle();
 

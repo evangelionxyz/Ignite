@@ -17,6 +17,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
 set(THIRDPARTY ${CMAKE_SOURCE_DIR}/thirdparty)
+set(IGNITE_DIR ${CMAKE_SOURCE_DIR}/engine)
 
 add_subdirectory(thirdparty)
-add_subdirectory(src)
+add_subdirectory(engine)
+add_subdirectory(editor)
