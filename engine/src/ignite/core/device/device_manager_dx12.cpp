@@ -136,7 +136,7 @@ bool DeviceManager_DX12::EnumerateAdapters(std::vector<AdapterInfo>& outAdapters
     while (true)
     {
         RefCountPtr<IDXGIAdapter> adapter;
-        HRESULT hr = m_DxgiFactory2->EnumAdapters(uint32_t(outAdapters.size()), &adapter);
+        HRESULT hr = m_DxgiFactory2->EnumAdapters(u32(outAdapters.size()), &adapter);
         if (FAILED(hr))
             return true;
 
@@ -544,19 +544,19 @@ nvrhi::ITexture *DeviceManager_DX12::GetCurrentBackBuffer()
     return m_RhiSwapChainBuffers[m_SwapChain->GetCurrentBackBufferIndex()];
 }
 
-nvrhi::ITexture *DeviceManager_DX12::GetBackBuffer(uint32_t index)
+nvrhi::ITexture *DeviceManager_DX12::GetBackBuffer(u32 index)
 {
     if (index < m_RhiSwapChainBuffers.size())
         return m_RhiSwapChainBuffers[index];
     return nullptr;
 }
 
-uint32_t DeviceManager_DX12::GetCurrentBackBufferIndex()
+u32 DeviceManager_DX12::GetCurrentBackBufferIndex()
 {
     return m_SwapChain->GetCurrentBackBufferIndex();
 }
 
-uint32_t DeviceManager_DX12::GetBackBufferCount()
+u32 DeviceManager_DX12::GetBackBufferCount()
 {
     return m_SwapChainDesc.BufferCount;
 }

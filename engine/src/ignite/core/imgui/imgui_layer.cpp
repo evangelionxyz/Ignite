@@ -23,9 +23,9 @@ void RegisteredFont::CreateScaledFont(f32 displayScale)
     {
         fontConfig.FontDataOwnedByAtlas = false;
         if (m_IsCompressed)
-            m_ImFont = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF((void *)m_Data->Data(), int(m_Data->Size()), 0.0f, &fontConfig);
+            m_ImFont = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(m_Data->Data(), static_cast<int>(m_Data->Size()), 0.0f, &fontConfig);
         else
-            m_ImFont = ImGui::GetIO().Fonts->AddFontFromMemoryTTF((void *)m_Data->Data(), int(m_Data->Size()), 0.0f, &fontConfig);
+            m_ImFont = ImGui::GetIO().Fonts->AddFontFromMemoryTTF(const_cast<void *>(m_Data->Data()), int(m_Data->Size()), 0.0f, &fontConfig);
     }
     else if (m_IsDefault)
     {
@@ -194,7 +194,7 @@ void ImGuiLayer::BeginFrame()
     f32 scaleX, scaleY;
     m_DeviceManager->GetDPIScaleInfo(scaleX, scaleY);
 
-    for (auto &font : m_Fonts)
+    for (const auto &font : m_Fonts)
     {
         if (!font->GetScaledFont())
             font->CreateScaledFont(m_SupportExplicitDisplayScaling ? scaleX : 1.0f);
@@ -208,10 +208,9 @@ void ImGuiLayer::BeginFrame()
     m_BeginFrameCalled = true;
 }
 
-void ImGuiLayer::EndFrame()
+void ImGuiLayer::EndFrame(nvrhi::IFramebuffer* framebuffer)
 {
     ImGui::Render();
-    nvrhi::IFramebuffer* framebuffer = m_DeviceManager->GetCurrentFramebuffer();
     imgui_nvrhi->Render(framebuffer);
     m_BeginFrameCalled = false;
 }

@@ -62,7 +62,7 @@ public:
     void Destroy();
 
     void BeginFrame();
-    void EndFrame();
+    void EndFrame(nvrhi::IFramebuffer* framebuffer);
 
     void OnEvent(Event &event) override;
     bool OnFramebufferResize(FramebufferResizeEvent &event) const;

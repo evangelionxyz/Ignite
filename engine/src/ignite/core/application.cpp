@@ -1,4 +1,5 @@
 #include "application.hpp"
+
 #include "graphics/shader_factory.hpp"
 #include "input/app_event.hpp"
 
@@ -91,6 +92,7 @@ void Application::Run()
         const f64 elapsedTime = currTime - m_PreviousTime;
 
         // update window title
+        if (m_AverageFrameTime > 0)
         {
             std::stringstream ss;
             ss << m_CreateInfo.Name;
@@ -107,22 +109,17 @@ void Application::Run()
                 ss << ", NvrhiValidationLayer";
             ss << ")";
 
-            const f64 frameTime = m_AverageFrameTime;
-            if (frameTime > 0)
-            {
-                const f64 fps = 1.0 / frameTime;
-                const i32 precision = (fps <= 20.0) ? 1 : 0;
-                ss << " - " << std::fixed << std::setprecision(precision) << fps << " FPS ";
-            }
-
+            const f64 fps = 1.0 / m_AverageFrameTime;
+            const i32 precision = (fps <= 20.0) ? 1 : 0;
+            ss << " - " << std::fixed << std::setprecision(precision) << fps << " FPS ";
             m_Window->SetTitle(ss.str().c_str());
         }
 
         if (m_Window->IsVisible() && m_Window->IsInFocus())
         {
             // update system (physics etc..)
-            for (auto layer = m_LayerStack.Rbegin(); layer != m_LayerStack.Rend(); ++layer)
-                (*layer)->OnUpdate(elapsedTime);
+            /*for (auto layer = m_LayerStack.Rbegin(); layer != m_LayerStack.Rend(); ++layer)
+                (*layer)->OnUpdate(elapsedTime);*/
 
             // render to main framebuffer
             // begin render frame
@@ -130,25 +127,22 @@ void Application::Run()
             {
                 if (deviceManager->BeginFrame())
                 {
-                    for (auto layer = m_LayerStack.Rbegin(); layer != m_LayerStack.Rend(); ++layer)
-                        (*layer)->OnRender(deviceManager->GetCurrentFramebuffer());
+                    nvrhi::IFramebuffer *framebuffer = deviceManager->GetCurrentFramebuffer();
 
-                    // ImGui rendering
-                    if (m_ImGuiLayer)
+                    for (auto it = m_LayerStack.Rbegin(); it != m_LayerStack.Rend(); ++it)
                     {
+                        Layer *layer = *it;
+                        layer->OnRender(framebuffer);
+                        // ImGui rendering
                         m_ImGuiLayer->BeginFrame();
-                        for (auto layer = m_LayerStack.Rbegin(); layer != m_LayerStack.Rend(); ++layer)
-                            (*layer)->OnGuiRender();
-                        m_ImGuiLayer->EndFrame();
+                        layer->OnGuiRender();
+                        m_ImGuiLayer->EndFrame(framebuffer);
                     }
-
                     if (!deviceManager->Present())
                         continue;
                 }
             }
-
         }
-
         UpdateAverageTimeTime(elapsedTime);
         // set previous time
         m_PreviousTime = currTime;
