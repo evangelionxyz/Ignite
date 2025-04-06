@@ -63,32 +63,23 @@ public:
     Ref<RegisteredFont> CreateFontFromMemoryCompressed(void const *pData, size_t size, f32 fontSize);
     Ref<RegisteredFont> GetDefaultFont() { return m_DefaultFont; }
 
-    virtual bool KeyboardUpdate(int key, int scancode, int action, int mods) override;
-    virtual bool KeyboardCharInput(unsigned int unicode, int mods) override;
-    virtual bool MousePosUpdate(double xpos, double ypos) override;
-    virtual bool MouseScrollUpdate(double xoffset, double yoffset) override;
-    virtual bool MouseButtonUpdate(int button, int action, int mods) override;
     virtual void Animate(f32 elapsedTimeSeconds) override;
     virtual void Render(nvrhi::IFramebuffer* framebuffer) override;
     virtual void BackBufferResizing() override;
     virtual void DisplayScaleChanged(f32 scaleX, f32 scaleY) override;
 
 protected:
-    virtual void BuildUI() = 0;
+    virtual void RenderGui() = 0;
     void BeginFullScreenWindow();
     void DrawScreenCenteredText(const char *text);
     void EndFullScreenWindow();
 
 protected:
     Scope<ImGui_NVRHI> imgui_nvrhi;
-    std::array<bool, 3> mouseDown = { false };
-    std::array<bool, GLFW_KEY_LAST + 1> keyDown = { false };
     std::vector<Ref<RegisteredFont>> m_Fonts;
     Ref<RegisteredFont> m_DefaultFont;
-
     bool m_SupportExplicitDisplayScaling;
     bool m_BeginFrameCalled = false;
-
 private:
     Ref<RegisteredFont> CreateFontFromMemoryInternal(void const *pData, size_t size, bool compressed, f32 fontSize);
 };

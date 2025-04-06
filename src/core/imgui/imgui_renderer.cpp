@@ -153,103 +153,6 @@ Ref<RegisteredFont> ImGui_Renderer::CreateFontFromMemoryCompressed(void const *p
     return CreateFontFromMemoryInternal(pData, size, true, fontSize);
 }
 
-bool ImGui_Renderer::KeyboardUpdate(int key, int scancode, int action, int mods)
-{
-    auto& io = ImGui::GetIO();
-
-    bool keyIsDown;
-    if (action == GLFW_PRESS || action == GLFW_REPEAT)
-    {
-        keyIsDown = true;
-    } else {
-        keyIsDown = false;
-    }
-
-    // update our internal state tracking for this key button
-    keyDown[key] = keyIsDown;
-
-    if (keyIsDown)
-    {
-        // if the key was pressed, update ImGui immediately
-        io.KeysData[key].Down = true;
-    } else {
-        // for key up events, ImGui state is only updated after the next frame
-        // this ensures that short keypresses are not missed
-    }
-
-    return io.WantCaptureKeyboard;
-}
-
-bool ImGui_Renderer::KeyboardCharInput(unsigned int unicode, int mods)
-{
-    auto& io = ImGui::GetIO();
-
-    io.AddInputCharacter(unicode);
-
-    return io.WantCaptureKeyboard;
-}
-
-bool ImGui_Renderer::MousePosUpdate(double xpos, double ypos)
-{
-    auto& io = ImGui::GetIO();
-    io.MousePos.x = float(xpos);
-    io.MousePos.y = float(ypos);
-
-    return io.WantCaptureMouse;
-}
-
-bool ImGui_Renderer::MouseScrollUpdate(double xoffset, double yoffset)
-{
-    auto& io = ImGui::GetIO();
-    io.MouseWheel += float(yoffset);
-
-    return io.WantCaptureMouse;
-}
-
-bool ImGui_Renderer::MouseButtonUpdate(int button, int action, int mods)
-{
-    auto& io = ImGui::GetIO();
-
-    bool buttonIsDown;
-    int buttonIndex;
-
-    if (action == GLFW_PRESS || action == GLFW_REPEAT)
-    {
-        buttonIsDown = true;
-    } else {
-        buttonIsDown = false;
-    }
-
-    switch(button)
-    {
-        case GLFW_MOUSE_BUTTON_LEFT:
-            buttonIndex = 0;
-            break;
-
-        case GLFW_MOUSE_BUTTON_RIGHT:
-            buttonIndex = 1;
-            break;
-
-        case GLFW_MOUSE_BUTTON_MIDDLE:
-            buttonIndex = 2;
-            break;
-    }
-
-    // update our internal state tracking for this mouse button
-    mouseDown[buttonIndex] = buttonIsDown;
-
-    if (buttonIsDown)
-    {
-        // update ImGui state immediately
-        io.MouseDown[buttonIndex] = true;
-    } else {
-        // for mouse up events, ImGui state is only updated after the next frame
-        // this ensures that short clicks are not missed
-    }
-
-    return io.WantCaptureMouse;
-}
-
 void ImGui_Renderer::Animate(f32 elapsedTimeInSeconds)
 {
     if (!imgui_nvrhi || m_BeginFrameCalled)
@@ -296,33 +199,11 @@ void ImGui_Renderer::Render(nvrhi::IFramebuffer *framebuffer)
     if (!imgui_nvrhi || !m_BeginFrameCalled)
         return;
 
-    BuildUI();
+    RenderGui();
 
     ImGui::Render();
     imgui_nvrhi->Render(framebuffer);
     m_BeginFrameCalled = false;
-
-
-#if 0
-    // reconcile mouse button states
-    auto& io = ImGui::GetIO();
-    for(size_t i = 0; i < mouseDown.size(); i++)
-    {
-        if (io.MouseDown[i] == true && mouseDown[i] == false)
-        {
-            io.MouseDown[i] = false;
-        }
-    }
-
-    // reconcile key states
-    for(size_t i = 0; i < keyDown.size(); i++)
-    {
-        if (io.KeysData[i].Down == true && keyDown[i] == false)
-        {
-            io.KeysData[i].Down = false;
-        }
-    }
-#endif
 }
 
 void ImGui_Renderer::BackBufferResizing()

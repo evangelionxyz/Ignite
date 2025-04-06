@@ -3,6 +3,8 @@ add_executable(IGNITE
     editor/ignite_editor_app.cpp
     editor/scene_render_pass.cpp
     editor/imgui_render_pass.cpp
+    editor/scene_panel.cpp
+
     core/vfs/vfs.cpp
     core/application.cpp
     core/layer.cpp
@@ -11,6 +13,7 @@ add_executable(IGNITE
     core/logger.cpp
     core/imgui/imgui_nvrhi.cpp
     core/imgui/imgui_renderer.cpp
+    
     renderer/shader_factory.cpp
     scene/scene.cpp
 )
