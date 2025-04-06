@@ -4,12 +4,15 @@
 #include <sstream>
 #include <nvrhi/utils.h>
 
-#ifdef PLATFORM_WINDOWS
+#ifdef _WIN32
 #include <ShellScalingApi.h>
+#include <dwmapi.h>
+#pragma comment(lib, "Dwmapi.lib") // Link to DWM API
 #pragma comment(lib, "shcore.lib")
 #endif
 
 #include "device_manager.hpp"
+#include "irender_pass.hpp"
 
 #include "logger.hpp"
 
@@ -286,6 +289,18 @@ bool DeviceManager::CreateWindowDeviceAndSwapChain(const DeviceCreationParameter
     glfwSetScrollCallback(m_Window, GLFW_MouseScrollCallback);
     glfwSetJoystickCallback(GLFW_JoystickConnectionCallback);
 
+#if _WIN32
+    HWND hwnd = glfwGetWin32Window(m_Window);
+    BOOL useDarkMode = TRUE;
+    DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDarkMode, sizeof(useDarkMode));
+
+    // 7160E8 visual studio purple
+    COLORREF rgbRed = 0x00E86071;
+    DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
+
+    // DWM_WINDOW_CORNER_PREFERENCE preference = DWMWCP_DONOTROUND;
+    // DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &preference, sizeof(preference));
+#endif
 
     JoyStickManager::GetInstance().EnumerateJoysticks();
 
@@ -335,6 +350,7 @@ void DeviceManager::AddRenderPassToBack(IRenderPass *pRenderPass)
 
 void DeviceManager::RemoveRenderPass(IRenderPass *pRenderPass)
 {
+    pRenderPass->Destroy();
     m_vRenderPasses.remove(pRenderPass);
 }
 
@@ -427,7 +443,9 @@ void DeviceManager::RunMessageLoop()
 
     while (!glfwWindowShouldClose(m_Window))
     {
-        if (m_Callbacks.beforeFrame) m_Callbacks.beforeFrame(*this, m_FrameIndex);
+        if (m_Callbacks.beforeFrame) 
+            m_Callbacks.beforeFrame(*this, m_FrameIndex);
+
         glfwPollEvents();
         UpdateWindowSize();
 
@@ -548,10 +566,9 @@ void DeviceManager::WindowPosCallback(int x, int y)
 {
     if (m_DeviceParams.enablePerMonitorDPI)
     {
-#ifdef PLATFORM_WINDOWS
+#ifdef _WIN32
         HWND hwnd = glfwGetWin32Window(m_Window);
-        auto monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-
+        HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
         u32 dpiX, dpiY;
         GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
         m_DPIScaleFactorX = dpiX / 96.f;
@@ -663,19 +680,18 @@ void JoyStickManager::ConnectJoystick(int id)
 
 void JoyStickManager::DisconnectJoystick(int id)
 {
-    // This fn can be called from inside glfwGetJoystickAxes below (similarly for buttons, I guess).
-    // We can't call m_JoystickIDs.erase() here and now. Save them for later. Forunately, glfw docs
-    // say that you can query a joystick ID that isn't present.
     m_RemovedJoysticks.push_back(id);
 }
 
 void JoyStickManager::UpdateAllJoysticks(const std::list<IRenderPass*>& passes)
 {
     for (auto j = m_JoystickIDs.begin(); j != m_JoystickIDs.end(); ++j)
+    {
         UpdateJoystick(*j, passes);
+    }
 }
 
-static void ApplyDeadZone(glm::vec2 v, const float deadZone = 0.1f)
+static void ApplyDeadZone(glm::vec2 &v, const float deadZone = 0.1f)
 {
     v *= glm::max(glm::length(v) - deadZone, 0.f) / (1.f - deadZone);
 }
@@ -726,7 +742,7 @@ void JoyStickManager::UpdateJoystick(int j, const std::list<IRenderPass *> &rend
     }
 }
 
-void DeviceManager::Shutdown()
+void DeviceManager::Destroy()
 {
     m_SwapChainFramebuffers.clear();
 

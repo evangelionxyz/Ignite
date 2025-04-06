@@ -2,29 +2,27 @@
 
 #include "device_manager.hpp"
 #include "types.hpp"
+#include "logger.hpp"
 
 #include <filesystem>
 
-class Application : public IRenderPass
+struct ApplicationCreateInfo
+{
+    std::string appName;
+    nvrhi::GraphicsAPI graphicsApi;
+};
+
+class Application
 {
 public:
-    Application(DeviceManager *deviceManager);
-    bool Init();
-    void Run();
-    void Shutdown();
-    
-    virtual void SetLateWarpOptions() override { }
-    virtual void BackBufferResizing() override;
-    virtual void Animate(f32 elapsedTimeSeconds) override;
-    virtual void Render(nvrhi::IFramebuffer *framebuffer) override;
+    Application(const ApplicationCreateInfo &createInfo);
+    virtual ~Application() = default;
 
-    void RenderScene(nvrhi::IFramebuffer *framebuffer);
-    void RenderSplashScreen(nvrhi::IFramebuffer *framebuffer);
-
-private:
-    nvrhi::ShaderHandle m_VertexShader;
-    nvrhi::ShaderHandle m_PixelShader;
-    nvrhi::GraphicsPipelineHandle m_Pipeline;
-    nvrhi::CommandListHandle m_CommandList;
+    virtual void Run() {};
+    std::string GetAppName() { return m_AppName; }
+    const ApplicationCreateInfo &GetCreateInfo() { return m_CreateInfo; }
     
+protected:
+    std::string m_AppName;
+    ApplicationCreateInfo m_CreateInfo;
 };

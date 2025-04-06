@@ -1,6 +1,7 @@
 # Required dependencies
 set(third_party_folder "Third-Party Libraries")
 
+include(imgui.cmake)
 add_subdirectory(NVRHI)
 add_subdirectory(SPDLOG)
 

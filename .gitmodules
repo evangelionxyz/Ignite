@@ -13,6 +13,3 @@
 [submodule "thirdparty/ShaderMake"]
 	path = thirdparty/ShaderMake
 	url = https://github.com/NVIDIA-RTX/ShaderMake.git
-[submodule "thirdparty/IMGUI"]
-	path = thirdparty/IMGUI
-	url = https://github.com/ocornut/imgui.git

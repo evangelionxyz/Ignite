@@ -23,6 +23,43 @@ using nvrhi::RefCountPtr;
 #define HR_RETURN(hr) if (FAILED(hr)) return false
 static bool IsNvDevice(const UINT ID) { return ID == 0x10DE; }
 
+void DescriptorHeapAllocator::Create(ID3D12Device *device, ID3D12DescriptorHeap *heap)
+{
+    this->heap = heap;
+    D3D12_DESCRIPTOR_HEAP_DESC desc = heap->GetDesc();
+    heapType = desc.Type;
+    heapStartCpu = heap->GetCPUDescriptorHandleForHeapStart();
+    heapStartGpu = heap->GetGPUDescriptorHandleForHeapStart();
+    heapHandleIncrement = device->GetDescriptorHandleIncrementSize(heapType);
+    freeIndices.resize(i32(desc.NumDescriptors));
+
+    for (i32 i = desc.NumDescriptors; i > 0; --i)
+        freeIndices.push_back(i - 1);
+}
+
+void DescriptorHeapAllocator::Destroy()
+{
+    heap = nullptr;
+    freeIndices.clear();
+}
+
+void DescriptorHeapAllocator::Alloc(D3D12_CPU_DESCRIPTOR_HANDLE *out_cpu_desc_handle, D3D12_GPU_DESCRIPTOR_HANDLE *out_gpu_desc_handle)
+{
+    assert(freeIndices.size() > 0);
+    int idx = freeIndices.back();
+    freeIndices.pop_back();
+    out_cpu_desc_handle->ptr = heapStartCpu.ptr + (idx * heapHandleIncrement);
+    out_gpu_desc_handle->ptr = heapStartGpu.ptr + (idx * heapHandleIncrement);
+}
+
+void DescriptorHeapAllocator::Free(D3D12_CPU_DESCRIPTOR_HANDLE cpu_desc_handle, D3D12_GPU_DESCRIPTOR_HANDLE gpu_desc_handle)
+{
+    int cpu_idx = (int)((cpu_desc_handle.ptr - heapStartCpu.ptr) / heapHandleIncrement);
+    int gpu_idx = (int)((gpu_desc_handle.ptr - heapStartGpu.ptr) / heapHandleIncrement);
+    assert(cpu_idx == gpu_idx);
+    freeIndices.push_back(cpu_idx);
+}
+
 static bool MoveWindowOntoAdapter(IDXGIAdapter *targetAdapter, RECT &rect)
 {
     assert(targetAdapter != NULL);
@@ -59,6 +96,8 @@ static bool MoveWindowOntoAdapter(IDXGIAdapter *targetAdapter, RECT &rect)
     return false;
 }
 
+static DeviceManager_DX12 *s_Instance = nullptr;
+
 void DeviceManager_DX12::ReportLiveObjects()
 {
     RefCountPtr<IDXGIDebug> pDebug;
@@ -79,17 +118,13 @@ bool DeviceManager_DX12::CreateInstanceInternal()
 {
     if (!m_DxgiFactory2)
     {
-        HRESULT hres = CreateDXGIFactory2(m_DeviceParams.enableDebugRuntime ? DXGI_CREATE_FACTORY_DEBUG : 0, IID_PPV_ARGS(&m_DxgiFactory2));
-        if (hres != S_OK)
-        {
-            printf("Error in CreateDXGIFactory2.\n");
-            printf("For more info, get log from debug D3D runtime");
+        HRESULT hr = CreateDXGIFactory2(m_DeviceParams.enableDebugRuntime ? DXGI_CREATE_FACTORY_DEBUG : 0, IID_PPV_ARGS(&m_DxgiFactory2));
+        LOG_ASSERT(hr == S_OK, "Failed to create DXGIFactory2, for more info, get log from debug D3D Runtime");
+        if (hr != S_OK)
             return false;
-        }
     }
     return true;
 }
-
 
 bool DeviceManager_DX12::EnumerateAdapters(std::vector<AdapterInfo>& outAdapters)
 {
@@ -180,10 +215,10 @@ bool DeviceManager_DX12::CreateDevice()
         if (pInfoQueue)
         {
 #ifdef _DEBUG
-        if (m_DeviceParams.enableWarningAsErrors)
-            pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);
-        pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
-        pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+            if (m_DeviceParams.enableWarningAsErrors)
+                pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);
+            pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
+            pInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
 #endif
             D3D12_MESSAGE_ID disableMessageIDs[] =
             {
@@ -197,6 +232,31 @@ bool DeviceManager_DX12::CreateDevice()
             filter.DenyList.NumIDs = std::size(disableMessageIDs);
             pInfoQueue->AddStorageFilterEntries(&filter);
         }
+    }
+
+    {
+
+        D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+        desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+        desc.NumDescriptors = m_DeviceParams.maxFramesInFligth;
+        desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+        desc.NodeMask = 1;
+        hr = m_Device12->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_RtvDescHeap));
+        LOG_ASSERT(hr == S_OK, "Faield to create RVT descriptor heap");
+        HR_RETURN(hr);
+    }
+
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+        desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        desc.NumDescriptors = SRV_HEAP_SIZE;
+        desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+        hr = m_Device12->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_SrvDescHeap));
+        LOG_ASSERT(hr == S_OK, "Faield to create SRV descriptor heap");
+        HR_RETURN(hr);
+
+        m_SrvDescHeapAlloc.Create(m_Device12, m_SrvDescHeap);
+
     }
 
     D3D12_COMMAND_QUEUE_DESC queueDesc;
@@ -236,6 +296,7 @@ bool DeviceManager_DX12::CreateDevice()
     m_NvrhiDevice = nvrhi::d3d12::createDevice(deviceDesc);
     if (m_DeviceParams.enableNvrhiValidationLayer)
         m_NvrhiDevice = nvrhi::validation::createValidationLayer(m_NvrhiDevice);
+
     return true;
 }
 
@@ -279,10 +340,10 @@ bool DeviceManager_DX12::CreateSwapChain()
 
     switch (m_DeviceParams.swapChainFormat) // NOLINT(clang-diagnostic-switch-enum)
     {
-    case nvrhi::Format::SRGBA8_UNORM:
+    case nvrhi::Format::RGBA8_UNORM:
         m_SwapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
         break;
-    case nvrhi::Format::SBGRA8_UNORM:
+    case nvrhi::Format::BGRA8_UNORM:
         m_SwapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
         break;
     default:
@@ -358,6 +419,14 @@ void DeviceManager_DX12::DestroyDeviceAndSwapChain()
 
     m_SwapChainBuffers.clear();
 
+    m_SrvDescHeapAlloc.Destroy();
+
+    m_RtvDescHeap = nullptr;
+    m_SrvDescHeap = nullptr;
+
+    m_DxgiAdapter = nullptr;
+    m_DxgiFactory2 = nullptr;
+
     m_FrameFence = nullptr;
     m_SwapChain = nullptr;
     m_GraphicsQueue = nullptr;
@@ -391,6 +460,12 @@ bool DeviceManager_DX12::CreateRenderTargets()
     }
 
     return true;
+}
+
+void DeviceManager_DX12::WaitForIdle()
+{
+    if (m_NvrhiDevice)
+        m_NvrhiDevice->waitForIdle();
 }
 
 void DeviceManager_DX12::ReleaseRenderTargets()
@@ -507,12 +582,9 @@ bool DeviceManager_DX12::Present()
     return SUCCEEDED(hr);
 }
 
-void DeviceManager_DX12::Shutdown()
+void DeviceManager_DX12::Destroy()
 {
-    DeviceManager::Shutdown();
-
-    m_DxgiAdapter = nullptr;
-    m_DxgiFactory2 = nullptr;
+    DeviceManager::Destroy();
 
     if (m_DeviceParams.enableDebugRuntime)
         ReportLiveObjects();
@@ -520,6 +592,12 @@ void DeviceManager_DX12::Shutdown()
 
 DeviceManager *DeviceManager::CreateD3D12()
 {
-    return new DeviceManager_DX12();
+    s_Instance = new DeviceManager_DX12();
+    return s_Instance;
+}
+
+DeviceManager_DX12 &DeviceManager_DX12::GetInstance()
+{
+    return *s_Instance;
 }
 

@@ -66,41 +66,22 @@ struct DeviceCreationParameters : public InstanceParameters
     bool allowModeSwitch = false;
     int windowPosX = -1; // -1 means use default placement
     int windowPosY = -1;
-    uint32_t backBufferWidth = 1080;
-    uint32_t backBufferHeight = 640;
-    uint32_t refreshRate = 0;
-    uint32_t swapChainBufferCount = 3;
-    nvrhi::Format swapChainFormat = nvrhi::Format::SRGBA8_UNORM;
-    uint32_t swapChainSampleCount = 1;
-    uint32_t swapChainSampleQuality = 0;
-    uint32_t maxFramesInFligth = 2;
+    u32 backBufferWidth = 1080;
+    u32 backBufferHeight = 640;
+    u32 refreshRate = 0;
+    u32 swapChainBufferCount = 3;
+    nvrhi::Format swapChainFormat = nvrhi::Format::RGBA8_UNORM;
+    u32 swapChainSampleCount = 1;
+    u32 swapChainSampleQuality = 0;
+    u32 maxFramesInFligth = 2;
     bool enableNvrhiValidationLayer = false;
     bool vsyncEnable = false;
     bool enableRayTracingExtensions = false; // for vulkan
     bool enableComputeQueue = false;
     bool enableCopyQueue = false;
-
-    // Index of the adapter (DX11, DX12) or physical device (Vk) on which to initialize the device.
-    // Negative values mean automatic detection.
-    // The order of indices matches that returned by DeviceManager::EnumerateAdapters.
     int adapterIndex = -1;
-
-     // Set this to true if the application implements UI scaling for DPI explicitly instead of relying
-    // on ImGUI's DisplayFramebufferScale. This produces crisp text and lines at any scale
-    // but requires considerable changes to applications that rely on the old behavior:
-    // all UI sizes and offsets need to be computed as multiples of some scaled parameter,
-    // such as ImGui::GetFontSize(). Note that the ImGUI style is automatically reset and scaled in 
-    // ImGui_Renderer::DisplayScaleChanged(...).
-    //
-    // See ImGUI FAQ for more info:
-    //   https://github.com/ocornut/imgui/blob/master/docs/FAQ.md#q-how-should-i-handle-dpi-in-my-application
     bool supportExplicitDisplayScaling = false;
-
-    // Enables automatic resizing of the application window according to the DPI scaling of the monitor
-    // that it is located on. When set to true and the app launches on a monitor with >100% scale, 
-    // the initial window size will be larger than specified in 'backBufferWidth' and 'backBufferHeight' parameters.
     bool resizeWindowWithDisplayScale = false;
-
     nvrhi::IMessageCallback *messageCallback = nullptr;
     
 #if IGNITE_WITH_DX11 || IGNITE_WITH_DX12
@@ -123,8 +104,8 @@ struct AdapterInfo
     using LUUID = std::array<uint8_t, 8>;
 
     std::string name;
-    uint32_t vendorID = 0;
-    uint32_t deviceID = 0;
+    u32 vendorID = 0;
+    u32 deviceID = 0;
     uint64_t dedicatedVideoMemory = 0;
 
     std::optional<UUID> uuid;
@@ -153,6 +134,7 @@ public:
     // Enumerates adapters or physical devices present in the system.
     // Note: a call to CreateInstance() or Create*Device*() is required before EnumerateAdapters().
     virtual bool EnumerateAdapters(std::vector<AdapterInfo> &outAdapters) = 0;
+    virtual void WaitForIdle() = 0;
 
     void AddRenderPassToFront(IRenderPass *pController);
     void AddRenderPassToBack(IRenderPass *pController);
@@ -167,6 +149,7 @@ public:
         x = m_DPIScaleFactorX;
         y = m_DPIScaleFactorY;
     }
+    
 protected:
     // usefull for apps that require 2 frames worth of simulation data before first render
     // apps should extend the DeviceManager classes, and consturct initialized this to true to opt in to the behavior
@@ -196,7 +179,7 @@ protected:
     double m_FrameTimeSum = 0.0;
     int m_NumberOfAccumulatedFrames = 0;
 
-    uint32_t m_FrameIndex = 0;
+    u32 m_FrameIndex = 0;
 
     std::vector<nvrhi::FramebufferHandle> m_SwapChainFramebuffers;
 
@@ -222,7 +205,7 @@ protected:
     virtual void ResizeSwapChain() = 0;
     virtual bool BeginFrame() = 0;
     virtual bool Present() = 0;
-
+    
 public:
     [[nodiscard]] virtual nvrhi::IDevice *GetDevice() const = 0;
     [[nodiscard]] virtual const char *GetRendererString() const = 0;
@@ -250,16 +233,16 @@ public:
     void MouseScrollUpdate(double xoffset, double yoffset);
 
     [[nodiscard]] GLFWwindow *GetWindow() const { return m_Window; }
-    [[nodiscard]] uint32_t GetFrameIndex() const { return m_FrameIndex; }
+    [[nodiscard]] u32 GetFrameIndex() const { return m_FrameIndex; }
 
     virtual nvrhi::ITexture *GetCurrentBackBuffer() = 0;
-    virtual nvrhi::ITexture *GetBackBuffer(uint32_t index) = 0;
-    virtual uint32_t GetCurrentBackBufferIndex() = 0;
-    virtual uint32_t GetBackBufferCount() = 0;
+    virtual nvrhi::ITexture *GetBackBuffer(u32 index) = 0;
+    virtual u32 GetCurrentBackBufferIndex() = 0;
+    virtual u32 GetBackBufferCount() = 0;
     nvrhi::IFramebuffer *GetCurrentFramebuffer();
-    nvrhi::IFramebuffer *GetFramebuffer(uint32_t index);
+    nvrhi::IFramebuffer *GetFramebuffer(u32 index);
 
-    virtual void Shutdown();
+    virtual void Destroy();
     virtual ~DeviceManager() = default;
 
     void SetWindowTitle(const char *title);
@@ -273,17 +256,15 @@ public:
     virtual void GetEnabledVulkanDeviceExtensions(std::vector<std::string> &extensions) const {}
     virtual void GetEnabledVulkanLayers(std::vector<std::string> &layers) const {}
 
-    // GetFrameIndex cannot be used inside of these callbacks, hence the additional passing of frameID
-    // Refer to AnimatedRenderPresent implementation for more details
     struct PipelineCallbacks
     {
-        std::function<void(DeviceManager &, uint32_t)> beforeFrame = nullptr;
-        std::function<void(DeviceManager &, uint32_t)> beforeAnimate = nullptr;
-        std::function<void(DeviceManager &, uint32_t)> afterAnimate = nullptr;
-        std::function<void(DeviceManager &, uint32_t)> beforeRender = nullptr;
-        std::function<void(DeviceManager &, uint32_t)> afterRender = nullptr;
-        std::function<void(DeviceManager &, uint32_t)> beforePresent = nullptr;
-        std::function<void(DeviceManager &, uint32_t)> afterPresent = nullptr;
+        std::function<void(DeviceManager &, u32)> beforeFrame = nullptr;
+        std::function<void(DeviceManager &, u32)> beforeAnimate = nullptr;
+        std::function<void(DeviceManager &, u32)> afterAnimate = nullptr;
+        std::function<void(DeviceManager &, u32)> beforeRender = nullptr;
+        std::function<void(DeviceManager &, u32)> afterRender = nullptr;
+        std::function<void(DeviceManager &, u32)> beforePresent = nullptr;
+        std::function<void(DeviceManager &, u32)> afterPresent = nullptr;
     } m_Callbacks;
 
 private:
@@ -293,37 +274,3 @@ private:
 
     std::string m_WindowTitle;
 }; 
-
-class IRenderPass
-{
-public:
-    explicit IRenderPass(DeviceManager *deviceManager)
-        : m_DeviceManager(deviceManager)
-    {
-    }
-
-    virtual ~IRenderPass() = default;
-    virtual void SetLateWarpOptions() { }
-    virtual bool ShouldRenderUnfocused() { return false; }
-    virtual void Render(nvrhi::IFramebuffer *framebuffer) { }
-    virtual void Animate(float fElapsedTimeSeconds) { }
-    virtual void BackBufferResizing() { }
-    virtual void BackBufferResized(const uint32_t width, const uint32_t heigth, const uint32_t sampleCount) { }
-
-    // Called before Animate() when a DPI change was created
-    virtual void DisplayScaleChanged(float scaleX, float scaleY) { }
-
-    virtual bool KeyboardUpdate(int key, int scancode, int action, int mods) { return false; }
-    virtual bool KeyboardCharInput(unsigned int unicode, int modes) { return false; }
-    virtual bool MousePosUpdate(double xpos, double ypos) { return false; }
-    virtual bool MouseScrollUpdate(double xoffset, double yoffset) { return false; }
-    virtual bool MouseButtonUpdate(int button, int action, int mods) { return false; }
-    virtual bool JoystickButtonUpdate(int button, bool pressed) { return false; }
-    virtual bool JoystickAxisUpdate(int axis, float value) { return false; }
-
-    [[nodiscard]] DeviceManager *GetDeviceManager() const { return m_DeviceManager; }
-    [[nodiscard]] nvrhi::IDevice *GetDevice() const { return m_DeviceManager->GetDevice(); }
-    [[nodiscard]] uint32_t GetFrameIndex() const { return m_DeviceManager->GetFrameIndex(); }
-private:
-    DeviceManager *m_DeviceManager;
-};

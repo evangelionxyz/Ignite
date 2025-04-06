@@ -1,10 +1,18 @@
 add_executable(IGNITE
+    editor/main.cpp
+    editor/ignite_editor_app.cpp
+    editor/scene_render_pass.cpp
+    editor/imgui_render_pass.cpp
     core/vfs/vfs.cpp
     core/application.cpp
+    core/layer.cpp
+    core/irender_pass.cpp
     core/device_manager.cpp
     core/logger.cpp
-    core/main.cpp
+    core/imgui/imgui_nvrhi.cpp
+    core/imgui/imgui_renderer.cpp
     renderer/shader_factory.cpp
+    scene/scene.cpp
 )
 
 target_include_directories(IGNITE PRIVATE
@@ -12,13 +20,14 @@ target_include_directories(IGNITE PRIVATE
     ${THIRDPARTY}/GLFW/include
     ${THIRDPARTY}/NVRHI/include
     ${THIRDPARTY}/SPDLOG/include
-    ${THIRDPARTY}/GLM/
+    ${THIRDPARTY}/GLM
+    ${THIRDPARTY}/IMGUI
     ${THIRDPARTY}/ShaderMake/include
     ${VULKAN_SDK}/Include
     .
 )
 
-target_link_libraries(IGNITE glfw spdlog ShaderMakeBlob)
+target_link_libraries(IGNITE glfw spdlog ShaderMakeBlob imgui)
 
 set(IGNITE_WITH_DX12 ON)
 set(IGNITE_WITH_DX11 OFF)

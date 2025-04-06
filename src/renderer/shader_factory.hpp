@@ -26,12 +26,38 @@ struct StaticShader
     size_t size = 0;
 };
 
+#if IGNITE_WITH_DX11 && IGNITE_WITH_STATIC_SHADERS
+#define IGNITE_MAKE_DXBC_SHADER(symbol) StaticShader{symbol,sizeof(symbol)}
+#else
+#define IGNITE_MAKE_DXBC_SHADER(symbol) StaticShader()
+#endif
+
+#if IGNITE_WITH_DX12 && IGNITE_WITH_STATIC_SHADERS
+#define IGNITE_MAKE_DXIL_SHADER(symbol) StaticShader{symbol,sizeof(symbol)}
+#else
+#define IGNITE_MAKE_DXIL_SHADER(symbol) StaticShader()
+#endif
+
+#if IGNITE_WITH_VULKAN && IGNITE_WITH_STATIC_SHADERS
+#define IGNITE_MAKE_SPIRV_SHADER(symbol) StaticShader{symbol,sizeof(symbol)}
+#else
+#define IGNITE_MAKE_SPIRV_SHADER(symbol) StaticShader()
+#endif
+
+// Macro to use with ShaderFactory::CreateStaticPlatformShader.
+// If there are symbols g_MyShader_dxbc, g_MyShader_dxil, g_MyShader_spirv - just use:
+//      CreateStaticPlatformShader(IGNITE_MAKE_PLATFORM_SHADER(g_MyShader), defines, shaderDesc);
+// and all available platforms will be resolved automatically.
+#define IGNITE_MAKE_PLATFORM_SHADER(basename) IGNITE_MAKE_DXBC_SHADER(basename##_dxbc), IGNITE_MAKE_DXIL_SHADER(basename##_dxil), IGNITE_MAKE_SPIRV_SHADER(basename##_spirv)
+
+// Similar to IGNITE_MAKE_PLATFORM_SHADER but for libraries - they are not available on DX11/DXBC.
+//      CreateStaticPlatformShaderLibrary(IGNITE_MAKE_PLATFORM_SHADER_LIBRARY(g_MyShaderLibrary), defines);
+#define IGNITE_MAKE_PLATFORM_SHADER_LIBRARY(basename) IGNITE_MAKE_DXIL_SHADER(basename##_dxil), IGNITE_MAKE_SPIRV_SHADER(basename##_spirv)
+
 class ShaderFactory
 {
 public:
-    ShaderFactory(nvrhi::DeviceHandle device,
-        Ref<vfs::IFileSystem> fs,
-        const std::filesystem::path &basePath);
+    ShaderFactory(nvrhi::DeviceHandle device, Ref<vfs::IFileSystem> fs, const std::filesystem::path &basePath);
 
     virtual ~ShaderFactory();
     void ClearCache();
@@ -44,7 +70,7 @@ public:
     nvrhi::ShaderLibraryHandle CreateStaticShaderLibrary(StaticShader shader, const std::vector<ShaderMacro> *pDefines);
     nvrhi::ShaderLibraryHandle CreateStaticPlatformShaderLibrary(StaticShader dxil, StaticShader spirv, const std::vector<ShaderMacro> *pDefines);
 
-    nvrhi::ShaderHandle CreateAutoShader(const char *filename, const char *entrynName, StaticShader dxbc, StaticShader dxil, StaticShader spirv, const std::vector<ShaderMacro> *pDefines, const nvrhi::ShaderDesc &desc);
+    nvrhi::ShaderHandle CreateAutoShader(const char *filename, const char *entryName, StaticShader dxbc, StaticShader dxil, StaticShader spirv, const std::vector<ShaderMacro> *pDefines, const nvrhi::ShaderDesc &desc);
 
     nvrhi::ShaderLibraryHandle CreateAutoShaderLibrary(const char *filename, StaticShader dxil, StaticShader spirv, const std::vector<ShaderMacro> *pDefines);
 

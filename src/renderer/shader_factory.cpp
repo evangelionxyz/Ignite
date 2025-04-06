@@ -94,7 +94,7 @@ nvrhi::ShaderHandle ShaderFactory::CreateStaticShader(StaticShader shader, const
     if (!ShaderMake::FindPermutationInBlob(shader.pByteCode, shader.size, constants.data(), u32(constants.size()), &permutationByteCode, &permutationSize))
     {
         const std::string message = ShaderMake::FormatShaderNotFoundMessage(shader.pByteCode, shader.size, constants.data(), u32(constants.size()));
-        LOG_ERROR("{}", message);
+        LOG_ASSERT(false, "{}", message);
         return nullptr;
     }
 
@@ -138,7 +138,7 @@ nvrhi::ShaderLibraryHandle ShaderFactory::CreateStaticShaderLibrary(StaticShader
     if (!ShaderMake::FindPermutationInBlob(shader.pByteCode, shader.size, constants.data(), uint32_t(constants.size()), &permutationBytecode, &permutationSize))
     {
         const std::string message = ShaderMake::FormatShaderNotFoundMessage(shader.pByteCode, shader.size, constants.data(), uint32_t(constants.size()));
-        LOG_ERROR("{}", message);
+        LOG_ASSERT(false, "{}", message);
         return nullptr;
     }
 
