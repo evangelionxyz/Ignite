@@ -8,13 +8,15 @@
 
 // position, color
 QuadVertex quadVertices[] = {
-    { {-0.5f, -0.5f}, {1, 0, 1, 1} },
-    { { 0.5f,  0.5f}, {1, 0, 1, 1} },
-    { {-0.5f,  0.5f}, {1, 0, 0, 1} },
-    
-    { {-0.5f, -0.5f}, {1, 0, 1, 1} },
-    { { 0.5f, -0.5f}, {1, 0, 1, 1} },
-    { { 0.5f,  0.5f}, {1, 0, 1, 1} },
+    { {-0.5f, -0.5f}, {1, 0, 1, 1} }, // bottom left
+    { { 0.5f,  0.5f}, {1, 0, 1, 1} }, // top right
+    { {-0.5f,  0.5f}, {1, 0, 1, 1} }, // top left
+    { { 0.5f, -0.5f}, {1, 0, 0, 1} }, // bottom right
+};
+
+u32 indices[] = { 
+    0, 1, 2, 
+    0, 3, 1
 };
 
 IgniteEditorLayer::IgniteEditorLayer(const std::string &name)
@@ -28,21 +30,6 @@ void IgniteEditorLayer::OnAttach()
 
     m_DeviceManager = Application::GetDeviceManager();
     nvrhi::IDevice *device = m_DeviceManager->GetDevice();
-
-#if TEST
-    {
-        mainGfx.vertexShader = Application::GetShaderFactory()->CreateShader("triangle", "main_vs", nullptr, nvrhi::ShaderType::Vertex);
-        mainGfx.pixelShader = Application::GetShaderFactory()->CreateShader("triangle", "main_ps", nullptr, nvrhi::ShaderType::Pixel);
-        LOG_ASSERT(mainGfx.vertexShader && mainGfx.pixelShader, "Failed to create shader");
-
-        mainGfx.psoDesc.VS = mainGfx.vertexShader;
-        mainGfx.psoDesc.PS = mainGfx.pixelShader;
-        mainGfx.psoDesc.primType = nvrhi::PrimitiveType::TriangleList;
-        mainGfx.psoDesc.renderState.depthStencilState.depthTestEnable = false;
-    }
-
-    m_CommandList = m_DeviceManager->GetDevice()->createCommandList();
-#else
 
     // create shaders
     sceneGfx.vertexShader = Application::GetShaderFactory()->CreateShader("default_2d_vertex", "main", nullptr, nvrhi::ShaderType::Vertex);
@@ -65,8 +52,7 @@ void IgniteEditorLayer::OnAttach()
             .setElementStride(sizeof(QuadVertex)),
     };
 
-    sceneGfx.inputLayout = device->createInputLayout(
-        attributes, u32(std::size(attributes)), sceneGfx.vertexShader);
+    sceneGfx.inputLayout = device->createInputLayout(attributes, u32(std::size(attributes)), sceneGfx.vertexShader);
 
     // create vertex buffer
     auto vertexBufferDesc = nvrhi::BufferDesc()
@@ -78,6 +64,15 @@ void IgniteEditorLayer::OnAttach()
     
     sceneGfx.vertexBuffer = device->createBuffer(vertexBufferDesc);
     LOG_ASSERT(sceneGfx.vertexBuffer, "Failed to create vertex buffer");
+
+    auto indexBufferDesc = nvrhi::BufferDesc()
+        .setByteSize(sizeof(indices))
+        .setIsIndexBuffer(true)
+        .setInitialState(nvrhi::ResourceStates::IndexBuffer)
+        .setKeepInitialState(true)
+        .setDebugName("Index Buffer");
+    sceneGfx.indexBuffer = device->createBuffer(indexBufferDesc);
+    LOG_ASSERT(sceneGfx.indexBuffer, "Failed to create index buffer");
 
     auto framebuffer = m_DeviceManager->GetCurrentFramebuffer();
     LOG_ASSERT(framebuffer, "Framebuffer is null");
@@ -113,15 +108,18 @@ void IgniteEditorLayer::OnAttach()
         LOG_ASSERT(sceneGfx.pipeline, "Failed to create graphics pipeline");
     }
     
-    // write buffer wit command list
+    // write buffer with command list
     m_CommandList = m_DeviceManager->GetDevice()->createCommandList();
     m_CommandList->open();
+
     m_CommandList->writeBuffer(sceneGfx.vertexBuffer, quadVertices, sizeof(quadVertices));
-    LOG_ASSERT(sceneGfx.vertexBuffer, "Failed to write vertexd ata to vertex buffer");
+    LOG_ASSERT(sceneGfx.vertexBuffer, "Failed to write vertices data to vertex buffer");
+
+    m_CommandList->writeBuffer(sceneGfx.indexBuffer, indices, sizeof(indices));
+    LOG_ASSERT(sceneGfx.indexBuffer, "Failed to write indices data to vertex buffer");
 
     m_CommandList->close();
     m_DeviceManager->GetDevice()->executeCommandList(m_CommandList);
-#endif
 
     m_ScenePanel = IPanel::Create<ScenePanel>("Scene Panel");
 }
@@ -144,53 +142,29 @@ void IgniteEditorLayer::OnEvent(Event &e)
 void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
 {
     Layer::OnRender(framebuffer);
-#if TEST
     {
-        if (!mainGfx.pipeline)
-        {
-            mainGfx.pipeline = m_DeviceManager->GetDevice()->createGraphicsPipeline(mainGfx.psoDesc, framebuffer);
-        }
-
+        // render
         m_CommandList->open();
         nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(m_ClearColor.r, m_ClearColor.g, m_ClearColor.b, 1.0f));
+        auto graphicsState = nvrhi::GraphicsState()
+            .setPipeline(sceneGfx.pipeline)
+            .setFramebuffer(framebuffer)
+            .setViewport(nvrhi::ViewportState().addViewportAndScissorRect(framebuffer->getFramebufferInfo().getViewport()))
+            .addVertexBuffer( nvrhi::VertexBufferBinding{sceneGfx.vertexBuffer.Get(), 0, 0} )
+            .setIndexBuffer({ sceneGfx.indexBuffer, nvrhi::Format::R32_UINT }); // REQUIRED
 
-        nvrhi::GraphicsState state;
-        state.pipeline = mainGfx.pipeline;
-        state.framebuffer = framebuffer;
-        state.viewport.addViewportAndScissorRect(framebuffer->getFramebufferInfo().getViewport());
-        m_CommandList->setGraphicsState(state);
+        m_CommandList->setGraphicsState(graphicsState);
 
-        nvrhi::DrawArguments args;
-        args.vertexCount = 3;
-        m_CommandList->draw(args);
+        // draw geometry
+        auto drawArguments = nvrhi::DrawArguments();
+        drawArguments.vertexCount = std::size(indices);
 
+        m_CommandList->drawIndexed(drawArguments);
+
+        // close and execute the command list
         m_CommandList->close();
         m_DeviceManager->GetDevice()->executeCommandList(m_CommandList);
     }
-#else
-{
-    // render
-    m_CommandList->open();
-    nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(m_ClearColor.r, m_ClearColor.g, m_ClearColor.b, 1.0f));
-    auto graphicsState = nvrhi::GraphicsState()
-        .setPipeline(sceneGfx.pipeline)
-        .setFramebuffer(framebuffer)
-        .setViewport(nvrhi::ViewportState().addViewportAndScissorRect(framebuffer->getFramebufferInfo().getViewport()))
-        .addVertexBuffer( nvrhi::VertexBufferBinding{sceneGfx.vertexBuffer.Get(), 0, 0} );
-
-    m_CommandList->setGraphicsState(graphicsState);
-
-    // draw geometry
-    auto drawArguments = nvrhi::DrawArguments()
-        .setVertexCount(std::size(quadVertices));
-    m_CommandList->draw(drawArguments);
-
-    // close and execute the command list
-    m_CommandList->close();
-    m_DeviceManager->GetDevice()->executeCommandList(m_CommandList);
-}
-#endif
-
 }
 
 void IgniteEditorLayer::OnGuiRender()

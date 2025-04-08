@@ -24,6 +24,7 @@ struct RenderData
     nvrhi::InputLayoutHandle inputLayout;
     nvrhi::GraphicsPipelineDesc psoDesc;
     nvrhi::BufferHandle vertexBuffer;
+    nvrhi::BufferHandle indexBuffer;
     nvrhi::BufferDesc vertexBufferDesc;
 };
 

@@ -15,26 +15,26 @@ class ShaderFactory;
 
 struct ImGui_NVRHI
 {
-    nvrhi::DeviceHandle m_Device;
-    nvrhi::CommandListHandle m_CommandList;
-    nvrhi::ShaderHandle VertexShader;
-    nvrhi::ShaderHandle PixelShader;
-    nvrhi::InputLayoutHandle ShaderAttribLayout;
+    nvrhi::DeviceHandle device;
+    nvrhi::CommandListHandle commandList;
+    nvrhi::ShaderHandle vertexShader;
+    nvrhi::ShaderHandle pixelShader;
+    nvrhi::InputLayoutHandle attributeLayout;
 
-    nvrhi::TextureHandle FontTexture;
-    nvrhi::SamplerHandle FontSampler;
+    nvrhi::TextureHandle fontTexture;
+    nvrhi::SamplerHandle fontSampler;
 
-    nvrhi::BufferHandle VertexBuffer;
-    nvrhi::BufferHandle IndexBuffer;
+    nvrhi::BufferHandle vertexBuffer;
+    nvrhi::BufferHandle indexBuffer;
 
-    nvrhi::BindingLayoutHandle BindingLayout;
-    nvrhi::GraphicsPipelineDesc BasePSODesc;
+    nvrhi::BindingLayoutHandle bindingLayout;
+    nvrhi::GraphicsPipelineDesc graphicsPipelineDesc;
 
-    nvrhi::GraphicsPipelineHandle PSO;
-    std::unordered_map<nvrhi::ITexture *, nvrhi::BindingSetHandle> BindingsCache;
+    nvrhi::GraphicsPipelineHandle graphicsPipeline;
+    std::unordered_map<nvrhi::ITexture *, nvrhi::BindingSetHandle> bindingsCache;
 
-    std::vector<ImDrawVert> VtxBuffer;
-    std::vector<ImDrawIdx> IdxBuffer;
+    std::vector<ImDrawVert> imguiVertexBuffer;
+    std::vector<ImDrawIdx> imguiIndexBuffer;
 
     bool Init(nvrhi::IDevice *device, Ref<ShaderFactory> shaderFactory);
     void Shutdown();

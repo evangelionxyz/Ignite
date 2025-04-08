@@ -14,7 +14,7 @@ bool ImGui_NVRHI::UpdateFontTexture()
 
     // If the font texture exists and is bound to ImGui, we're done.
     // Note: ImGui_Renderer will reset io.Fonts->TexID when new fonts are added.
-    if (FontTexture && io.Fonts->TexID)
+    if (fontTexture && io.Fonts->TexID)
         return true;
 
     unsigned char *pixels;
@@ -30,33 +30,33 @@ bool ImGui_NVRHI::UpdateFontTexture()
     textureDesc.format = nvrhi::Format::RGBA8_UNORM;
     textureDesc.debugName = "ImGui font texture";
 
-    FontTexture = m_Device->createTexture(textureDesc);
-    LOG_ASSERT(FontTexture, "Failed to create imgui font texture");
+    fontTexture = device->createTexture(textureDesc);
+    LOG_ASSERT(fontTexture, "Failed to create imgui font texture");
 
-    m_CommandList->open();
+    commandList->open();
     
-    m_CommandList->beginTrackingTextureState(FontTexture, nvrhi::AllSubresources, nvrhi::ResourceStates::Common);
-    m_CommandList->writeTexture(FontTexture, 0, 0, pixels, width * 4);
-    m_CommandList->setPermanentTextureState(FontTexture, nvrhi::ResourceStates::ShaderResource);
-    m_CommandList->commitBarriers();
+    commandList->beginTrackingTextureState(fontTexture, nvrhi::AllSubresources, nvrhi::ResourceStates::Common);
+    commandList->writeTexture(fontTexture, 0, 0, pixels, width * 4);
+    commandList->setPermanentTextureState(fontTexture, nvrhi::ResourceStates::ShaderResource);
+    commandList->commitBarriers();
 
-    m_CommandList->close();
-    m_Device->executeCommandList(m_CommandList);
+    commandList->close();
+    device->executeCommandList(commandList);
 
-    io.Fonts->TexID = (ImTextureID)FontTexture.Get();
+    io.Fonts->TexID = (ImTextureID)fontTexture.Get();
 
     return true;
 }
 
 bool ImGui_NVRHI::Init(nvrhi::IDevice *device, Ref<ShaderFactory> shaderFactory)
 {
-    m_Device = device;
-    m_CommandList = m_Device->createCommandList();
+    this->device = device;
+    commandList = device->createCommandList();
 
-    VertexShader = shaderFactory->CreateAutoShader("imgui_vertex", "main", IGNITE_MAKE_PLATFORM_SHADER(g_imgui_vertex), nullptr, nvrhi::ShaderType::Vertex);
-    PixelShader = shaderFactory->CreateAutoShader("imgui_pixel", "main", IGNITE_MAKE_PLATFORM_SHADER(g_imgui_vertex), nullptr, nvrhi::ShaderType::Pixel);
+    vertexShader = shaderFactory->CreateAutoShader("imgui_vertex", "main", IGNITE_MAKE_PLATFORM_SHADER(g_imgui_vertex), nullptr, nvrhi::ShaderType::Vertex);
+    pixelShader = shaderFactory->CreateAutoShader("imgui_pixel", "main", IGNITE_MAKE_PLATFORM_SHADER(g_imgui_vertex), nullptr, nvrhi::ShaderType::Pixel);
     
-    if (!VertexShader || !PixelShader)
+    if (!vertexShader || !pixelShader)
     {
         LOG_ERROR("Failed to create ImGui Shader");
         return false;
@@ -69,7 +69,7 @@ bool ImGui_NVRHI::Init(nvrhi::IDevice *device, Ref<ShaderFactory> shaderFactory)
         {"COLOR", nvrhi::Format::RGBA8_UNORM, 1, 0, offsetof(ImDrawVert, col), sizeof(ImDrawVert), false}
     };
 
-    ShaderAttribLayout = m_Device->createInputLayout(vertexAttribLayout, std::size(vertexAttribLayout), VertexShader);
+    attributeLayout = device->createInputLayout(vertexAttribLayout, std::size(vertexAttribLayout), vertexShader);
 
     // Create PSO (Pipeline State Object)
     {
@@ -106,13 +106,13 @@ bool ImGui_NVRHI::Init(nvrhi::IDevice *device, Ref<ShaderFactory> shaderFactory)
             nvrhi::BindingLayoutItem::Sampler(0)
         };
 
-        BindingLayout = m_Device->createBindingLayout(layoutDesc);
-        BasePSODesc.primType = nvrhi::PrimitiveType::TriangleList;
-        BasePSODesc.inputLayout = ShaderAttribLayout;
-        BasePSODesc.VS = VertexShader;
-        BasePSODesc.PS = PixelShader;
-        BasePSODesc.renderState = renderState;
-        BasePSODesc.bindingLayouts = { BindingLayout };
+        bindingLayout = device->createBindingLayout(layoutDesc);
+        graphicsPipelineDesc.primType = nvrhi::PrimitiveType::TriangleList;
+        graphicsPipelineDesc.inputLayout = attributeLayout;
+        graphicsPipelineDesc.VS = vertexShader;
+        graphicsPipelineDesc.PS = pixelShader;
+        graphicsPipelineDesc.renderState = renderState;
+        graphicsPipelineDesc.bindingLayouts = { bindingLayout };
     }
 
     {
@@ -120,10 +120,10 @@ bool ImGui_NVRHI::Init(nvrhi::IDevice *device, Ref<ShaderFactory> shaderFactory)
             .setAllAddressModes(nvrhi::SamplerAddressMode::Wrap)
             .setAllFilters(true);
 
-        FontSampler = m_Device->createSampler(desc);
+        fontSampler = device->createSampler(desc);
 
-        LOG_ASSERT(FontSampler, "Failed to create ImGui font sampler");
-        if (!FontSampler)
+        LOG_ASSERT(fontSampler, "Failed to create ImGui font sampler");
+        if (!fontSampler)
             return false;
     }
 
@@ -135,12 +135,12 @@ bool ImGui_NVRHI::Render(nvrhi::IFramebuffer *framebuffer)
     ImDrawData *drawData = ImGui::GetDrawData();
     const ImGuiIO &io = ImGui::GetIO();
 
-    m_CommandList->open();
-    m_CommandList->beginMarker("ImGui");
+    commandList->open();
+    commandList->beginMarker("ImGui");
 
-    if (!UpdateGeometry(m_CommandList))
+    if (!UpdateGeometry(commandList))
     {
-        m_CommandList->close();
+        commandList->close();
         return false;
     }
 
@@ -164,12 +164,12 @@ bool ImGui_NVRHI::Render(nvrhi::IFramebuffer *framebuffer)
     drawState.viewport.scissorRects.resize(1);
 
     nvrhi::VertexBufferBinding vbufBinding;
-    vbufBinding.buffer = VertexBuffer;
+    vbufBinding.buffer = vertexBuffer;
     vbufBinding.slot = 0;
     vbufBinding.offset = 0;
     drawState.vertexBuffers.push_back(vbufBinding);
 
-    drawState.indexBuffer.buffer = IndexBuffer;
+    drawState.indexBuffer.buffer = indexBuffer;
     drawState.indexBuffer.format = sizeof(ImDrawIdx) == 2 ? nvrhi::Format::R16_UINT : nvrhi::Format::R32_UINT;
     drawState.indexBuffer.offset = 0;
 
@@ -205,25 +205,25 @@ bool ImGui_NVRHI::Render(nvrhi::IFramebuffer *framebuffer)
                 drawArguments.startVertexLocation = vtxOffset;
                 drawArguments.startIndexLocation = idxOffset;
 
-                m_CommandList->setGraphicsState(drawState);
-                m_CommandList->setPushConstants(invDisplaySize, sizeof(invDisplaySize));
-                m_CommandList->drawIndexed(drawArguments);
+                commandList->setGraphicsState(drawState);
+                commandList->setPushConstants(invDisplaySize, sizeof(invDisplaySize));
+                commandList->drawIndexed(drawArguments);
             }
             idxOffset += pCmd->ElemCount;
         }
         vtxOffset += cmdList->VtxBuffer.Size;
     }
 
-    m_CommandList->endMarker();
-    m_CommandList->close();
-    m_Device->executeCommandList(m_CommandList);
+    commandList->endMarker();
+    commandList->close();
+    device->executeCommandList(commandList);
 
     return true;
 }
 
 void ImGui_NVRHI::BackBufferResizing()
 {
-    PSO = nullptr;
+    graphicsPipeline = nullptr;
 }
 
 bool ImGui_NVRHI::ReallocateBuffer(nvrhi::BufferHandle &buffer, size_t requiredSize, size_t reallocateSize, bool isIndexBuffer)
@@ -232,7 +232,7 @@ bool ImGui_NVRHI::ReallocateBuffer(nvrhi::BufferHandle &buffer, size_t requiredS
     {
         nvrhi::BufferDesc desc;
         desc.byteSize = static_cast<u32>(reallocateSize);
-        desc.debugName = IndexBuffer ? "ImGui index buffer" : "ImGui vertex buffer";
+        desc.debugName = indexBuffer ? "ImGui index buffer" : "ImGui vertex buffer";
         desc.canHaveUAVs = false;
         desc.isVertexBuffer = !isIndexBuffer;
         desc.isIndexBuffer = isIndexBuffer;
@@ -241,7 +241,7 @@ bool ImGui_NVRHI::ReallocateBuffer(nvrhi::BufferHandle &buffer, size_t requiredS
         desc.initialState = isIndexBuffer ? nvrhi::ResourceStates::IndexBuffer : nvrhi::ResourceStates::VertexBuffer;
         desc.keepInitialState = true;
 
-        buffer = m_Device->createBuffer(desc);
+        buffer = device->createBuffer(desc);
 
         if (!buffer)
             return false;
@@ -252,20 +252,20 @@ bool ImGui_NVRHI::ReallocateBuffer(nvrhi::BufferHandle &buffer, size_t requiredS
 
 nvrhi::IGraphicsPipeline *ImGui_NVRHI::GetPSO(nvrhi::IFramebuffer *framebuffer)
 {
-    if (PSO)
-        return PSO;
+    if (graphicsPipeline)
+        return graphicsPipeline;
 
-    PSO = m_Device->createGraphicsPipeline(BasePSODesc, framebuffer);
-    LOG_ASSERT(PSO, "Failed to create ImGui PSO");
+    graphicsPipeline = device->createGraphicsPipeline(graphicsPipelineDesc, framebuffer);
+    LOG_ASSERT(graphicsPipeline, "Failed to create ImGui PSO");
 
     
-    return PSO;
+    return graphicsPipeline;
 }
 
 nvrhi::IBindingSet *ImGui_NVRHI::GetBindingSet(nvrhi::ITexture *texture)
 {
-    auto iter = BindingsCache.find(texture);
-    if (iter != BindingsCache.end())
+    auto iter = bindingsCache.find(texture);
+    if (iter != bindingsCache.end())
         return iter->second;
     
     nvrhi::BindingSetDesc desc;
@@ -273,14 +273,14 @@ nvrhi::IBindingSet *ImGui_NVRHI::GetBindingSet(nvrhi::ITexture *texture)
     {
         nvrhi::BindingSetItem::PushConstants(0, sizeof(float) * 2),
         nvrhi::BindingSetItem::Texture_SRV(0, texture),
-        nvrhi::BindingSetItem::Sampler(0, FontSampler)
+        nvrhi::BindingSetItem::Sampler(0, fontSampler)
     };
 
     nvrhi::BindingSetHandle binding;
-    binding = m_Device->createBindingSet(desc, BindingLayout);
+    binding = device->createBindingSet(desc, bindingLayout);
     LOG_ASSERT(binding, "Failed to create ImGui binding set");
 
-    BindingsCache[texture] = binding;
+    bindingsCache[texture] = binding;
     return binding;
 }
 
@@ -288,25 +288,25 @@ bool ImGui_NVRHI::UpdateGeometry(nvrhi::ICommandList *commandList)
 {
     ImDrawData *drawData = ImGui::GetDrawData();
 
-    if (!ReallocateBuffer(VertexBuffer, drawData->TotalVtxCount * sizeof(ImDrawVert),
+    if (!ReallocateBuffer(vertexBuffer, drawData->TotalVtxCount * sizeof(ImDrawVert),
         (drawData->TotalVtxCount + 5000) * sizeof(ImDrawVert),
         false))
     {
         return false;
     }
 
-    if (!ReallocateBuffer(IndexBuffer, drawData->TotalIdxCount * sizeof(ImDrawIdx),
+    if (!ReallocateBuffer(indexBuffer, drawData->TotalIdxCount * sizeof(ImDrawIdx),
         (drawData->TotalIdxCount + 5000) * sizeof(ImDrawIdx),
         true))
     {
         return false;
     }
 
-    VtxBuffer.resize(VertexBuffer->getDesc().byteSize / sizeof(ImDrawVert));
-    IdxBuffer.resize(IndexBuffer->getDesc().byteSize / sizeof(ImDrawIdx));
+    imguiVertexBuffer.resize(vertexBuffer->getDesc().byteSize / sizeof(ImDrawVert));
+    imguiIndexBuffer.resize(indexBuffer->getDesc().byteSize / sizeof(ImDrawIdx));
 
-    ImDrawVert *vtxDst = &VtxBuffer[0];
-    ImDrawIdx *idxDst = &IdxBuffer[0];
+    ImDrawVert *vtxDst = &imguiVertexBuffer[0];
+    ImDrawIdx *idxDst = &imguiIndexBuffer[0];
 
     for (i32 n = 0; n < drawData->CmdListsCount; ++n)
     {
@@ -318,21 +318,21 @@ bool ImGui_NVRHI::UpdateGeometry(nvrhi::ICommandList *commandList)
         idxDst += cmdList->IdxBuffer.Size;
     }
 
-    commandList->writeBuffer(VertexBuffer, &VtxBuffer[0], VertexBuffer->getDesc().byteSize);
-    commandList->writeBuffer(IndexBuffer, &IdxBuffer[0], IndexBuffer->getDesc().byteSize);
+    commandList->writeBuffer(vertexBuffer, &imguiVertexBuffer[0], vertexBuffer->getDesc().byteSize);
+    commandList->writeBuffer(indexBuffer, &imguiIndexBuffer[0], indexBuffer->getDesc().byteSize);
 
     return true;
 }
 
 void ImGui_NVRHI::Shutdown()
 {
-    FontTexture = nullptr;
-    FontSampler = nullptr;
-    VertexBuffer = nullptr;
-    IndexBuffer = nullptr;
+    fontTexture = nullptr;
+    fontSampler = nullptr;
+    vertexBuffer = nullptr;
+    indexBuffer = nullptr;
 
-    VertexShader = nullptr;
-    PixelShader = nullptr;
+    vertexShader = nullptr;
+    pixelShader = nullptr;
 
-    m_CommandList = nullptr;
+    commandList = nullptr;
 }
