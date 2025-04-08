@@ -9,8 +9,12 @@
 // position, color
 QuadVertex quadVertices[] = {
     { {-0.5f, -0.5f}, {1, 0, 1, 1} },
-    { { 0.0f,  0.5f}, {1, 0, 0, 1} },
-    { { 0.5f, -0.5f}, {1, 0, 1, 1} }
+    { { 0.5f,  0.5f}, {1, 0, 1, 1} },
+    { {-0.5f,  0.5f}, {1, 0, 0, 1} },
+    
+    { {-0.5f, -0.5f}, {1, 0, 1, 1} },
+    { { 0.5f, -0.5f}, {1, 0, 1, 1} },
+    { { 0.5f,  0.5f}, {1, 0, 1, 1} },
 };
 
 IgniteEditorLayer::IgniteEditorLayer(const std::string &name)
@@ -75,6 +79,39 @@ void IgniteEditorLayer::OnAttach()
     sceneGfx.vertexBuffer = device->createBuffer(vertexBufferDesc);
     LOG_ASSERT(sceneGfx.vertexBuffer, "Failed to create vertex buffer");
 
+    auto framebuffer = m_DeviceManager->GetCurrentFramebuffer();
+    LOG_ASSERT(framebuffer, "Framebuffer is null");
+
+    // create graphics pipeline
+    if (!sceneGfx.pipeline)
+    {
+        nvrhi::BlendState blendState;
+        blendState.targets[0].setBlendEnable(true);
+
+        auto depthStencilState = nvrhi::DepthStencilState()
+            .setDepthWriteEnable(false)
+            .setDepthTestEnable(false);
+
+        auto rasterState = nvrhi::RasterState()
+            .setCullNone()
+            .setFillSolid()
+            .setMultisampleEnable(false);
+
+        auto renderState = nvrhi::RenderState()
+            .setRasterState(rasterState)
+            .setDepthStencilState(depthStencilState)
+            .setBlendState(blendState);
+
+        auto pipelineDesc = nvrhi::GraphicsPipelineDesc()
+            .setInputLayout(sceneGfx.inputLayout)
+            .setVertexShader(sceneGfx.vertexShader)
+            .setPixelShader(sceneGfx.pixelShader)
+            .setRenderState(renderState)
+            .setPrimType(nvrhi::PrimitiveType::TriangleList);
+        
+        sceneGfx.pipeline = m_DeviceManager->GetDevice()->createGraphicsPipeline(pipelineDesc, framebuffer);
+        LOG_ASSERT(sceneGfx.pipeline, "Failed to create graphics pipeline");
+    }
     
     // write buffer wit command list
     m_CommandList = m_DeviceManager->GetDevice()->createCommandList();
@@ -132,36 +169,6 @@ void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
     }
 #else
 {
-    if (!sceneGfx.pipeline)
-    {
-        nvrhi::BlendState blendState;
-        blendState.targets[0].setBlendEnable(true);
-
-        auto depthStencilState = nvrhi::DepthStencilState()
-            .setDepthWriteEnable(false)
-            .setDepthTestEnable(false);
-
-        auto rasterState = nvrhi::RasterState()
-            .setCullNone()
-            .setFillSolid()
-            .setMultisampleEnable(false);
-
-        auto renderState = nvrhi::RenderState()
-            .setRasterState(rasterState)
-            .setDepthStencilState(depthStencilState)
-            .setBlendState(blendState);
-
-        auto pipelineDesc = nvrhi::GraphicsPipelineDesc()
-            .setInputLayout(sceneGfx.inputLayout)
-            .setVertexShader(sceneGfx.vertexShader)
-            .setPixelShader(sceneGfx.pixelShader)
-            .setRenderState(renderState)
-            .setPrimType(nvrhi::PrimitiveType::TriangleList);
-        
-        sceneGfx.pipeline = m_DeviceManager->GetDevice()->createGraphicsPipeline(pipelineDesc, framebuffer);
-        LOG_ASSERT(sceneGfx.pipeline, "Failed to create graphics pipeline");
-    }
-
     // render
     m_CommandList->open();
     nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(m_ClearColor.r, m_ClearColor.g, m_ClearColor.b, 1.0f));
