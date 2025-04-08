@@ -41,7 +41,7 @@ if (IGNITE_WITH_VULKAN)
 endif()
 target_link_libraries(IgniteEditor nvrhi) # needs to come after nvrhi_d3d12 etc.
 
-target_compile_definitions(IgniteEngine PRIVATE
+target_compile_definitions(IgniteEditor PRIVATE
     $<$<CONFIG:Debug>:DEBUG_BUILD>
     $<$<CONFIG:Release>:RELEASE_BUILD>
     #IGNITE_WITH_DX12

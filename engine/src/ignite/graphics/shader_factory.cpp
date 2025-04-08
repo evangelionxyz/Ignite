@@ -35,8 +35,7 @@ Ref<vfs::IBlob> ShaderFactory::GetByteCode(const char *filename, const char *ent
             adjustedName += "_" + std::string(entryName);
     }
 
-    std::filesystem::path shaderFilePath = m_BasePath / (adjustedName + ".bin");
-
+    std::filesystem::path shaderFilePath = m_BasePath / (adjustedName + ".dxil");
     std::shared_ptr<vfs::IBlob>& data = m_ByteCodeCache[shaderFilePath.generic_string()];
 
     if (data)

@@ -27,7 +27,7 @@ public:
     template<typename T>
     static  Ref<T> Create(const char *windowTitle)
     {
-        bool valid = std::is_base_of<IPanel, T>::value;
+        const bool valid = std::is_base_of<IPanel, T>::value;
         LOG_ASSERT(valid, "Not a class of IPanel ");
         return CreateRef<T>(windowTitle);
     }
@@ -38,5 +38,3 @@ protected:
     bool m_IsFocused = false;
     bool m_IsHovered = false;
 };
-
-

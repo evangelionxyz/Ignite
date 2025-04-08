@@ -10,6 +10,8 @@ add_library(IgniteEngine
     src/ignite/graphics/shader_factory.cpp
     src/ignite/scene/scene.cpp
     src/ignite/graphics/window.cpp
+    src/ignite/core/device/device_manager_vk.cpp
+    src/ignite/core/device/device_manager_vk.hpp
 )
 
 target_include_directories(IgniteEngine PRIVATE

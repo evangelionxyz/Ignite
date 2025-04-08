@@ -58,7 +58,12 @@ public:
     static Application *GetInstance();
     static DeviceManager *GetDeviceManager();
     static Ref<ShaderFactory> GetShaderFactory();
+
     static void SetWindowTitle(const std::string &title);
+
+    static void WindowIconify();
+    static void WindowMaximize();
+    static void WindowRestore();
 
 private:
     void UpdateAverageTimeTime(f64 elapsedTime);

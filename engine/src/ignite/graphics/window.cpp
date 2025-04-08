@@ -187,6 +187,21 @@ void Window::SetTitle(const std::string &title) const
     glfwSetWindowTitle(m_DeviceManager->m_Window, title.c_str());
 }
 
+void Window::Iconify() const
+{
+    glfwIconifyWindow(m_DeviceManager->m_Window);
+}
+
+void Window::Maximize() const
+{
+    glfwMaximizeWindow(m_DeviceManager->m_Window);
+}
+
+void Window::Restore() const
+{
+    glfwRestoreWindow(m_DeviceManager->m_Window);
+}
+
 void Window::SetCallbacks() const
 {
     glfwSetWindowPosCallback(m_DeviceManager->m_Window, [](GLFWwindow* window, i32 xpos, i32 ypos)
@@ -226,11 +241,14 @@ void Window::SetCallbacks() const
         win.m_Callback(event);
 
         // window is not minimized, and the size has changed
-        win.m_DeviceManager->m_DeviceParams.backBufferWidth = width;
-        win.m_DeviceManager->m_DeviceParams.backBufferHeight = height;
+        if (width > 0 && height > 0)
+        {
+            win.m_DeviceManager->m_DeviceParams.backBufferWidth = width;
+            win.m_DeviceManager->m_DeviceParams.backBufferHeight = height;
 
-        win.m_DeviceManager->ResizeSwapChain();
-        win.m_DeviceManager->CreateBackBuffers();
+            win.m_DeviceManager->ResizeSwapChain();
+            win.m_DeviceManager->CreateBackBuffers();
+        }
     });
 
     glfwSetWindowSizeCallback(m_DeviceManager->m_Window, [](GLFWwindow* window, i32 width, i32 height)
@@ -338,6 +356,27 @@ void Window::SetCallbacks() const
         }
 
         WindowDropEvent event(std::move(filepaths));
+        win.m_Callback(event);
+    });
+
+    glfwSetWindowMaximizeCallback(m_DeviceManager->m_Window, [](GLFWwindow* window, i32 maximized)
+    {
+        Window &win = *static_cast<Window *>(glfwGetWindowUserPointer(window));
+        WindowMaximizedEvent event(maximized ? true : false);
+        win.m_Callback(event);
+    });
+
+    glfwSetWindowIconifyCallback(m_DeviceManager->m_Window, [](GLFWwindow* window, i32 iconified)
+    {
+        Window &win = *static_cast<Window *>(glfwGetWindowUserPointer(window));
+        WindowMinimizedEvent event(iconified ? true : false);
+        win.m_Callback(event);
+    });
+
+    glfwSetWindowCloseCallback(m_DeviceManager->m_Window, [](GLFWwindow* window)
+    {
+        Window &win = *static_cast<Window *>(glfwGetWindowUserPointer(window));
+        WindowCloseEvent event;
         win.m_Callback(event);
     });
 }

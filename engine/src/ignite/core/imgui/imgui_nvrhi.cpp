@@ -231,7 +231,7 @@ bool ImGui_NVRHI::ReallocateBuffer(nvrhi::BufferHandle &buffer, size_t requiredS
     if (buffer == nullptr || size_t(buffer->getDesc().byteSize) < requiredSize)
     {
         nvrhi::BufferDesc desc;
-        desc.byteSize = u32(reallocateSize);
+        desc.byteSize = static_cast<u32>(reallocateSize);
         desc.debugName = IndexBuffer ? "ImGui index buffer" : "ImGui vertex buffer";
         desc.canHaveUAVs = false;
         desc.isVertexBuffer = !isIndexBuffer;

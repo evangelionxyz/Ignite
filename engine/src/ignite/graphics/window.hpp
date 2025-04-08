@@ -26,11 +26,16 @@ public:
 
     std::string &GetTitle() { return m_WindowTitle; }
     void SetEventCallback(const std::function<void(Event&)>& callback);
-    DeviceManager *GetDeviceManager() const { return m_DeviceManager; }
+    [[nodiscard]] DeviceManager *GetDeviceManager() const { return m_DeviceManager; }
 
-    bool IsVisible() const { return m_DeviceManager->m_WindowVisible; }
-    bool IsInFocus() const { return m_DeviceManager->m_WindowIsInFocus; }
+    [[nodiscard]] bool IsVisible() const { return m_DeviceManager->m_WindowVisible; }
+    [[nodiscard]] bool IsInFocus() const { return m_DeviceManager->m_WindowIsInFocus; }
+
     void SetTitle(const std::string &title) const;
+
+    void Iconify() const;
+    void Maximize() const;
+    void Restore() const;
 
 private:
     void SetCallbacks() const;

@@ -16,5 +16,7 @@ Application *CreateApplication(const ApplicationCommandLineArgs args)
 {
     ApplicationCreateInfo createInfo;
     createInfo.CommandLineArgs = args;
+    createInfo.Width = 1280;
+    createInfo.Height = 720;
     return new EditorApp(createInfo);
 }

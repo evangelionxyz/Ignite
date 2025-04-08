@@ -89,7 +89,7 @@ void Application::Run()
         m_Window->PollEvents();
 
         const f64 currTime = glfwGetTime();
-        const f64 elapsedTime = currTime - m_PreviousTime;
+        const f64 deltaTime = currTime - m_PreviousTime;
 
         // update window title
         if (m_AverageFrameTime > 0)
@@ -118,8 +118,8 @@ void Application::Run()
         if (m_Window->IsVisible() && m_Window->IsInFocus())
         {
             // update system (physics etc..)
-            /*for (auto layer = m_LayerStack.Rbegin(); layer != m_LayerStack.Rend(); ++layer)
-                (*layer)->OnUpdate(elapsedTime);*/
+            for (auto layer = m_LayerStack.Rbegin(); layer != m_LayerStack.Rend(); ++layer)
+                (*layer)->OnUpdate(static_cast<f32>(deltaTime));
 
             // render to main framebuffer
             // begin render frame
@@ -143,7 +143,7 @@ void Application::Run()
                 }
             }
         }
-        UpdateAverageTimeTime(elapsedTime);
+        UpdateAverageTimeTime(deltaTime);
         // set previous time
         m_PreviousTime = currTime;
         ++m_FrameIndex;
@@ -161,4 +161,19 @@ void Application::OnEvent(Event &e)
             break;
         (*it)->OnEvent(e);
     }
+}
+
+void Application::WindowIconify()
+{
+    GetInstance()->m_Window->Iconify();
+}
+
+void Application::WindowMaximize()
+{
+    GetInstance()->m_Window->Maximize();
+}
+
+void Application::WindowRestore()
+{
+    GetInstance()->m_Window->Restore();
 }

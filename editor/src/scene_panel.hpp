@@ -6,10 +6,13 @@
 class ScenePanel final : public IPanel
 {
 public:
-    ScenePanel(const char *windowTitle);
-    virtual void OnGuiRender() override;
-    virtual void Destroy() override;
+    explicit ScenePanel(const char *windowTitle);
 
+    void OnGuiRender() override;
+     void Destroy() override;
 private:
 
+    void RenderHierarchy();
+    void RenderInspector();
+    void RenderViewport();
 };
