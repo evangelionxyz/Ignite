@@ -1,4 +1,6 @@
 add_library(IgniteEngine
+    src/ignite/asset/asset.cpp
+
     src/ignite/core/vfs/vfs.cpp
     src/ignite/core/application.cpp
     src/ignite/core/device/device_manager.cpp
@@ -7,8 +9,12 @@ add_library(IgniteEngine
     src/ignite/core/logger.cpp
     src/ignite/core/imgui/imgui_nvrhi.cpp
     src/ignite/core/imgui/imgui_layer.cpp
+
     src/ignite/graphics/shader_factory.cpp
+    src/ignite/graphics/texture.cpp
+    src/ignite/graphics/image.cpp
     src/ignite/graphics/window.cpp
+
     src/ignite/scene/scene.cpp
     src/ignite/scene/camera.cpp
 )
@@ -22,11 +28,12 @@ target_include_directories(IgniteEngine PRIVATE
     ${THIRDPARTY}/SPDLOG/include
     ${THIRDPARTY}/GLM
     ${THIRDPARTY}/IMGUI
+    ${THIRDPARTY}/STB/include
     ${THIRDPARTY}/ShaderMake/include
     ${VULKAN_SDK}/Include
 )
 
-target_link_libraries(IgniteEngine glfw spdlog ShaderMakeBlob imgui)
+target_link_libraries(IgniteEngine glfw spdlog ShaderMakeBlob imgui stblib)
 
 set(IGNITE_WITH_DX12 ON)
 set(IGNITE_WITH_DX11 OFF)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "asset/asset.hpp"
+
 #include "core/imgui/imgui_nvrhi.hpp"
 #include "core/imgui/imgui_layer.hpp"
 #include "core/vfs/vfs.hpp"
@@ -21,6 +23,7 @@
 #include "core/types.hpp"
 #include "core/time.hpp"
 
+#include "graphics/image.hpp"
 #include "graphics/shader_factory.hpp"
 #include "graphics/window.hpp"
 

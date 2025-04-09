@@ -2,6 +2,7 @@
 set(third_party_folder "Third-Party Libraries")
 
 include(imgui.cmake)
+include(stbi.cmake)
 add_subdirectory(NVRHI)
 add_subdirectory(SPDLOG)
 

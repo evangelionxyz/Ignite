@@ -14,6 +14,7 @@ target_include_directories(IgniteEditor PRIVATE
     ${THIRDPARTY}/SPDLOG/include
     ${THIRDPARTY}/GLM
     ${THIRDPARTY}/IMGUI
+    ${THIRDPARTY}/STB/include
     ${THIRDPARTY}/ShaderMake/include
     ${VULKAN_SDK}/Include
 )
