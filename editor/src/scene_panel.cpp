@@ -5,6 +5,11 @@ ScenePanel::ScenePanel(const char *windowTitle)
 {
 }
 
+void ScenePanel::CreateRenderTarget(nvrhi::IDevice *device, f32 width, f32 height)
+{
+    m_RenderTarget = CreateRef<RenderTarget>(device, width, height);
+}
+
 void ScenePanel::OnGuiRender()
 {
     const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollbar;
@@ -34,12 +39,25 @@ void ScenePanel::RenderInspector()
 {
     ImGui::Begin("Inspector");
     ImGui::Text("Inspector");
+
+    ImGui::ColorEdit3("Clear color", &m_RenderTarget->clearColor[0]);
+
     ImGui::End();
 }
 
 void ScenePanel::RenderViewport()
 {
-    ImGui::Begin("Viewport");
-    ImGui::Text("Viewport");
+    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+
+    ImGui::Begin("Viewport", nullptr, windowFlags);
+
+    ImGuiWindow *window = ImGui::GetCurrentWindow();
+    m_RenderTarget->width = window->Size.x;
+    m_RenderTarget->height = window->Size.y;
+
+    ImTextureID imguiTex = (ImTextureID)m_RenderTarget->texture.Get();
+   
+    ImGui::Image(imguiTex, window->Size);
+    
     ImGui::End();
 }

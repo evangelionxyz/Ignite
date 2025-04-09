@@ -2,6 +2,7 @@ add_executable(IgniteEditor
     src/editor_layer.cpp
     src/editor_app.cpp
     src/scene_panel.cpp
+    src/render_target.cpp
 )
 
 target_include_directories(IgniteEditor PRIVATE

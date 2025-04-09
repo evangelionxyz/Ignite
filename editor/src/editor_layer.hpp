@@ -10,6 +10,8 @@ class DeviceManager;
 class ImGuiRenderPass;
 class SceneRenderPass;
 
+class ScenePanel;
+
 struct RenderData
 {
     nvrhi::ShaderHandle vertexShader;
@@ -23,6 +25,8 @@ struct RenderData
     nvrhi::BufferHandle indexBuffer;
     nvrhi::BufferHandle constantBuffer;
     nvrhi::BufferDesc vertexBufferDesc;
+    nvrhi::TextureHandle texture;
+    nvrhi::SamplerHandle sampler;
 };
 
 class IgniteEditorLayer final : public Layer
@@ -38,16 +42,9 @@ public:
     void OnGuiRender() override;
 
 private:
-    nvrhi::BufferHandle CreateGeometryBuffer(nvrhi::ICommandList* commandList, const void* data, uint64_t dataSize);
-
-    Ref<IPanel> m_ScenePanel;
-    RenderData mainGfx;
+    Ref<ScenePanel> m_ScenePanel;
     RenderData sceneGfx;
-
     nvrhi::CommandListHandle m_CommandList;
     DeviceManager *m_DeviceManager;
-
-    glm::vec3 m_ClearColor {0.1f, 0.1f, 0.1f};
-
     Camera m_Camera;
 };

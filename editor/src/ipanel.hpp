@@ -4,6 +4,8 @@
 #include <ignite/core/types.hpp>
 #include <ignite/core/logger.hpp>
 
+#include <imgui_internal.h>
+
 class IPanel
 {
 public:
