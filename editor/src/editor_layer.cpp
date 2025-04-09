@@ -15,11 +15,12 @@ struct Vertex2D
     glm::vec2 position;
     glm::vec4 color;
 };
+
 Vertex2D quadVertices[] = {
-    { {-0.5f, -0.5f}, {1, 0, 1, 1} }, // bottom left
-    { { 0.5f,  0.5f}, {1, 0, 1, 1} }, // top right
-    { {-0.5f,  0.5f}, {1, 0, 1, 1} }, // top left
-    { { 0.5f, -0.5f}, {1, 0, 0, 1} }, // bottom right
+    { {-0.5f, -0.5f}, {1, 0, 0, 1} }, // bottom left
+    { { 0.5f,  0.5f}, {0, 1, 0, 1} }, // top right
+    { {-0.5f,  0.5f}, {0, 0, 1, 1} }, // top left
+    { { 0.5f, -0.5f}, {0.5f, 0.4f, 0.3f, 1} }, // bottom right
 };
 
 u32 indices[] = { 
@@ -28,7 +29,7 @@ u32 indices[] = {
 };
 
 glm::vec3 cameraPosition = { 0.0f, 0.0f, 1.0f };
-f32 cameraZoom = 1.0f;
+glm::vec3 modelPosition;
 
 IgniteEditorLayer::IgniteEditorLayer(const std::string &name)
     : Layer(name)
@@ -180,10 +181,12 @@ void IgniteEditorLayer::OnUpdate(f32 deltaTime)
 {
     Layer::OnUpdate(deltaTime);
 
+    // update transformation
+    constants.mvp = m_Camera.GetViewProjectionMatrix() * glm::translate(glm::mat4(1.0f), modelPosition);
+
     // updating camera
     {
         m_Camera.SetPosition(cameraPosition);
-        m_Camera.SetZoom(cameraZoom);
         m_Camera.UpdateProjectionMatrix();
         m_Camera.UpdateViewMatrix();
     }
@@ -192,6 +195,7 @@ void IgniteEditorLayer::OnUpdate(f32 deltaTime)
 void IgniteEditorLayer::OnEvent(Event &e)
 {
     Layer::OnEvent(e);
+    m_Camera.OnEvent(e);
 }
 
 void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
@@ -203,9 +207,15 @@ void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
         nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(m_ClearColor.r, m_ClearColor.g, m_ClearColor.b, 1.0f));
 
         // fill constant buffer
-        
-        constants.mvp = m_Camera.GetViewProjectionMatrix();
         m_CommandList->writeBuffer(sceneGfx.constantBuffer, &constants, sizeof(constants));
+
+        {
+            // resizing camera size
+            nvrhi::Viewport viewport = framebuffer->getFramebufferInfo().getViewport();
+            glm::vec2 cameraViewport = m_Camera.GetSize();
+            if (viewport.width() != cameraViewport.x || viewport.height() != cameraViewport.y)
+                m_Camera.SetSize(viewport.width(), viewport.height());
+        }
 
         auto graphicsState = nvrhi::GraphicsState()
             .setPipeline(sceneGfx.pipeline)
@@ -232,12 +242,24 @@ void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
 void IgniteEditorLayer::OnGuiRender()
 {
     ImGui::Begin("Settings");
-    ImGui::Text("Camera");
-    
+    ImGui::PushID("CameraID");
     ImGui::DragFloat3("Position", &cameraPosition[0], 0.025f);
-    ImGui::DragFloat("Zoom", &cameraZoom, 0.025f);
+    ImGui::Text("Camera");
 
+    f32 cameraZoom = m_Camera.GetZoom();
+    if (ImGui::DragFloat("Zoom", &cameraZoom, 0.025f))
+    {
+        m_Camera.SetZoom(cameraZoom);
+    }
+
+    ImGui::PopID();
+    
     ImGui::Separator();
+    ImGui::PushID("ModelID");
+    ImGui::Text("Model");
+    ImGui::DragFloat3("Position", &modelPosition[0], 0.025f);
+    ImGui::PopID();
+
     ImGui::ColorEdit3("Clear Color", glm::value_ptr(m_ClearColor));
     ImGui::End();
 

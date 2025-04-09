@@ -1,4 +1,5 @@
 #include "camera.hpp"
+#include "core/logger.hpp"
 
 Camera::Camera(const std::string &name)
     : m_Name(name)
@@ -38,6 +39,33 @@ void Camera::CreatePerspective(f32 fovy, f32 width, f32 height, f32 nearClip, f3
     SetSize(width, height);
     UpdateProjectionMatrix();
     UpdateViewMatrix();
+}
+
+void Camera::OnEvent(Event &e)
+{
+    EventDispatcher dispatcher(e);
+    dispatcher.Dispatch<MouseScrolledEvent>(BIND_CLASS_EVENT_FN(Camera::OnScrollEvent));
+}
+
+bool Camera::OnScrollEvent(MouseScrolledEvent &e)
+{
+    MouseZoom(e.GetYOffset());
+    return false;
+}
+
+void Camera::MouseZoom(const f32 delta)
+{
+    LOG_INFO("Zoom: {} {} ", m_Zoom, delta);
+
+    switch (m_ProjectionType)
+    {
+    case Type::Perspective:
+        break;
+    case Type::Orthographic:
+        m_Zoom -= delta;
+        m_Zoom = glm::clamp(m_Zoom, 1.0f, 100.0f);
+        break;
+    }
 }
 
 void Camera::SetPosition(const glm::vec3 &position)
@@ -91,10 +119,9 @@ void Camera::UpdateViewMatrix()
     m_ViewMatrix = glm::inverse(m_ViewMatrix);
 }
 
-void Camera::GetSize(f32 &width, f32 &height)
+glm::vec2 Camera::GetSize()
 {
-    width = m_Width;
-    height = m_Height;
+    return { m_Width, m_Height} ;
 }
 
 const f32 Camera::GetZoom() const

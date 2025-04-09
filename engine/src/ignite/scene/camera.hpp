@@ -3,6 +3,7 @@
 #include "core/input/event.hpp"
 #include "core/input/key_codes.hpp"
 #include "core/input/event.hpp"
+#include "core/input/mouse_event.hpp"
 
 #include <string>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -27,6 +28,10 @@ public:
     void CreateOrthographic(f32 width, f32 height, f32 zoom, f32 nearClip, f32 farClip);
     void CreatePerspective(f32 fovy, f32 width, f32 height, f32 nearClip, f32 farClip);
 
+    void OnEvent(Event &e);
+    bool OnScrollEvent(MouseScrolledEvent &e);
+    void MouseZoom(const f32 delta);
+
     void SetPosition(const glm::vec3 &position);
     void SetSize(f32 width, f32 height);
     void SetZoom(f32 zoom);
@@ -35,7 +40,7 @@ public:
     void UpdateViewMatrix();
 
     const std::string &GetName() const { return m_Name; }
-    void GetSize(f32 &width, f32 &height);
+    glm::vec2 GetSize();
     const glm::mat4 &GetViewMatrix() const { return m_ViewMatrix; }
     const glm::mat4 &GetProjectionMatrix() const { return m_ProjectionMatrix; }
     glm::mat4 GetViewProjectionMatrix() const { return m_ProjectionMatrix * m_ViewMatrix; }
