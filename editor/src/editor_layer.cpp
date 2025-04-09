@@ -4,10 +4,18 @@
 #include "imgui_internal.h"
 #include "nvrhi/utils.h"
 
-#define TEST false
+struct PushConstants
+{
+    glm::mat4 mvp;
+} constants;
 
 // position, color
-QuadVertex quadVertices[] = {
+struct Vertex2D
+{
+    glm::vec2 position;
+    glm::vec4 color;
+};
+Vertex2D quadVertices[] = {
     { {-0.5f, -0.5f}, {1, 0, 1, 1} }, // bottom left
     { { 0.5f,  0.5f}, {1, 0, 1, 1} }, // top right
     { {-0.5f,  0.5f}, {1, 0, 1, 1} }, // top left
@@ -18,6 +26,9 @@ u32 indices[] = {
     0, 1, 2, 
     0, 3, 1
 };
+
+glm::vec3 cameraPosition = { 0.0f, 0.0f, 1.0f };
+f32 cameraZoom = 1.0f;
 
 IgniteEditorLayer::IgniteEditorLayer(const std::string &name)
     : Layer(name)
@@ -42,17 +53,39 @@ void IgniteEditorLayer::OnAttach()
         nvrhi::VertexAttributeDesc()
             .setName("POSITION")
             .setFormat(nvrhi::Format::RG32_FLOAT)
-            .setOffset(offsetof(QuadVertex, position))
-            .setElementStride(sizeof(QuadVertex)),
+            .setOffset(offsetof(Vertex2D, position))
+            .setElementStride(sizeof(Vertex2D)),
         
         nvrhi::VertexAttributeDesc()
             .setName("COLOR")
             .setFormat(nvrhi::Format::RGBA32_FLOAT)
-            .setOffset(offsetof(QuadVertex, color))
-            .setElementStride(sizeof(QuadVertex)),
+            .setOffset(offsetof(Vertex2D, color))
+            .setElementStride(sizeof(Vertex2D)),
     };
 
     sceneGfx.inputLayout = device->createInputLayout(attributes, u32(std::size(attributes)), sceneGfx.vertexShader);
+    
+    // create binding layout
+    auto layoutDesc = nvrhi::BindingLayoutDesc()
+        .setVisibility(nvrhi::ShaderType::All)
+        .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0));
+    sceneGfx.bindingLayout = device->createBindingLayout(layoutDesc);
+
+    // create constant buffer
+    auto constantBufferDesc = nvrhi::BufferDesc()
+        .setByteSize(sizeof(PushConstants))
+        .setIsConstantBuffer(true)
+        .setIsVolatile(true)
+        .setMaxVersions(16);
+    sceneGfx.constantBuffer = device->createBuffer(constantBufferDesc);
+    LOG_ASSERT(sceneGfx.constantBuffer, "Failed to create constant buffer");
+
+    // create binding set
+    auto bindingSetDesc = nvrhi::BindingSetDesc()
+        .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, sceneGfx.constantBuffer));
+
+    sceneGfx.bindingSet = device->createBindingSet(bindingSetDesc, sceneGfx.bindingLayout);
+    LOG_ASSERT(sceneGfx.bindingSet, "Failed to create binding");
 
     // create vertex buffer
     auto vertexBufferDesc = nvrhi::BufferDesc()
@@ -101,6 +134,7 @@ void IgniteEditorLayer::OnAttach()
             .setInputLayout(sceneGfx.inputLayout)
             .setVertexShader(sceneGfx.vertexShader)
             .setPixelShader(sceneGfx.pixelShader)
+            .addBindingLayout(sceneGfx.bindingLayout)
             .setRenderState(renderState)
             .setPrimType(nvrhi::PrimitiveType::TriangleList);
         
@@ -122,16 +156,37 @@ void IgniteEditorLayer::OnAttach()
     m_DeviceManager->GetDevice()->executeCommandList(m_CommandList);
 
     m_ScenePanel = IPanel::Create<ScenePanel>("Scene Panel");
+
+    m_Camera = Camera("EditorCamera");
+    m_Camera.CreateOrthographic(1280.0f, 720.0f, 1.0f, 0.1f, 300.0f);
+
+    constants = { m_Camera.GetViewProjectionMatrix() };
 }
 
 void IgniteEditorLayer::OnDetach()
 {
     Layer::OnDetach();
+
+    sceneGfx.vertexBuffer = nullptr;
+    sceneGfx.indexBuffer = nullptr;
+    sceneGfx.pipeline = nullptr;
+    sceneGfx.vertexShader = nullptr;
+    sceneGfx.pixelShader = nullptr;
+
+    m_CommandList = nullptr;
 }
 
 void IgniteEditorLayer::OnUpdate(f32 deltaTime)
 {
     Layer::OnUpdate(deltaTime);
+
+    // updating camera
+    {
+        m_Camera.SetPosition(cameraPosition);
+        m_Camera.SetZoom(cameraZoom);
+        m_Camera.UpdateProjectionMatrix();
+        m_Camera.UpdateViewMatrix();
+    }
 }
 
 void IgniteEditorLayer::OnEvent(Event &e)
@@ -146,9 +201,16 @@ void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
         // render
         m_CommandList->open();
         nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(m_ClearColor.r, m_ClearColor.g, m_ClearColor.b, 1.0f));
+
+        // fill constant buffer
+        
+        constants.mvp = m_Camera.GetViewProjectionMatrix();
+        m_CommandList->writeBuffer(sceneGfx.constantBuffer, &constants, sizeof(constants));
+
         auto graphicsState = nvrhi::GraphicsState()
             .setPipeline(sceneGfx.pipeline)
             .setFramebuffer(framebuffer)
+            .addBindingSet(sceneGfx.bindingSet)
             .setViewport(nvrhi::ViewportState().addViewportAndScissorRect(framebuffer->getFramebufferInfo().getViewport()))
             .addVertexBuffer( nvrhi::VertexBufferBinding{sceneGfx.vertexBuffer.Get(), 0, 0} )
             .setIndexBuffer({ sceneGfx.indexBuffer, nvrhi::Format::R32_UINT }); // REQUIRED
@@ -170,6 +232,12 @@ void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
 void IgniteEditorLayer::OnGuiRender()
 {
     ImGui::Begin("Settings");
+    ImGui::Text("Camera");
+    
+    ImGui::DragFloat3("Position", &cameraPosition[0], 0.025f);
+    ImGui::DragFloat("Zoom", &cameraZoom, 0.025f);
+
+    ImGui::Separator();
     ImGui::ColorEdit3("Clear Color", glm::value_ptr(m_ClearColor));
     ImGui::End();
 

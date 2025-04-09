@@ -7,6 +7,7 @@
 #include "core/base.hpp"
 #include "core/device/device_manager.hpp"
 #include "core/device/device_manager_dx12.hpp"
+#include "core/device/device_manager_vk.hpp"
 #include "core/input/event.hpp"
 #include "core/input/app_event.hpp"
 #include "core/input/key_event.hpp"
@@ -24,3 +25,4 @@
 #include "graphics/window.hpp"
 
 #include "scene/scene.hpp"
+#include "scene/camera.hpp"

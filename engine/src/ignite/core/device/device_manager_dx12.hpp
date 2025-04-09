@@ -11,8 +11,6 @@
 #include <nvrhi/d3d12.h>
 #include <nvrhi/validation.h>
 
-
-
 struct DescriptorHeapAllocator
 {
     ID3D12DescriptorHeap *heap = nullptr;

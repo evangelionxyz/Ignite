@@ -1,3 +1,8 @@
+cbuffer PushConstants : register(b0)
+{
+    float4x4 mvp;
+};
+
 struct VSInput
 {
     float2 position : POSITION;
@@ -13,7 +18,8 @@ struct PSInput
 PSInput main(VSInput input)
 {
     PSInput output;
-    output.position = float4(input.position.x, input.position.y, 0.0f, 1.0f);
+    float4 pos = float4(input.position.x, input.position.y, 0.0f, 1.0f);
+    output.position = mul(mvp, pos);
     output.color = input.color;
     return output;
 }

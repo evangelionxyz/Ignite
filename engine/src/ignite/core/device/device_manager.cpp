@@ -61,6 +61,12 @@ bool DeviceManager::IsUpdateDPIScaleFactor()
     return false;
 }
 
+void DeviceManager::GetDPIScaleInfo(float &x, float &y) const
+{
+    x = m_DPIScaleFactorX;
+    y = m_DPIScaleFactorY;
+}
+
 void DeviceManager::CreateBackBuffers()
 {
     u32 backBufferCount = GetBackBufferCount();

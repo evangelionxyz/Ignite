@@ -59,18 +59,18 @@ public:
 
     ImGuiLayer(DeviceManager *deviceManager);
     bool Init(Ref<ShaderFactory> shaderFactory);
-    void Destroy();
-
+    void OnDetach();
+    
     void BeginFrame();
     void EndFrame(nvrhi::IFramebuffer* framebuffer);
-
+    
     void OnEvent(Event &event) override;
     bool OnFramebufferResize(FramebufferResizeEvent &event) const;
-
+    
     Ref<RegisteredFont> CreateFontFromFile(vfs::IFileSystem &fs, const std::filesystem::path &fontFile, f32 fontSize);
     Ref<RegisteredFont> CreateFontFromMemoryCompressed(void const *pData, size_t size, f32 fontSize);
     Ref<RegisteredFont> GetDefaultFont() { return m_DefaultFont; }
-
+    
 private:
     void BeginFullScreenWindow();
     void DrawScreenCenteredText(const char *text);

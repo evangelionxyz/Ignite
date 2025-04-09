@@ -328,6 +328,7 @@ void ImGui_NVRHI::Shutdown()
 {
     fontTexture = nullptr;
     fontSampler = nullptr;
+    
     vertexBuffer = nullptr;
     indexBuffer = nullptr;
 

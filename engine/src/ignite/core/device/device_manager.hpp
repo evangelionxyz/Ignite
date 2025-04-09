@@ -49,7 +49,7 @@ struct InstanceParameters
     bool enableHeapDirectlyIndexed = false;
     bool enablePerMonitorDPI = false;
 
-#if IGNITE_WITH_VULKAN
+#ifdef IGNITE_WITH_VULKAN
     std::string vulkanLibraryName;
     std::vector<std::string> requiredVulkanInstanceExtensions;
     std::vector<std::string? requiredVulkanLayers;
@@ -110,6 +110,7 @@ struct AdapterInfo
 
     std::optional<UUID> uuid;
     std::optional<LUUID> luuid;
+
 #if IGNITE_WITH_DX11 || IGNITE_WITH_DX12
     nvrhi::RefCountPtr<IDXGIAdapter> dxgiAdapter;
 #elif IGNITE_WITH_VULKAN
@@ -123,60 +124,12 @@ public:
     static DeviceManager *Create(nvrhi::GraphicsAPI api);
 
     bool CreateInstance(const InstanceParameters &params);
+    
     virtual bool EnumerateAdapters(std::vector<AdapterInfo> &outAdapters) = 0;
     virtual void WaitForIdle() = 0;
 
-    void AddRenderPassToFront(IRenderPass *pController);
-    void AddRenderPassToBack(IRenderPass *pController);
-    void RemoveRenderPass(IRenderPass *pController);
-
-    void RunMessageLoop();
-    void GetWindowDimensions(int &width, int &height);
     bool IsUpdateDPIScaleFactor();
-    void GetDPIScaleInfo(float &x, float &y) const
-    {
-        x = m_DPIScaleFactorX;
-        y = m_DPIScaleFactorY;
-    }
-    
-protected:
-    friend class Window;
-
-    bool m_SkipRenderOnFirstFrame = false;
-    bool m_WindowVisible = false;
-    bool m_WindowIsInFocus = true;
-
-    DeviceCreationParameters m_DeviceParams;
-    GLFWwindow *m_Window = nullptr;
-    bool m_EnableRenderDuringWindowMovement = false;
-
-    bool m_IsNvidia = false;
-    double m_PreviousFrameTimestamp = 0.0f;
-    
-    // current DPI scale info (update when window moves)
-    float m_DPIScaleFactorX = 1.0f;
-    float m_DPIScaleFactorY = 1.0f;
-    float m_PrevDPIScaleFactorX = 1.0f;
-    float m_PrevDPIScaleFactorY = 1.0f;
-
-    bool m_RequestedVSync = false;
-    bool m_InstanceCreated = false;
-
-    double m_AverageFrameTime = 0.0f;
-    double m_AverageTimeUpdateInterval = 0.5;
-    double m_FrameTimeSum = 0.0;
-    int m_NumberOfAccumulatedFrames = 0;
-
-    u32 m_FrameIndex = 0;
-
-    std::vector<nvrhi::FramebufferHandle> m_SwapChainFramebuffers;
-
-    DeviceManager();
-
-    void UpdateWindowSize();
-
-    void CreateBackBuffers();
-    void DisplayScaleChanged();
+    void GetDPIScaleInfo(float &x, float &y) const;
 
 public:
     // device specific methods
@@ -219,9 +172,44 @@ public:
     virtual void GetEnabledVulkanInstanceExtensions(std::vector<std::string> &extensions) const {}
     virtual void GetEnabledVulkanDeviceExtensions(std::vector<std::string> &extensions) const {}
     virtual void GetEnabledVulkanLayers(std::vector<std::string> &layers) const {}
+    
+protected:
+    DeviceManager();
+
+    void CreateBackBuffers();
+
+    bool m_SkipRenderOnFirstFrame = false;
+    bool m_WindowVisible = false;
+    bool m_WindowIsInFocus = true;
+
+    DeviceCreationParameters m_DeviceParams;
+    GLFWwindow *m_Window = nullptr;
+    bool m_EnableRenderDuringWindowMovement = false;
+
+    bool m_IsNvidia = false;
+    double m_PreviousFrameTimestamp = 0.0f;
+    
+    // current DPI scale info (update when window moves)
+    float m_DPIScaleFactorX = 1.0f;
+    float m_DPIScaleFactorY = 1.0f;
+    float m_PrevDPIScaleFactorX = 1.0f;
+    float m_PrevDPIScaleFactorY = 1.0f;
+
+    bool m_RequestedVSync = false;
+    bool m_InstanceCreated = false;
+
+    double m_AverageFrameTime = 0.0f;
+    double m_AverageTimeUpdateInterval = 0.5;
+    double m_FrameTimeSum = 0.0;
+    int m_NumberOfAccumulatedFrames = 0;
+
+    u32 m_FrameIndex = 0;
+
+    std::vector<nvrhi::FramebufferHandle> m_SwapChainFramebuffers;
+
+    friend class Window;
 
 private:
-    static DeviceManager *CreateD3D11();
     static DeviceManager *CreateD3D12();
     static DeviceManager *CreateVK();
 

@@ -34,6 +34,7 @@ Application::Application(const ApplicationCreateInfo &createInfo)
 
     m_ImGuiLayer = CreateScope<ImGuiLayer>(GetDeviceManager());
     m_ImGuiLayer->Init(GetShaderFactory());
+    
 }
 
 Application *Application::GetInstance()
@@ -149,6 +150,12 @@ void Application::Run()
         ++m_FrameIndex;
     }
 
+    for (auto layer = m_LayerStack.Rbegin(); layer != m_LayerStack.Rend(); ++layer)
+        (*layer)->OnDetach();
+
+    if (m_ImGuiLayer)
+        m_ImGuiLayer->OnDetach();
+        
     m_Window->Destroy();
 }
 

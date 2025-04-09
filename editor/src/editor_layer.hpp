@@ -10,21 +10,18 @@ class DeviceManager;
 class ImGuiRenderPass;
 class SceneRenderPass;
 
-struct QuadVertex
-{
-    glm::vec2 position;
-    glm::vec4 color;
-};
-
 struct RenderData
 {
     nvrhi::ShaderHandle vertexShader;
     nvrhi::ShaderHandle pixelShader;
     nvrhi::GraphicsPipelineHandle pipeline;
     nvrhi::InputLayoutHandle inputLayout;
+    nvrhi::BindingLayoutHandle bindingLayout;
+    nvrhi::BindingSetHandle bindingSet;
     nvrhi::GraphicsPipelineDesc psoDesc;
     nvrhi::BufferHandle vertexBuffer;
     nvrhi::BufferHandle indexBuffer;
+    nvrhi::BufferHandle constantBuffer;
     nvrhi::BufferDesc vertexBufferDesc;
 };
 
@@ -51,4 +48,6 @@ private:
     DeviceManager *m_DeviceManager;
 
     glm::vec3 m_ClearColor {0.1f, 0.1f, 0.1f};
+
+    Camera m_Camera;
 };

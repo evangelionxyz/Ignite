@@ -5,6 +5,10 @@
 #include "device_manager.hpp"
 #include "device_manager_dx12.hpp"
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
@@ -23,16 +27,19 @@ using nvrhi::RefCountPtr;
 #define HR_RETURN(hr) if (FAILED(hr)) return false
 static bool IsNvDevice(const UINT ID) { return ID == 0x10DE; }
 
-void DescriptorHeapAllocator::Create(ID3D12Device *device, ID3D12DescriptorHeap *heap)
+void DescriptorHeapAllocator::Create(ID3D12Device *device, ID3D12DescriptorHeap *descriptorHeap)
 {
-    this->heap = heap;
+    heap = descriptorHeap;
+    heap->SetName(L"DescriptorHeapAllocator");
+
     D3D12_DESCRIPTOR_HEAP_DESC desc = heap->GetDesc();
     heapType = desc.Type;
     heapStartCpu = heap->GetCPUDescriptorHandleForHeapStart();
     heapStartGpu = heap->GetGPUDescriptorHandleForHeapStart();
     heapHandleIncrement = device->GetDescriptorHandleIncrementSize(heapType);
-    freeIndices.resize(i32(desc.NumDescriptors));
 
+    freeIndices.resize(0);
+    freeIndices.reserve(desc.NumDescriptors);
     for (i32 i = desc.NumDescriptors; i > 0; --i)
         freeIndices.push_back(i - 1);
 }
@@ -355,8 +362,9 @@ bool DeviceManager_DX12::CreateSwapChain()
     if (SUCCEEDED(m_DxgiFactory2->QueryInterface(&pDxgiFactory5)))
     {
         BOOL supported = 0;
-        if (SUCCEEDED(pDxgiFactory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &supported, sizeof(supported))))
-            m_TearingSupported = (supported != 0);
+        // TODO: Create boolean for alowing screen tearing feature
+        //if (SUCCEEDED(pDxgiFactory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &supported, sizeof(supported))))
+        //    m_TearingSupported = (supported != 0);
     }
 
     if (m_TearingSupported)
@@ -401,8 +409,6 @@ void DeviceManager_DX12::DestroyDeviceAndSwapChain()
 
     ReleaseRenderTargets();
 
-    m_NvrhiDevice = nullptr;
-
     for (auto fenceEvent : m_FrameFenceEvents)
     {
         WaitForSingleObject(fenceEvent, INFINITE);
@@ -414,7 +420,6 @@ void DeviceManager_DX12::DestroyDeviceAndSwapChain()
     if (m_SwapChain)
     {
         m_SwapChain->SetFullscreenState(false, nullptr);
-        m_SwapChain = nullptr;
     }
 
     m_SwapChainBuffers.clear();
@@ -423,9 +428,6 @@ void DeviceManager_DX12::DestroyDeviceAndSwapChain()
 
     m_RtvDescHeap = nullptr;
     m_SrvDescHeap = nullptr;
-
-    m_DxgiAdapter = nullptr;
-    m_DxgiFactory2 = nullptr;
 
     m_FrameFence = nullptr;
     m_SwapChain = nullptr;
@@ -585,8 +587,13 @@ void DeviceManager_DX12::Destroy()
 {
     DeviceManager::Destroy();
 
+    m_DxgiAdapter = nullptr;
+    m_DxgiFactory2 = nullptr;
+
     if (m_DeviceParams.enableDebugRuntime)
+    {
         ReportLiveObjects();
+    }
 }
 
 DeviceManager *DeviceManager::CreateD3D12()

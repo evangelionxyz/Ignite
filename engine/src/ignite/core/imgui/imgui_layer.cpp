@@ -103,17 +103,15 @@ ImGuiLayer::ImGuiLayer(DeviceManager *deviceManager)
     initInfo.NumFramesInFlight = m_DeviceManager->GetDeviceParams().maxFramesInFlight;
     initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     initInfo.DSVFormat = DXGI_FORMAT_UNKNOWN;
-    // Allocating SRV descriptors (for textures) is up to the application, so we provide callbacks.
-    // (current version of the backend will only allocate one descriptor, future versions will need to allocate more)
     initInfo.SrvDescriptorHeap = d3d12.m_SrvDescHeap;
     initInfo.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu_handle) 
-        { 
-            return DeviceManager_DX12::GetInstance().m_SrvDescHeapAlloc.Alloc(out_cpu_handle, out_gpu_handle);
-        };
+    {
+        return DeviceManager_DX12::GetInstance().m_SrvDescHeapAlloc.Alloc(out_cpu_handle, out_gpu_handle);
+    };
     initInfo.SrvDescriptorFreeFn = [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle)
-        { 
-            return DeviceManager_DX12::GetInstance().m_SrvDescHeapAlloc.Free(cpu_handle, gpu_handle); 
-        };
+    { 
+        return DeviceManager_DX12::GetInstance().m_SrvDescHeapAlloc.Free(cpu_handle, gpu_handle); 
+    };
 
     ImGui_ImplDX12_Init(&initInfo);
 }
@@ -244,16 +242,14 @@ void ImGuiLayer::EndFullScreenWindow()
     ImGui::PopStyleVar();
 }
 
-void ImGuiLayer::Destroy()
+void ImGuiLayer::OnDetach()
 {
-    m_DeviceManager->WaitForIdle();
-
-    m_DefaultFont = nullptr;
     m_Fonts.clear();
-
-    imgui_nvrhi->Shutdown();
+    m_DefaultFont = nullptr;
 
     ImGui_ImplDX12_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+
+    imgui_nvrhi->Shutdown();
 }

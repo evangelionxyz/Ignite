@@ -1,17 +1,16 @@
 add_library(IgniteEngine
     src/ignite/core/vfs/vfs.cpp
     src/ignite/core/application.cpp
-
     src/ignite/core/device/device_manager.cpp
-
+    src/ignite/core/device/device_manager_vk.cpp
+    src/ignite/core/device/device_manager_vk.hpp
     src/ignite/core/logger.cpp
     src/ignite/core/imgui/imgui_nvrhi.cpp
     src/ignite/core/imgui/imgui_layer.cpp
     src/ignite/graphics/shader_factory.cpp
-    src/ignite/scene/scene.cpp
     src/ignite/graphics/window.cpp
-    src/ignite/core/device/device_manager_vk.cpp
-    src/ignite/core/device/device_manager_vk.hpp
+    src/ignite/scene/scene.cpp
+    src/ignite/scene/camera.cpp
 )
 
 target_include_directories(IgniteEngine PRIVATE
