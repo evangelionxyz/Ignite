@@ -3,97 +3,66 @@
 
 Camera::Camera(const std::string &name)
     : m_Name(name)
-    , m_Position({0.0f, 0.0f, 0.0f})
+    , position({0.0f, 0.0f, 0.0f})
     , m_AspectRatio(16.0f / 9.0f)
-    , m_Zoom(1.0f)
-    , m_ProjectionMatrix(glm::mat4(1.0f))
-    , m_ViewMatrix(glm::mat4(1.0f))
-    , m_NearClip(0.1f)
-    , m_FarClip(300.0f)
-    , m_Width(1280.0f)
-    , m_Height(720.0f)
-    , m_Fov(45.0f)
-    , m_ProjectionType(Type::Unknown)
+    , zoom(1.0f)
+    , projectionMatrix(glm::mat4(1.0f))
+    , viewMatrix(glm::mat4(1.0f))
+    , nearClip(0.1f)
+    , farClip(300.0f)
+    , width(1280.0f)
+    , height(720.0f)
+    , fov(45.0f)
+    , projectionType(Type::Unknown)
 {
 }
     
 void Camera::CreateOrthographic(f32 width, f32 height, f32 zoom, f32 nearClip, f32 farClip)
 {
-    m_ProjectionType = Type::Orthographic;
+    projectionType = Type::Orthographic;
 
-    m_NearClip = nearClip;
-    m_FarClip = farClip;
-
-    SetSize(width, height);
-    UpdateProjectionMatrix();
-    UpdateViewMatrix();
-}
-
-void Camera::CreatePerspective(f32 fovy, f32 width, f32 height, f32 nearClip, f32 farClip)
-{
-    m_ProjectionType = Type::Perspective;
-    m_Fov = fovy;
-    m_NearClip = nearClip;
-    m_FarClip = farClip;
+    this->nearClip = nearClip;
+    this->farClip = farClip;
+    this->zoom = zoom;
 
     SetSize(width, height);
     UpdateProjectionMatrix();
     UpdateViewMatrix();
 }
 
-void Camera::SetPosition(const glm::vec3 &position)
+void Camera::CreatePerspective(f32 fov, f32 width, f32 height, f32 nearClip, f32 farClip)
 {
-    m_Position = position;
-}
+    projectionType = Type::Perspective;
+    this->fov = fov;
+    this->nearClip = nearClip;
+    this->farClip = farClip;
 
-void Camera::SetSize(f32 width, f32 height)
-{
-    m_Width = width;
-    m_Height = height;
-    m_AspectRatio = m_Width / m_Height;
+    SetSize(width, height);
+    UpdateProjectionMatrix();
+    UpdateViewMatrix();
 }
-
-void Camera::SetZoom(f32 zoom)
+void Camera::SetSize(const f32 w, const f32 h)
 {
-    m_Zoom = zoom;
-}
-
-void Camera::SetClipValue(f32 nearClip, f32 farClip)
-{
-    m_NearClip = nearClip;
-    m_FarClip = farClip;
-}
-
-void Camera::SetFov(f32 fov)
-{
-    m_Fov = fov;
-}
-
-void Camera::SetYaw(f32 yaw)
-{
-    m_Yaw = yaw;
-}
-
-void Camera::SetPitch(f32 pitch)
-{
-    m_Pitch = pitch;
+    width = w;
+    height = h;
+    m_AspectRatio = width / height;
 }
 
 void Camera::UpdateProjectionMatrix()
 {
-    switch (m_ProjectionType)
+    switch (projectionType)
     {
     default:
     case Type::Orthographic:
     {
-        f32 orthoWidth = m_Zoom * m_AspectRatio / 2.0f;
-        f32 orthoHeight = m_Zoom / 2.0f;
-        m_ProjectionMatrix = glm::ortho(-orthoWidth, orthoWidth, -orthoHeight, orthoHeight, m_NearClip, m_FarClip);
+        f32 orthoWidth = zoom * m_AspectRatio / 2.0f;
+        f32 orthoHeight = zoom / 2.0f;
+        projectionMatrix = glm::ortho(-orthoWidth, orthoWidth, -orthoHeight, orthoHeight, nearClip, farClip);
         break;
     }
     case Type::Perspective:
     {
-        m_ProjectionMatrix = glm::perspective(glm::radians(m_Fov), m_AspectRatio, m_NearClip, m_FarClip);
+        projectionMatrix = glm::perspective(glm::radians(fov), m_AspectRatio, nearClip, farClip);
         break;
     }
     }
@@ -101,66 +70,36 @@ void Camera::UpdateProjectionMatrix()
 
 void Camera::UpdateViewMatrix()
 {
-    switch (m_ProjectionType)
+    switch (projectionType)
     {
     case Type::Orthographic:
-        m_ViewMatrix = glm::translate(glm::mat4(1.0f), m_Position);
+    default:
+        viewMatrix = glm::translate(glm::mat4(1.0f), position);
         break;
     case Type::Perspective:
-        m_ViewMatrix = glm::translate(glm::mat4(1.0f), m_Position) * glm::toMat4(glm::quat({ -m_Pitch, -m_Yaw, 0.0f }));
+        viewMatrix = glm::translate(glm::mat4(1.0f), position) * glm::toMat4(glm::quat({ -pitch, -yaw, 0.0f }));
         break;
     }
-    m_ViewMatrix = glm::inverse(m_ViewMatrix);
+    viewMatrix = glm::inverse(viewMatrix);
 }
 
 glm::vec2 Camera::GetSize()
 {
-    return { m_Width, m_Height} ;
+    return { width, height} ;
 }
-
-const f32 Camera::GetZoom() const
-{
-    return m_Zoom;
-}
-
-const f32 Camera::GetNearClip() const
-{
-    return m_NearClip;
-}
-
-const f32 Camera::GetFarClip() const
-{
-    return m_FarClip;
-}
-
-const f32 Camera::GetFov() const
-{
-    return m_Fov;
-}
-
-const f32 Camera::GetYaw() const
-{
-    return m_Yaw;
-}
-
-const f32 Camera::GetPitch() const
-{
-    return m_Pitch;
-}
-
 
 glm::vec3 Camera::GetUpDirection() const
 {
-    return glm::rotate(glm::quat({ -m_Pitch, -m_Yaw, 0.0f }), { 0.0f, 1.0f, 0.0f });
+    return glm::rotate(glm::quat({ -pitch, -yaw, 0.0f }), { 0.0f, 1.0f, 0.0f });
 }
 
 glm::vec3 Camera::GetRightDirection() const
 {
-    return glm::rotate(glm::quat({ -m_Pitch, -m_Yaw, 0.0f }), { 1.0f, 0.0f, 0.0f });
+    return glm::rotate(glm::quat({ -pitch, -yaw, 0.0f }), { 1.0f, 0.0f, 0.0f });
 }
 
 glm::vec3 Camera::GetForwardDirection() const
 {
-    return glm::rotate(glm::quat({ -m_Pitch, -m_Yaw, 0.0f }), { 0.0f, 0.0f, -1.0f });
+    return glm::rotate(glm::quat({ -pitch, -yaw, 0.0f }), { 0.0f, 0.0f, -1.0f });
 }
 

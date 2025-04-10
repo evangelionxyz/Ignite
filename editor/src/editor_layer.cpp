@@ -5,17 +5,40 @@
 
 #include <stb_image.h>
 
+#include "ignite/graphics/renderer_2d.hpp"
+
 struct PushConstants
 {
     glm::mat4 mvp;
 } constants;
 
-// position, color
 struct Vertex2D
 {
     glm::vec2 position;
     glm::vec2 texCoord;
     glm::vec4 color;
+
+    static std::array<nvrhi::VertexAttributeDesc, 3> GetAttributes()
+    {
+        return
+        {
+            nvrhi::VertexAttributeDesc()
+                .setName("POSITION")
+                .setFormat(nvrhi::Format::RG32_FLOAT)
+                .setOffset(offsetof(Vertex2D, position))
+                .setElementStride(sizeof(Vertex2D)),
+            nvrhi::VertexAttributeDesc()
+                .setName("TEXCOORD")
+                .setFormat(nvrhi::Format::RG32_FLOAT)
+                .setOffset(offsetof(Vertex2D, texCoord))
+                .setElementStride(sizeof(Vertex2D)),
+            nvrhi::VertexAttributeDesc()
+                .setName("COLOR")
+                .setFormat(nvrhi::Format::RGBA32_FLOAT)
+                .setOffset(offsetof(Vertex2D, color))
+                .setElementStride(sizeof(Vertex2D))
+        };
+    }
 };
 
 Vertex2D quadVertices[] = {
@@ -44,33 +67,15 @@ void IgniteEditorLayer::OnAttach()
 
     m_DeviceManager = Application::GetDeviceManager();
     nvrhi::IDevice *device = m_DeviceManager->GetDevice();
-
+#if 0
     // create shaders
     sceneGfx.vertexShader = Application::GetShaderFactory()->CreateShader("default_2d_vertex", "main", nullptr, nvrhi::ShaderType::Vertex);
     sceneGfx.pixelShader = Application::GetShaderFactory()->CreateShader("default_2d_pixel", "main", nullptr, nvrhi::ShaderType::Pixel);
     LOG_ASSERT(sceneGfx.vertexShader && sceneGfx.pixelShader, "Failed to create shader");
 
     // vertex vertex attributes
-    nvrhi::VertexAttributeDesc attributes[] = 
-    {
-        nvrhi::VertexAttributeDesc()
-            .setName("POSITION")
-            .setFormat(nvrhi::Format::RG32_FLOAT)
-            .setOffset(offsetof(Vertex2D, position))
-            .setElementStride(sizeof(Vertex2D)),
-        nvrhi::VertexAttributeDesc()
-            .setName("TEXCOORD")
-            .setFormat(nvrhi::Format::RG32_FLOAT)
-            .setOffset(offsetof(Vertex2D, texCoord))
-            .setElementStride(sizeof(Vertex2D)),
-        nvrhi::VertexAttributeDesc()
-            .setName("COLOR")
-            .setFormat(nvrhi::Format::RGBA32_FLOAT)
-            .setOffset(offsetof(Vertex2D, color))
-            .setElementStride(sizeof(Vertex2D)),
-    };
-
-    sceneGfx.inputLayout = device->createInputLayout(attributes, u32(std::size(attributes)), sceneGfx.vertexShader);
+    const auto attributes = Vertex2D::GetAttributes();
+    sceneGfx.inputLayout = device->createInputLayout(attributes.data(), attributes.size(), sceneGfx.vertexShader);
     
     // create binding layout
     auto layoutDesc = nvrhi::BindingLayoutDesc()
@@ -200,6 +205,11 @@ void IgniteEditorLayer::OnAttach()
 
     m_CommandList->close();
     m_DeviceManager->GetDevice()->executeCommandList(m_CommandList);
+#endif
+
+    // write buffer with command list
+    m_CommandList = m_DeviceManager->GetDevice()->createCommandList();
+    Renderer2D::InitQuadData(m_DeviceManager->GetDevice(), m_CommandList);
 
     m_ScenePanel = IPanel::Create<ScenePanel>("Scene Panel");
     m_ScenePanel->CreateRenderTarget(device, 1280.0f, 720.0f);
@@ -239,7 +249,45 @@ void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
     Layer::OnRender(framebuffer);
 
     // main scene rendering
+    m_CommandList->open();
+    m_CommandList->clearTextureFloat(m_ScenePanel->GetRT()->texture,
+                nvrhi::AllSubresources, nvrhi::Color(
+                    m_ScenePanel->GetRT()->clearColor.r,
+                    m_ScenePanel->GetRT()->clearColor.g,
+                    m_ScenePanel->GetRT()->clearColor.b,
+                    1.0f)
+                );
+
+    nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
+
+    Renderer2D::Begin(m_ScenePanel->GetViewportCamera());
+
+    i32 gridSize = 20;
+    for (i32 y = -gridSize; y < gridSize; y++)
     {
+        for (i32 x = -gridSize; x < gridSize; x++)
+        {
+            f32 xPos = x + (x * 0.25f);
+            f32 yPos = y + (y * 0.25f);
+
+            // Normalize x and y to range [0, 1]
+            f32 red   = (x + 10) / 20.0f; // x in [-10,10] -> [0,1]
+            f32 blue  = (y + 10) / 20.0f; // y in [-10,10] -> [0,1]
+            f32 green = 1.0f - glm::distance(m_ScenePanel->GetViewportCamera()->position, glm::vec3(xPos, yPos, 0.0f)) / 20.0f;
+
+            glm::vec4 color = { red, green, blue, 1.0f };
+
+            Renderer2D::DrawQuad({ xPos, yPos, 0.0f }, { 1.0f, 1.0f }, color);
+        }
+    }
+
+    Renderer2D::Flush(m_ScenePanel->GetRT()->framebuffer);
+    Renderer2D::End();
+
+    m_CommandList->close();
+    m_DeviceManager->GetDevice()->executeCommandList(m_CommandList);
+    {
+#if 0
         // render
         m_CommandList->open();
 
@@ -253,19 +301,13 @@ void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
 
         nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
 
+
         // fill constant buffer
         m_CommandList->writeBuffer(sceneGfx.constantBuffer, &constants, sizeof(constants));
 
-        // resizing camera size
-        f32 panelWidth = m_ScenePanel->GetRT()->width;
-        f32 panelHeight = m_ScenePanel->GetRT()->height;
-        glm::vec2 cameraViewport = m_ScenePanel->GetViewportCamera()->GetSize();
-        if (panelWidth != cameraViewport.x || panelHeight != cameraViewport.y)
-            m_ScenePanel->GetViewportCamera()->SetSize(panelWidth, panelHeight);
+        const nvrhi::Viewport viewport = m_ScenePanel->GetRT()->framebuffer->getFramebufferInfo().getViewport();
 
-        nvrhi::Viewport viewport = m_ScenePanel->GetRT()->framebuffer->getFramebufferInfo().getViewport();
-
-        auto graphicsState = nvrhi::GraphicsState()
+        const auto graphicsState = nvrhi::GraphicsState()
             .setPipeline(sceneGfx.pipeline)
             .setFramebuffer(m_ScenePanel->GetRT()->framebuffer)
             .addBindingSet(sceneGfx.bindingSet)
@@ -284,6 +326,7 @@ void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
         // close and execute the command list
         m_CommandList->close();
         m_DeviceManager->GetDevice()->executeCommandList(m_CommandList);
+#endif
     }
 }
 
@@ -291,7 +334,7 @@ void IgniteEditorLayer::OnGuiRender()
 {
     constexpr f32 TITLE_BAR_HEIGHT = 45.0f;
 
-    ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse
+    constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse
         | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBringToFrontOnFocus |
         ImGuiWindowFlags_NoNavFocus;
 
@@ -300,14 +343,14 @@ void IgniteEditorLayer::OnGuiRender()
     ImGui::SetNextWindowSize(viewport->Size);
     ImGui::SetNextWindowViewport(viewport->ID);
 
-    ImGui::Begin("##main_dockspace", nullptr, window_flags);
+    ImGui::Begin("##main_dockspace", nullptr, windowFlags);
     ImGuiWindow *window = ImGui::GetCurrentWindow();
     window->DC.LayoutType = ImGuiLayoutType_Horizontal;
     window->DC.NavLayerCurrent = ImGuiNavLayer_Menu;
     ImDrawList *draw_list = ImGui::GetWindowDrawList();
-    ImVec2 min_pos = viewport->Pos;
-    ImVec2 max_pos = ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + TITLE_BAR_HEIGHT);
-    draw_list->AddRectFilled(min_pos, max_pos, IM_COL32(40, 40, 40, 255));
+    const ImVec2 minPos = viewport->Pos;
+    const ImVec2 maxPos = ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + TITLE_BAR_HEIGHT);
+    draw_list->AddRectFilled(minPos, maxPos, IM_COL32(40, 40, 40, 255));
 
     // dockspace
     ImGui::SetCursorScreenPos({viewport->Pos.x, viewport->Pos.y + TITLE_BAR_HEIGHT});

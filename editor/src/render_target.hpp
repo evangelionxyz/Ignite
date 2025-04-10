@@ -9,7 +9,7 @@ struct RenderTarget
 {
     nvrhi::FramebufferHandle framebuffer;
     nvrhi::TextureHandle texture;
-    glm::vec3 clearColor = {0.1f, 0.1f, 0.2f};
+    glm::vec3 clearColor = {0.025f, 0.025f, 0.025f};
     nvrhi::IDevice *device;
     f32 width, height;
 

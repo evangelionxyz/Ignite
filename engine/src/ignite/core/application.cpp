@@ -4,6 +4,7 @@
 #include "input/app_event.hpp"
 #include "imgui/imgui_layer.hpp"
 #include "nvrhi/utils.h"
+#include "ignite/graphics/renderer.hpp"
 
 static Application *s_Instance = nullptr;
 
@@ -13,17 +14,18 @@ Application::Application(const ApplicationCreateInfo &createInfo)
     s_Instance = this;
 
     DeviceCreationParameters deviceCreateInfo;
-    deviceCreateInfo.backBufferWidth = createInfo.Width;
-    deviceCreateInfo.backBufferHeight = createInfo.Height;
-    deviceCreateInfo.startMaximized = createInfo.Maximized;
+    deviceCreateInfo.backBufferWidth = createInfo.width;
+    deviceCreateInfo.backBufferHeight = createInfo.height;
+    deviceCreateInfo.startMaximized = createInfo.maximized;
 
     m_Window = CreateScope<Window>(
-        createInfo.Name.c_str(),
+        createInfo.name.c_str(),
         deviceCreateInfo,
-        createInfo.GraphicsAPI
+        createInfo.graphicsApi
     );
 
     m_Window->SetEventCallback(BIND_CLASS_EVENT_FN(Application::OnEvent));
+    m_Input = Input(m_Window->GetWindowHandle());
 
     // create global shader factory
     std::filesystem::path shaderPath = "resources/shaders/dxil";
@@ -32,7 +34,8 @@ Application::Application(const ApplicationCreateInfo &createInfo)
 
     m_ImGuiLayer = CreateScope<ImGuiLayer>(GetDeviceManager());
     m_ImGuiLayer->Init(GetShaderFactory());
-    
+
+    Renderer::Init(m_Window->GetDeviceManager());
 }
 
 Application *Application::GetInstance()
@@ -94,11 +97,11 @@ void Application::Run()
         if (m_AverageFrameTime > 0)
         {
             std::stringstream ss;
-            ss << m_CreateInfo.Name;
+            ss << m_CreateInfo.name;
             ss << " (" << nvrhi::utils::GraphicsAPIToString(deviceManager->GetDevice()->getGraphicsAPI());
             if (deviceManager->GetDeviceParams().enableDebugRuntime)
             {
-                if (m_CreateInfo.GraphicsAPI == nvrhi::GraphicsAPI::VULKAN)
+                if (m_CreateInfo.graphicsApi == nvrhi::GraphicsAPI::VULKAN)
                     ss << ", VulkanValidationLayer";
                 else
                     ss << ", DebugRuntime";
@@ -153,7 +156,8 @@ void Application::Run()
 
     if (m_ImGuiLayer)
         m_ImGuiLayer->OnDetach();
-        
+
+    Renderer::Shutdown();
     m_Window->Destroy();
 }
 

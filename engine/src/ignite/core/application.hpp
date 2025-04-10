@@ -9,6 +9,7 @@
 #include "ignite/graphics/window.hpp"
 #include "imgui/imgui_layer.hpp"
 #include "input/app_event.hpp"
+#include "input/input.hpp"
 
 #include <filesystem>
 
@@ -16,27 +17,27 @@ class ShaderFactory;
 
 struct ApplicationCommandLineArgs
 {
-    i32 Count = 0;
-    char **Args = nullptr;
+    i32 count = 0;
+    char **args = nullptr;
 
     const char *operator[](int index) const
     {
-        LOG_ASSERT(index < Count, "Invalid index");
-        return Args[index];
+        LOG_ASSERT(index < count, "Invalid index");
+        return args[index];
     }
 };
 
 struct ApplicationCreateInfo
 {
-    ApplicationCommandLineArgs CommandLineArgs;
-    std::string Name = "Ignite";
-    std::string IconPath = " ";
-    std::string WorkingDirectory;
-    nvrhi::GraphicsAPI GraphicsAPI = nvrhi::GraphicsAPI::D3D12;
+    ApplicationCommandLineArgs cmdLineArgs;
+    std::string name = "Ignite";
+    std::string iconPath = " ";
+    std::string workingDirectory;
+    nvrhi::GraphicsAPI graphicsApi = nvrhi::GraphicsAPI::D3D12;
 
-    u32 Width = 1280;
-    u32 Height = 640;
-    bool Maximized = false;
+    u32 width = 1280;
+    u32 height = 640;
+    bool maximized = false;
 };
 
 class Application
@@ -52,11 +53,10 @@ public:
     void OnEvent(Event &e);
     bool OnWindowResizeCallback(WindowResizeEvent &event);
 
-    std::string GetAppName() { return m_CreateInfo.Name; }
+    std::string GetAppName() { return m_CreateInfo.name; }
     const ApplicationCreateInfo &GetCreateInfo() { return m_CreateInfo; }
 
     Window *GetWindow() { return m_Window.get(); }
-
 
     static Application *GetInstance();
     static DeviceManager *GetDeviceManager();
@@ -77,6 +77,7 @@ protected:
     Ref<ShaderFactory> m_ShaderFactory;
     LayerStack m_LayerStack;
     Ref<ImGuiLayer> m_ImGuiLayer;
+    Input m_Input;
 
     f64 m_PreviousTime = 0.0;
     f64 m_FrameTimeSum = 0.0;

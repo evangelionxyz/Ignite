@@ -12,7 +12,7 @@ ScenePanel::ScenePanel(const char *windowTitle)
     Application *app = Application::GetInstance();
 
     m_ViewportCamera = CreateScope<Camera>("ScenePanel-Editor Camera");
-    m_ViewportCamera->CreateOrthographic(app->GetCreateInfo().Width, app->GetCreateInfo().Height, 1.0f, 0.1f, 350.0f);
+    m_ViewportCamera->CreateOrthographic(app->GetCreateInfo().width, app->GetCreateInfo().height, 8.0f, 0.1f, 350.0f);
 }
 
 void ScenePanel::CreateRenderTarget(nvrhi::IDevice *device, f32 width, f32 height)
@@ -37,6 +37,7 @@ void ScenePanel::OnGuiRender()
 void ScenePanel::OnUpdate(f32 deltaTime)
 {
     // update camera
+
     {
         m_ViewportCamera->UpdateProjectionMatrix();
         m_ViewportCamera->UpdateViewMatrix();
@@ -57,21 +58,12 @@ void ScenePanel::RenderInspector()
 
     ImGui::PushID("CameraID");
 
-    glm::vec3 cameraPosition = m_ViewportCamera->GetPosition();
-    if (ImGui::DragFloat3("Position", &cameraPosition[0], 0.025f))
-    {
-        m_ViewportCamera->SetPosition(cameraPosition);
-    }
+    ImGui::DragFloat3("Position", &m_ViewportCamera->position[0], 0.025f);
 
     ImGui::Text("Camera");
 
-    f32 cameraZoom = m_ViewportCamera->GetZoom();
-    if (ImGui::DragFloat("Zoom", &cameraZoom, 0.025f))
-    {
-        m_ViewportCamera->SetZoom(cameraZoom);
-    }
+    ImGui::DragFloat("Zoom", &m_ViewportCamera->zoom, 0.025f);
     ImGui::PopID();
-    
 
     ImGui::ColorEdit3("Clear color", &m_RenderTarget->clearColor[0]);
     ImGui::End();
@@ -79,16 +71,22 @@ void ScenePanel::RenderInspector()
 
 void ScenePanel::RenderViewport()
 {
-    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+    constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
 
     ImGui::Begin("Viewport", nullptr, windowFlags);
 
-    ImGuiWindow *window = ImGui::GetCurrentWindow();
+    const ImGuiWindow *window = ImGui::GetCurrentWindow();
+    m_ViewportData.isFocused = ImGui::IsWindowFocused();
+    m_ViewportData.isHovered = ImGui::IsWindowHovered();
+    m_ViewportData.width = window->Size.x;
+    m_ViewportData.height = window->Size.y;
+
     m_RenderTarget->width = window->Size.x;
     m_RenderTarget->height = window->Size.y;
 
-    ImTextureID imguiTex = (ImTextureID)m_RenderTarget->texture.Get();
-   
+    m_ViewportCamera->SetSize(m_RenderTarget->width, m_RenderTarget->height);
+
+    const ImTextureID imguiTex = reinterpret_cast<ImTextureID>(m_RenderTarget->texture.Get());
     ImGui::Image(imguiTex, window->Size);
     
     ImGui::End();
@@ -98,21 +96,64 @@ void ScenePanel::OnEvent(Event &event)
 {
     EventDispatcher dispatcher(event);
     dispatcher.Dispatch<MouseScrolledEvent>(BIND_CLASS_EVENT_FN(ScenePanel::OnMouseScrolledEvent));
+    dispatcher.Dispatch<MouseMovedEvent>(BIND_CLASS_EVENT_FN(ScenePanel::OnMouseMovedEvent));
 }
 
 bool ScenePanel::OnMouseScrolledEvent(MouseScrolledEvent &event)
 {
-    // LOG_INFO("Zoom: {} {} ", m_Zoom, delta);
+    if (m_ViewportData.isHovered)
+    {
+        const f32 dx = event.GetXOffset(), dy = event.GetYOffset();
+        switch (m_ViewportCamera->projectionType)
+        {
+            case Camera::Type::Perspective:
+            {
+                break;
+            }
+            case Camera::Type::Orthographic:
+                default:
+            {
+                const f32 scaleFactor = std::max(m_ViewportData.width, m_ViewportData.height);
+                const f32 zoomSqrt = glm::sqrt(m_ViewportCamera->zoom * m_ViewportCamera->zoom);
 
-    // switch (m_ProjectionType)
-    // {
-    // case Type::Perspective:
-    //     break;
-    // case Type::Orthographic:
-    //     m_Zoom -= delta;
-    //     m_Zoom = glm::clamp(m_Zoom, 1.0f, 100.0f);
-    //     break;
-    // }
+                if (Input::IsKeyPressed(KEY_LEFT_ALT))
+                {
+                    m_ViewportCamera->zoom -= dy * zoomSqrt * 0.1f;
+                    m_ViewportCamera->zoom = glm::clamp(m_ViewportCamera->zoom, 1.0f, 100.0f);
+                }
+                else
+                {
+                    const f32 moveSpeed = 50.0f / scaleFactor;
+                    const f32 mulFactor = moveSpeed * m_ViewportCamera->GetAspectRatio() * zoomSqrt;
+                    if (Input::IsKeyPressed(KEY_LEFT_SHIFT))
+                    {
+                        m_ViewportCamera->position -= m_ViewportCamera->GetRightDirection() * dy * mulFactor;
+                        m_ViewportCamera->position += m_ViewportCamera->GetUpDirection() * dx * mulFactor;
+                    }
+                    else
+                    {
+                        m_ViewportCamera->position += m_ViewportCamera->GetRightDirection() * dx * mulFactor;
+                        m_ViewportCamera->position -= m_ViewportCamera->GetUpDirection() * dy * mulFactor;
+                    }
+                }
+                break;
+            }
+        }
+
+        if (m_ViewportData.isFocused)
+        {
+        }
+    }
+
+    return false;
+}
+
+bool ScenePanel::OnMouseMovedEvent(MouseMovedEvent &event)
+{
+    if (m_ViewportData.isFocused && m_ViewportData.isHovered)
+    {
+
+    }
 
     return false;
 }

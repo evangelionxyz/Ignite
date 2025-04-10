@@ -1,13 +1,19 @@
 #pragma once
 
-#include "render_target.hpp"
-
 #include "ipanel.hpp"
-#include <imgui.h>
+#include "render_target.hpp"
 
 class Event;
 class MouseScrolledEvent;
+class MouseMovedEvent;
 class Camera;
+
+enum CameraMode : u8
+{
+    CAMERA_MODE_2D = BIT(0),
+    CAMERA_MODE_FLY = BIT(1),
+    CAMERA_MODE_PIVOT = BIT(2)
+};
 
 class ScenePanel final : public IPanel
 {
@@ -24,6 +30,7 @@ public:
 
     void OnEvent(Event &event);
     bool OnMouseScrolledEvent(MouseScrolledEvent &event);
+    bool OnMouseMovedEvent(MouseMovedEvent &event);
 
     Camera *GetViewportCamera() { return m_ViewportCamera.get(); }
     
@@ -31,6 +38,18 @@ private:
     void RenderHierarchy();
     void RenderInspector();
 
+    CameraMode m_CameraMode = CAMERA_MODE_2D;
+
     Scope<Camera> m_ViewportCamera;
     Ref<RenderTarget> m_RenderTarget;
+
+    struct ViewportData
+    {
+        bool isHovered = false;
+        bool isFocused = false;
+        f32 width = 0.0f;
+        f32 height = 0.0f;
+        glm::vec2 relativeMousePos = glm::vec2(0.0f);
+    } m_ViewportData;
+
 };

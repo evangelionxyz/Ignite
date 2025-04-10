@@ -1,10 +1,11 @@
 #pragma once
 
-#include <string>
-#include "ignite/core/types.hpp"
-#include "ignite/core/logger.hpp"
-
+#include <imgui.h>
 #include <imgui_internal.h>
+#include <string>
+#include "ignite/core/logger.hpp"
+#include "ignite/core/types.hpp"
+
 class IPanel
 {
 public:

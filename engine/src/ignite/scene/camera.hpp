@@ -27,50 +27,32 @@ public:
     Camera(const std::string &name);
 
     void CreateOrthographic(f32 width, f32 height, f32 zoom, f32 nearClip, f32 farClip);
-    void CreatePerspective(f32 fovy, f32 width, f32 height, f32 nearClip, f32 farClip);
-
-    void SetPosition(const glm::vec3 &position);
-    void SetSize(f32 width, f32 height);
-    void SetZoom(f32 zoom);
-    void SetClipValue(f32 nearClip, f32 farClip);
-    void SetFov(f32 fov);
-    void SetYaw(f32 yaw);
-    void SetPitch(f32 pitch);
+    void CreatePerspective(f32 fov, f32 width, f32 height, f32 nearClip, f32 farClip);
 
     void UpdateProjectionMatrix();
     void UpdateViewMatrix();
 
+    void SetSize(f32 w, f32 h);
+
     const std::string &GetName() const { return m_Name; }
     glm::vec2 GetSize();
-    const glm::mat4 &GetViewMatrix() const { return m_ViewMatrix; }
-    const glm::mat4 &GetProjectionMatrix() const { return m_ProjectionMatrix; }
-    glm::mat4 GetViewProjectionMatrix() const { return m_ProjectionMatrix * m_ViewMatrix; }
-    const glm::vec3 &GetPosition() const { return m_Position; }
+    glm::mat4 GetViewProjectionMatrix() const { return projectionMatrix * viewMatrix; }
 
     glm::vec3 GetUpDirection() const;
     glm::vec3 GetRightDirection() const;
     glm::vec3 GetForwardDirection() const;
+    f32 GetAspectRatio() const { return m_AspectRatio; }
 
-    const f32 GetZoom() const;
-    const f32 GetNearClip() const;
-    const f32 GetFarClip() const;
-    const f32 GetFov() const;
-    const f32 GetYaw() const;
-    const f32 GetPitch() const;
+    f32 zoom, width, height;
+    f32 yaw, pitch, fov;
+    f32 nearClip, farClip;
 
-    Type GetProjectionType() const { return m_ProjectionType; }
+    glm::vec3 position;
+    glm::mat4 viewMatrix;
+    glm::mat4 projectionMatrix;
+    Type projectionType;
 
 protected:
-    
-
-    f32 m_AspectRatio, m_Zoom, m_Width, m_Height;
-    f32 m_Yaw, m_Pitch, m_Fov;
-    f32 m_NearClip, m_FarClip;
-
-    glm::vec3 m_Position;
-    glm::mat4 m_ViewMatrix;
-    glm::mat4 m_ProjectionMatrix;
-    Type m_ProjectionType;
-
+    f32 m_AspectRatio = 1.0f;
     std::string m_Name;
 };

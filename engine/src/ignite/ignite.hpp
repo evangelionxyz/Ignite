@@ -22,8 +22,10 @@
 #include "core/string_utils.hpp"
 #include "core/types.hpp"
 #include "core/time.hpp"
+#include "core/input/input.hpp"
 
-#include "graphics/image.hpp"
+#include "graphics/renderer.hpp"
+#include "graphics/renderer_2d.hpp"
 #include "graphics/shader_factory.hpp"
 #include "graphics/window.hpp"
 
