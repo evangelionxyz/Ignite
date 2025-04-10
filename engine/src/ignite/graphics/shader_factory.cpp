@@ -1,7 +1,7 @@
-#include <ShaderMake/ShaderBlob.h>
-
 #include "shader_factory.hpp"
-#include "core/logger.hpp"
+#include "ignite/core/logger.hpp"
+
+#include <ShaderMake/ShaderBlob.h>
 
 ShaderFactory::ShaderFactory(nvrhi::DeviceHandle device, Ref<vfs::IFileSystem> fs, const std::filesystem::path &basePath)
     : m_Device(device), m_FS(fs), m_BasePath(basePath)

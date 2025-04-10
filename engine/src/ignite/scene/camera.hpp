@@ -1,9 +1,10 @@
 #pragma once
-#include "core/types.hpp"
-#include "core/input/event.hpp"
-#include "core/input/key_codes.hpp"
-#include "core/input/event.hpp"
-#include "core/input/mouse_event.hpp"
+
+#include "ignite/core/types.hpp"
+#include "ignite/core/input/event.hpp"
+#include "ignite/core/input/key_codes.hpp"
+#include "ignite/core/input/event.hpp"
+#include "ignite/core/input/mouse_event.hpp"
 
 #include <string>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -28,13 +29,13 @@ public:
     void CreateOrthographic(f32 width, f32 height, f32 zoom, f32 nearClip, f32 farClip);
     void CreatePerspective(f32 fovy, f32 width, f32 height, f32 nearClip, f32 farClip);
 
-    void OnEvent(Event &e);
-    bool OnScrollEvent(MouseScrolledEvent &e);
-    void MouseZoom(const f32 delta);
-
     void SetPosition(const glm::vec3 &position);
     void SetSize(f32 width, f32 height);
     void SetZoom(f32 zoom);
+    void SetClipValue(f32 nearClip, f32 farClip);
+    void SetFov(f32 fov);
+    void SetYaw(f32 yaw);
+    void SetPitch(f32 pitch);
 
     void UpdateProjectionMatrix();
     void UpdateViewMatrix();
@@ -51,6 +52,11 @@ public:
     glm::vec3 GetForwardDirection() const;
 
     const f32 GetZoom() const;
+    const f32 GetNearClip() const;
+    const f32 GetFarClip() const;
+    const f32 GetFov() const;
+    const f32 GetYaw() const;
+    const f32 GetPitch() const;
 
     Type GetProjectionType() const { return m_ProjectionType; }
 

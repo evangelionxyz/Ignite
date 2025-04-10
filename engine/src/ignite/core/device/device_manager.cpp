@@ -11,7 +11,7 @@
 #pragma comment(lib, "shcore.lib")
 #endif
 #include "device_manager.hpp"
-#include "core/logger.hpp"
+#include "ignite/core/logger.hpp"
 #include <glm/glm.hpp>
 
 DefaultMessageCallback &DefaultMessageCallback::GetInstance()
@@ -24,7 +24,29 @@ DefaultMessageCallback &DefaultMessageCallback::GetInstance()
 
 void DefaultMessageCallback::message(nvrhi::MessageSeverity severity, const char *messageText)
 {
-    LOG_WARN("{}", messageText);
+    switch (severity)
+    {
+        case nvrhi::MessageSeverity::Info:
+        {
+            LOG_INFO("NVHRI INFO: {}", messageText);
+            break;
+        }
+        case nvrhi::MessageSeverity::Warning:
+        {
+            LOG_WARN("NVHRI WARN: {}", messageText);
+            break;
+        }
+        case nvrhi::MessageSeverity::Error:
+        {
+            LOG_ERROR("NVHRI WARN: {}", messageText);
+            break;
+        }
+        case nvrhi::MessageSeverity::Fatal:
+        {
+            LOG_ASSERT(false, "NVHRI FATAL: {}", messageText);
+            break;
+        }
+    }
 }
 
 bool DeviceManager::CreateInstance(const InstanceParameters &params)
@@ -37,17 +59,16 @@ bool DeviceManager::CreateInstance(const InstanceParameters &params)
     {
 #ifdef PLATFORM_WINDOWS
         if (!params.enablePerMonitorDPI)
-        {
             SetProcessDpiAwareness(PROCESS_DPI_UNAWARE);
-        }
 #endif
     }
 
     if (!glfwInit())
+    {
         return false;
+    }
 
-    m_InstanceCreated = CreateInstanceInternal();
-    return m_InstanceCreated;
+    return CreateInstanceInternal();
 }
 
 bool DeviceManager::IsUpdateDPIScaleFactor()
@@ -114,12 +135,10 @@ DeviceManager* DeviceManager::Create(nvrhi::GraphicsAPI api)
 #if IGNITE_WITH_DX11
     case nvrhi::GraphicsAPI::D3D11:
         return CreateD3D11();
-#endif
-#if IGNITE_WITH_DX12
+#elif IGNITE_WITH_DX12
     case nvrhi::GraphicsAPI::D3D12:
         return CreateD3D12();
-#endif
-#if IGNITE_WITH_VULKAN
+#elif IGNITE_WITH_VULKAN
     case nvrhi::GraphicsAPI::VULKAN:
         return CreateVK();
 #endif

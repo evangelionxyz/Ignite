@@ -1,16 +1,14 @@
 #include "imgui_layer.hpp"
-#include "core/vfs/vfs.hpp"
-
-#include "core/logger.hpp"
+#include "ignite/core/application.hpp"
+#include "ignite/core/logger.hpp"
+#include "ignite/core/vfs/vfs.hpp"
 
 #include <backends/imgui_impl_glfw.h>
-#include <core/application.hpp>
 
 #ifdef _WIN32
-#include "core/device/device_manager_dx12.hpp"
-#include <backends/imgui_impl_win32.h>
-#include <backends/imgui_impl_dx11.h>
 #include <backends/imgui_impl_dx12.h>
+#include <backends/imgui_impl_win32.h>
+#include "ignite/core/device/device_manager_dx12.hpp"
 #endif
 
 void RegisteredFont::CreateScaledFont(f32 displayScale)

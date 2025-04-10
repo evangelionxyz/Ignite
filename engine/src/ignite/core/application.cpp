@@ -1,9 +1,7 @@
 #include "application.hpp"
 
-#include "graphics/shader_factory.hpp"
+#include "ignite/graphics/shader_factory.hpp"
 #include "input/app_event.hpp"
-
-#include "graphics/shader_factory.hpp"
 #include "imgui/imgui_layer.hpp"
 #include "nvrhi/utils.h"
 

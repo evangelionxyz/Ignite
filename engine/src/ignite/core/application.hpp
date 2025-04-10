@@ -1,12 +1,12 @@
 #pragma once
 
-#include "device/device_manager.hpp"
 #include "layer.hpp"
 #include "layer_stack.hpp"
 #include "logger.hpp"
 #include "types.hpp"
-#include "core/input/event.hpp"
-#include "graphics/window.hpp"
+#include "device/device_manager.hpp"
+#include "ignite/core/input/event.hpp"
+#include "ignite/graphics/window.hpp"
 #include "imgui/imgui_layer.hpp"
 #include "input/app_event.hpp"
 
@@ -54,6 +54,9 @@ public:
 
     std::string GetAppName() { return m_CreateInfo.Name; }
     const ApplicationCreateInfo &GetCreateInfo() { return m_CreateInfo; }
+
+    Window *GetWindow() { return m_Window.get(); }
+
 
     static Application *GetInstance();
     static DeviceManager *GetDeviceManager();

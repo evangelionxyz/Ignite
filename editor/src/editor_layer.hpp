@@ -1,9 +1,11 @@
 #pragma once
-#include <ipanel.hpp>
-#include <ignite/ignite.hpp>
 
+#include "ipanel.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "ignite/core/layer.hpp"
+#include <nvrhi/nvrhi.h>
+#include <nvrhi/utils.h>
 
 class ShaderFactory;
 class DeviceManager;
@@ -46,5 +48,4 @@ private:
     RenderData sceneGfx;
     nvrhi::CommandListHandle m_CommandList;
     DeviceManager *m_DeviceManager;
-    Camera m_Camera;
 };

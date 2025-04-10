@@ -1,7 +1,7 @@
 #include "vfs.hpp"
 
-#include "core/logger.hpp"
-#include "core/string_utils.hpp"
+#include "ignite/core/logger.hpp"
+#include "ignite/core/string_utils.hpp"
 
 #include <fstream>
 #include <cassert>

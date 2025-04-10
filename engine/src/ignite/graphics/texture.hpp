@@ -1,6 +1,6 @@
 #pragma once
 
-#include "asset/asset.hpp"
+#include "ignite/asset/asset.hpp"
 
 class Texture : public Asset
 {

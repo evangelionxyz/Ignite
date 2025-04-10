@@ -1,10 +1,9 @@
-#include <editor_layer.hpp>
-
-#include <stb_image.h>
+#include "ignite/ignite.hpp"
+#include "editor_layer.hpp"
 #include "imgui_internal.h"
-#include "nvrhi/utils.h"
 #include "scene_panel.hpp"
 
+#include <stb_image.h>
 
 struct PushConstants
 {
@@ -204,11 +203,6 @@ void IgniteEditorLayer::OnAttach()
 
     m_ScenePanel = IPanel::Create<ScenePanel>("Scene Panel");
     m_ScenePanel->CreateRenderTarget(device, 1280.0f, 720.0f);
-
-    m_Camera = Camera("EditorCamera");
-    m_Camera.CreateOrthographic(1280.0f, 720.0f, 1.0f, 0.1f, 300.0f);
-
-    constants = { m_Camera.GetViewProjectionMatrix() };
 }
 
 void IgniteEditorLayer::OnDetach()
@@ -224,25 +218,20 @@ void IgniteEditorLayer::OnDetach()
     m_CommandList = nullptr;
 }
 
-void IgniteEditorLayer::OnUpdate(f32 deltaTime)
+void IgniteEditorLayer::OnUpdate(const f32 deltaTime)
 {
     Layer::OnUpdate(deltaTime);
 
     // update transformation
-    constants.mvp = m_Camera.GetViewProjectionMatrix() * glm::translate(glm::mat4(1.0f), modelPosition);
+    m_ScenePanel->OnUpdate(deltaTime);
 
-    // updating camera
-    {
-        m_Camera.SetPosition(cameraPosition);
-        m_Camera.UpdateProjectionMatrix();
-        m_Camera.UpdateViewMatrix();
-    }
+    constants.mvp = m_ScenePanel->GetViewportCamera()->GetViewProjectionMatrix() * glm::translate(glm::mat4(1.0f), modelPosition);
 }
 
 void IgniteEditorLayer::OnEvent(Event &e)
 {
     Layer::OnEvent(e);
-    m_Camera.OnEvent(e);
+    m_ScenePanel->OnEvent(e);
 }
 
 void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
@@ -270,9 +259,9 @@ void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
         // resizing camera size
         f32 panelWidth = m_ScenePanel->GetRT()->width;
         f32 panelHeight = m_ScenePanel->GetRT()->height;
-        glm::vec2 cameraViewport = m_Camera.GetSize();
+        glm::vec2 cameraViewport = m_ScenePanel->GetViewportCamera()->GetSize();
         if (panelWidth != cameraViewport.x || panelHeight != cameraViewport.y)
-            m_Camera.SetSize(panelWidth, panelHeight);
+            m_ScenePanel->GetViewportCamera()->SetSize(panelWidth, panelHeight);
 
         nvrhi::Viewport viewport = m_ScenePanel->GetRT()->framebuffer->getFramebufferInfo().getViewport();
 
@@ -326,28 +315,6 @@ void IgniteEditorLayer::OnGuiRender()
     {
         // scene dockspace
         m_ScenePanel->OnGuiRender();
-
-        {
-            ImGui::Begin("Settings");
-            ImGui::PushID("CameraID");
-            ImGui::DragFloat3("Position", &cameraPosition[0], 0.025f);
-            ImGui::Text("Camera");
-        
-            f32 cameraZoom = m_Camera.GetZoom();
-            if (ImGui::DragFloat("Zoom", &cameraZoom, 0.025f))
-            {
-                m_Camera.SetZoom(cameraZoom);
-            }
-        
-            ImGui::PopID();
-            
-            ImGui::Separator();
-            ImGui::PushID("ModelID");
-            ImGui::Text("Model");
-            ImGui::DragFloat3("Position", &modelPosition[0], 0.025f);
-            ImGui::PopID();
-            ImGui::End();
-        }
     }
 
     ImGui::End(); // end dockspace

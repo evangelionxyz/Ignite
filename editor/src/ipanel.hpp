@@ -1,11 +1,10 @@
 #pragma once
 
 #include <string>
-#include <ignite/core/types.hpp>
-#include <ignite/core/logger.hpp>
+#include "ignite/core/types.hpp"
+#include "ignite/core/logger.hpp"
 
 #include <imgui_internal.h>
-
 class IPanel
 {
 public:
@@ -17,12 +16,14 @@ public:
     {
     }
 
+    // from Layer class 
+    virtual void OnGuiRender() { }
+
+    // to child class
     virtual bool IsOpen() { return m_IsOpen; }
     virtual bool IsFocused() { return m_IsFocused; }
     virtual bool IsHovered() { return m_IsHovered; }
-
-    virtual void OnGuiRender() { }
-    virtual void Destroy() { }
+    virtual void OnUpdate(f32 deltaTime) { }
 
     std::string &GetTitle() { return m_WindowTitle; }
 

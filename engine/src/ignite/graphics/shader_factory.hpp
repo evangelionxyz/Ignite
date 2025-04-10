@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/types.hpp"
-#include "core/vfs/vfs.hpp"
+#include "ignite/core/types.hpp"
+#include "ignite/core/vfs/vfs.hpp"
 
 #include <nvrhi/nvrhi.h>
 #include <memory>

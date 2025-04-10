@@ -1,15 +1,14 @@
 #include "window.hpp"
 
-#include <core/input/event.hpp>
-#include <core/input/key_event.hpp>
-#include <core/input/app_event.hpp>
-#include <core/input/mouse_event.hpp>
-
-#include <core/logger.hpp>
+#include "ignite/core/logger.hpp"
+#include "ignite/core/input/app_event.hpp"
+#include "ignite/core/input/event.hpp"
+#include "ignite/core/input/key_event.hpp"
+#include "ignite/core/input/mouse_event.hpp"
 
 #ifdef _WIN32
-#include <ShellScalingApi.h>
 #include <dwmapi.h>
+#include <ShellScalingApi.h>
 #pragma comment(lib, "Dwmapi.lib") // Link to DWM API
 #pragma comment(lib, "shcore.lib")
 #endif

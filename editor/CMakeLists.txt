@@ -12,6 +12,8 @@ target_include_directories(IgniteEditor PRIVATE
     ${THIRDPARTY}/GLFW/src
     ${THIRDPARTY}/GLFW/include
     ${THIRDPARTY}/NVRHI/include
+    ${THIRDPARTY}/NVRHI/thirdparty/Vulkan-Headers/include
+
     ${THIRDPARTY}/SPDLOG/include
     ${THIRDPARTY}/GLM
     ${THIRDPARTY}/IMGUI

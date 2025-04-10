@@ -4,6 +4,7 @@
 
 #include "device_manager.hpp"
 #include "device_manager_dx12.hpp"
+#include "ignite/core/logger.hpp"
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -11,16 +12,13 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include <GLFW/glfw3native.h>
 
 #include <dxgi1_5.h>
 #include <dxgidebug.h>
 
 #include <nvrhi/d3d12.h>
 #include <nvrhi/validation.h>
-#include <sstream>
-#include <print>
-
-#include "core/logger.hpp"
 
 using nvrhi::RefCountPtr;
 
@@ -362,9 +360,8 @@ bool DeviceManager_DX12::CreateSwapChain()
     if (SUCCEEDED(m_DxgiFactory2->QueryInterface(&pDxgiFactory5)))
     {
         BOOL supported = 0;
-        // TODO: Create boolean for alowing screen tearing feature
-        //if (SUCCEEDED(pDxgiFactory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &supported, sizeof(supported))))
-        //    m_TearingSupported = (supported != 0);
+        if (SUCCEEDED(pDxgiFactory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &supported, sizeof(supported))))
+            m_TearingSupported = (supported != 0);
     }
 
     if (m_TearingSupported)

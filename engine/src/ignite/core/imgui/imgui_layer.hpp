@@ -1,11 +1,11 @@
 #pragma once
 
-#include "core/types.hpp"
-#include "core/device/device_manager.hpp"
+#include "ignite/core/types.hpp"
+#include "ignite/core/device/device_manager.hpp"
 #include "imgui_nvrhi.hpp"
-#include "core/input/event.hpp"
-#include "core/layer.hpp"
-#include "core/input/app_event.hpp"
+#include "ignite/core/input/event.hpp"
+#include "ignite/core/layer.hpp"
+#include "ignite/core/input/app_event.hpp"
 
 #include <filesystem>
 #include <optional>

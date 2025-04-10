@@ -1,5 +1,5 @@
 #include "camera.hpp"
-#include "core/logger.hpp"
+#include "ignite/core/logger.hpp"
 
 Camera::Camera(const std::string &name)
     : m_Name(name)
@@ -41,33 +41,6 @@ void Camera::CreatePerspective(f32 fovy, f32 width, f32 height, f32 nearClip, f3
     UpdateViewMatrix();
 }
 
-void Camera::OnEvent(Event &e)
-{
-    EventDispatcher dispatcher(e);
-    dispatcher.Dispatch<MouseScrolledEvent>(BIND_CLASS_EVENT_FN(Camera::OnScrollEvent));
-}
-
-bool Camera::OnScrollEvent(MouseScrolledEvent &e)
-{
-    MouseZoom(e.GetYOffset());
-    return false;
-}
-
-void Camera::MouseZoom(const f32 delta)
-{
-    LOG_INFO("Zoom: {} {} ", m_Zoom, delta);
-
-    switch (m_ProjectionType)
-    {
-    case Type::Perspective:
-        break;
-    case Type::Orthographic:
-        m_Zoom -= delta;
-        m_Zoom = glm::clamp(m_Zoom, 1.0f, 100.0f);
-        break;
-    }
-}
-
 void Camera::SetPosition(const glm::vec3 &position)
 {
     m_Position = position;
@@ -83,6 +56,27 @@ void Camera::SetSize(f32 width, f32 height)
 void Camera::SetZoom(f32 zoom)
 {
     m_Zoom = zoom;
+}
+
+void Camera::SetClipValue(f32 nearClip, f32 farClip)
+{
+    m_NearClip = nearClip;
+    m_FarClip = farClip;
+}
+
+void Camera::SetFov(f32 fov)
+{
+    m_Fov = fov;
+}
+
+void Camera::SetYaw(f32 yaw)
+{
+    m_Yaw = yaw;
+}
+
+void Camera::SetPitch(f32 pitch)
+{
+    m_Pitch = pitch;
 }
 
 void Camera::UpdateProjectionMatrix()
@@ -128,6 +122,32 @@ const f32 Camera::GetZoom() const
 {
     return m_Zoom;
 }
+
+const f32 Camera::GetNearClip() const
+{
+    return m_NearClip;
+}
+
+const f32 Camera::GetFarClip() const
+{
+    return m_FarClip;
+}
+
+const f32 Camera::GetFov() const
+{
+    return m_Fov;
+}
+
+const f32 Camera::GetYaw() const
+{
+    return m_Yaw;
+}
+
+const f32 Camera::GetPitch() const
+{
+    return m_Pitch;
+}
+
 
 glm::vec3 Camera::GetUpDirection() const
 {

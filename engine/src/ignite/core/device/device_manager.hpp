@@ -1,6 +1,6 @@
 #pragma once
 
-#if IGNITE_WITH_DX11 || IGNITE_WITH_DX12
+#if PLATFORM_WINDOWS
 #include <dxgi.h>
 #endif
 
@@ -12,26 +12,20 @@
 #include <d3d12.h>
 #endif
 
-#if IGNITE_WITH_VULKAN
-#include <vulkan/vulkan.h>
-#endif
-
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
 #if _WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
 #endif
-#include <GLFW/glfw3native.h>
 #include <nvrhi/nvrhi.h>
 
 #include <optional>
 #include <array>
 #include <functional>
-#include <memory>
 
-#include "core/base.hpp"
-#include "core/types.hpp"
+#include "ignite/core/base.hpp"
+#include "ignite/core/types.hpp"
 
 struct DefaultMessageCallback final : public nvrhi::IMessageCallback
 {
@@ -84,7 +78,7 @@ struct DeviceCreationParameters : public InstanceParameters
     bool resizeWindowWithDisplayScale = false;
     nvrhi::IMessageCallback *messageCallback = nullptr;
     
-#if IGNITE_WITH_DX11 || IGNITE_WITH_DX12
+#if PLATFORM_WINDOWS
     DXGI_USAGE swapChainUsage = DXGI_USAGE_SHADER_INPUT | DXGI_USAGE_RENDER_TARGET_OUTPUT;
     D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_1;
 #endif
@@ -95,8 +89,6 @@ struct DeviceCreationParameters : public InstanceParameters
     std::vector<size_t> ignoreVulkanValidationMessageLocations;
 #endif
 };
-
-class IRenderPass;
 
 struct AdapterInfo
 {
@@ -111,11 +103,14 @@ struct AdapterInfo
     std::optional<UUID> uuid;
     std::optional<LUUID> luuid;
 
-#if IGNITE_WITH_DX11 || IGNITE_WITH_DX12
+#if PLATFORM_WINDOWS
     nvrhi::RefCountPtr<IDXGIAdapter> dxgiAdapter;
-#elif IGNITE_WITH_VULKAN
+#endif
+
+#ifdef IGNITE_WITH_VULKAN
     VkPhysicalDevice vkPhysicalDevice = nullptr;
 #endif
+
 };
 
 class DeviceManager

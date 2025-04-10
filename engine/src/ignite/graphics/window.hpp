@@ -8,10 +8,10 @@
 
 #include <glfw/glfw3native.h>
 
-#include "core/device/device_manager.hpp"
-#include "core/input/event.hpp"
+#include "ignite/core/device/device_manager.hpp"
+#include "ignite/core/input/event.hpp"
 
-#include "core/types.hpp"
+#include "ignite/core/types.hpp"
 
 class Window
 {

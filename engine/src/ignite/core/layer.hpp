@@ -4,22 +4,32 @@
 #include "types.hpp"
 #include "input/event.hpp"
 
+namespace nvrhi
+{
+    class IFramebuffer;
+}
+
+class Event;
+
 class Layer
 {
 public:
     virtual ~Layer() = default;
-    explicit Layer(const std::string &name)
+
+    Layer() = default;
+
+    Layer(const std::string &name)
         : m_Name(name)
     {
     }
 
     virtual void OnAttach() { }
     virtual void OnDetach() { }
-    virtual void OnUpdate(f32 deltaTime) { }
+    virtual void OnUpdate(float deltaTime) { }
     virtual void OnRender(nvrhi::IFramebuffer *framebuffer) { }
     virtual void OnEvent(Event &e) { }
     virtual void OnGuiRender() { }
-    inline std::string GetName() { return m_Name; }
+    std::string GetName() { return m_Name; }
 
 protected:
     std::string m_Name;
