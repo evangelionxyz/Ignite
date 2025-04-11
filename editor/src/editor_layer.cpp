@@ -7,6 +7,27 @@
 
 #include "ignite/scene/camera.hpp"
 
+#include <queue>
+
+const f32 spawnInterval = 0.01f;
+f32 spawnTimer = spawnInterval;
+f32 despawnTimer = spawnInterval;
+f32 spawnXPos = 0.0f;
+f32 totalTimer = 0.0f;
+const size_t maxQuad = 8096;
+std::queue<entt::entity> entities;
+
+#include <cstdlib> // for rand()
+#include <ctime>   // for seeding rand()
+
+glm::vec4 GetRandomColor()
+{
+    float r = static_cast<float>(rand()) / RAND_MAX;
+    float g = static_cast<float>(rand()) / RAND_MAX;
+    float b = static_cast<float>(rand()) / RAND_MAX;
+    return glm::vec4(r, g, b, 1.0f); // alpha = 1.0 (fully opaque)
+}
+
 namespace ignite
 {
     EditorLayer::EditorLayer(const std::string &name)
@@ -25,31 +46,50 @@ namespace ignite
         m_CommandList = m_DeviceManager->GetDevice()->createCommandList();
         Renderer2D::InitQuadData(m_DeviceManager->GetDevice(), m_CommandList);
 
-        m_ScenePanel = IPanel::Create<ScenePanel>("Scene Panel");
+        m_ScenePanel = CreateRef<ScenePanel>("Scene Panel", this);
         m_ScenePanel->CreateRenderTarget(device, 1280.0f, 720.0f);
 
         m_ActiveScene = CreateRef<Scene>("test scene");
-        entt::entity ent1 = m_ActiveScene->CreateEntity("E1");
-        m_ActiveScene->EntityAddComponent<Sprite2D>(ent1);
 
-        entt::entity ent2 = m_ActiveScene->CreateEntity("E2");
-        m_ActiveScene->EntityAddComponent<Sprite2D>(ent2);
-        m_ActiveScene->EntityGetComponent<Transform>(ent2).translation.x = 1.0f;
-        entt::entity ent3 = m_ActiveScene->CreateEntity("E3");
-        m_ActiveScene->EntityAddComponent<Sprite2D>(ent3);
-        m_ActiveScene->EntityGetComponent<Transform>(ent3).translation.x = -1.0f;
+        {
+            const entt::entity e = m_ActiveScene->CreateEntity("E1");
+            m_ActiveScene->AddComponent<Sprite2D>(e);
+            m_ActiveScene->GetComponent<Transform>(e).translation.y = 10.0f;
+            auto &rb = m_ActiveScene->AddComponent<Rigidbody2D>(e);
+            auto &bc = m_ActiveScene->AddComponent<BoxCollider2D>(e);
+            rb.type = Body2DType_Dynamic;
+
+            entities.push(e);
+        }
+
+        {
+            const entt::entity e = m_ActiveScene->CreateEntity("E2");
+            m_ActiveScene->AddComponent<Sprite2D>(e);
+            m_ActiveScene->GetComponent<Transform>(e).translation.y = 10.0f;
+            m_ActiveScene->GetComponent<Transform>(e).translation.x = 4.0f;
+            auto &rb = m_ActiveScene->AddComponent<Rigidbody2D>(e);
+            auto &bc = m_ActiveScene->AddComponent<BoxCollider2D>(e);
+            rb.type = Body2DType_Dynamic;
+
+            entities.push(e);
+        }
+
+        {
+            const entt::entity e = m_ActiveScene->CreateEntity("E2");
+            m_ActiveScene->AddComponent<Sprite2D>(e).color.r = 1.0f;
+            m_ActiveScene->GetComponent<Transform>(e).scale.x = 1000.0f;
+            m_ActiveScene->GetComponent<Transform>(e).translation.y = -3.0f;
+            auto &rb = m_ActiveScene->AddComponent<Rigidbody2D>(e);
+            auto &bc = m_ActiveScene->AddComponent<BoxCollider2D>(e);
+        }
+
+        m_ActiveScene->OnStart();
     }
 
     void EditorLayer::OnDetach()
     {
         Layer::OnDetach();
-
-        sceneGfx.vertexBuffer = nullptr;
-        sceneGfx.indexBuffer = nullptr;
-        sceneGfx.pipeline = nullptr;
-        sceneGfx.vertexShader = nullptr;
-        sceneGfx.pixelShader = nullptr;
-
+        m_ActiveScene->OnStop();
         m_CommandList = nullptr;
     }
 
@@ -57,8 +97,60 @@ namespace ignite
     {
         Layer::OnUpdate(deltaTime);
 
-        // update transformation
+        m_ActiveScene->OnUpdate(deltaTime);
+
+        // update panels
         m_ScenePanel->OnUpdate(deltaTime);
+
+        totalTimer += deltaTime * 2.0f;
+
+
+        spawnTimer -= deltaTime;
+        if (spawnTimer <= 0.0f)
+        {
+            spawnTimer = spawnInterval;
+
+            if (entities.size() % 2 == 0)
+            {
+                const entt::entity e = m_ActiveScene->CreateEntity("E1");
+                m_ActiveScene->AddComponent<Sprite2D>(e).color = GetRandomColor();
+                m_ActiveScene->GetComponent<Transform>(e).translation.y = 10.0f;
+                m_ActiveScene->GetComponent<Transform>(e).translation.x = -glm::sin(totalTimer) * 10.0f;
+                auto &rb = m_ActiveScene->AddComponent<Rigidbody2D>(e);
+                auto &bc = m_ActiveScene->AddComponent<BoxCollider2D>(e);
+                rb.type = Body2DType_Dynamic;
+
+                m_ActiveScene->physics2D->Instantiate(e);
+                entities.push(e);
+            }
+            else
+            {
+                const entt::entity e = m_ActiveScene->CreateEntity("E1");
+                m_ActiveScene->AddComponent<Sprite2D>(e).color = GetRandomColor();
+                m_ActiveScene->GetComponent<Transform>(e).translation.y = glm::sin(totalTimer) + 10.0f;
+                m_ActiveScene->GetComponent<Transform>(e).translation.x = glm::sin(totalTimer) * 10.0f;
+                auto &rb = m_ActiveScene->AddComponent<Rigidbody2D>(e);
+                auto &bc = m_ActiveScene->AddComponent<BoxCollider2D>(e);
+                rb.type = Body2DType_Dynamic;
+
+                m_ActiveScene->physics2D->Instantiate(e);
+                entities.push(e);
+            }
+
+            
+        }
+
+        if (entities.size() >= maxQuad)
+        {
+            despawnTimer -= deltaTime;
+            if (despawnTimer <= 0.0f)
+            {
+                despawnTimer = spawnInterval / 2.0f;
+                entt::entity e = entities.front();
+                m_ActiveScene->DestroyEntity(e);
+                entities.pop();
+            }
+        }
     }
 
     void EditorLayer::OnEvent(Event &e)

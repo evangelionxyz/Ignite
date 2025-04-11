@@ -81,7 +81,10 @@ namespace ignite
         LOG_ASSERT(s_Data.quadBatch.indexBuffer, "Failed to create Renderer 2D Quad Index Buffer");
 
         // create texture
-        s_Data.quadBatch.texture = Texture::Create("Resources/textures/test.png");
+        //s_Data.quadBatch.texture = Texture::Create("Resources/textures/test.png");
+        u32 white = 0xffffffff;
+        Buffer buffer(&white, sizeof(white));
+        s_Data.quadBatch.texture = Texture::Create(buffer);
 
         // create binding set
         auto bindingSetDesc = nvrhi::BindingSetDesc()

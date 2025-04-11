@@ -2,6 +2,7 @@
 
 #include "ignite/asset/asset.hpp"
 #include "ignite/core/types.hpp"
+#include "ignite/core/buffer.hpp"
 
 #include <nvrhi/nvrhi.h>
 
@@ -13,24 +14,25 @@ namespace ignite
     {
     public:
         Texture() = default;
+        Texture(Buffer buffer, i32 width, i32 height);
         Texture(const std::filesystem::path &filepath);
 
         void Write(nvrhi::ICommandList *commandList);
 
+        static Ref<Texture> Create(Buffer buffer, i32 width = 1, i32 height = 1);
         static Ref<Texture> Create(const std::filesystem::path &filepath);
 
         nvrhi::TextureHandle GetHandle() { return m_Handle; }
         nvrhi::SamplerHandle GetSampler() { return m_Sampler; }
 
-        unsigned char *GetPixelData() { return m_PixelData; }
-        i32 GetRowPitchSize() { return m_Width * 4; }
+        unsigned char *GetPixelData() { return m_Buffer.Data; }
         i32 GetWidth() { return m_Width; }
         i32 GetHeight() { return m_Height; }
         i32 GetChannels() { return m_Channels; }
 
     private:
         i32 m_Width, m_Height, m_Channels;
-        unsigned char *m_PixelData;
+        Buffer m_Buffer;
 
         nvrhi::TextureHandle m_Handle;
         nvrhi::SamplerHandle m_Sampler;

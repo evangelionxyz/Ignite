@@ -10,6 +10,7 @@ namespace ignite
     class Event;
     class MouseScrolledEvent;
     class MouseMovedEvent;
+    class EditorLayer;
 
     enum CameraMode : u8
     {
@@ -21,7 +22,7 @@ namespace ignite
     class ScenePanel final : public IPanel
     {
     public:
-        explicit ScenePanel(const char *windowTitle);
+        explicit ScenePanel(const char *windowTitle, EditorLayer *editor);
 
         void CreateRenderTarget(nvrhi::IDevice *device, f32 width, f32 height);
 
@@ -42,9 +43,9 @@ namespace ignite
         void RenderInspector();
 
         CameraMode m_CameraMode = CAMERA_MODE_2D;
-
         Scope<Camera> m_ViewportCamera;
         Ref<RenderTarget> m_RenderTarget;
+        EditorLayer *m_Editor;
 
         struct ViewportData
         {

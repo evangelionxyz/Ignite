@@ -30,14 +30,6 @@ namespace ignite
 
         std::string &GetTitle() { return m_WindowTitle; }
 
-        template<typename T>
-        static  Ref<T> Create(const char *windowTitle)
-        {
-            const bool valid = std::is_base_of<IPanel, T>::value;
-            LOG_ASSERT(valid, "Not a class of IPanel ");
-            return CreateRef<T>(windowTitle);
-        }
-
     protected:
         std::string m_WindowTitle;
         bool m_IsOpen = false;

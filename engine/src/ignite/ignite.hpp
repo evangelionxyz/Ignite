@@ -31,6 +31,7 @@
 #include "graphics/window.hpp"
 
 #include "physics/2d/physics_2d.hpp"
+#include "physics/2d/physics_2d_component.hpp"
 
 #include "scene/actor.hpp"
 #include "scene/component.hpp"

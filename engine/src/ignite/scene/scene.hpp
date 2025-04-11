@@ -7,12 +7,15 @@
 #include "ignite/core/logger.hpp"
 #include "ignite/core/types.hpp"
 
+#include <ignite/physics/2d/physics_2d.hpp>
 #include <nvrhi/nvrhi.h>
 
 namespace ignite
 {
     class Camera;
-    using EntityMap = std::unordered_map<ignite::UUID, entt::entity>;
+    class Physics2D;
+
+    using EntityMap = std::unordered_map<UUID, entt::entity>;
 
     class Scene
     {
@@ -22,6 +25,9 @@ namespace ignite
 
         ~Scene();
 
+        void OnStart();
+        void OnStop();
+        
         void OnUpdate(f32 deltaTime);
         void OnRender(Camera *camera, nvrhi::IFramebuffer *framebuffer);
 
@@ -31,30 +37,30 @@ namespace ignite
         void DestroyEntity(entt::entity entity);
 
         template<typename T, typename... Args>
-        T &EntityAddComponent(const entt::entity entity, Args &&... args)
+        T &AddComponent(const entt::entity entity, Args &&... args)
         {
-            if (EntityHasComponent<T>(entity))
-                return EntityGetComponent<T>(entity);
+            if (HasComponent<T>(entity))
+                return GetComponent<T>(entity);
 
             T &comp = registry->emplace_or_replace<T>(entity, std::forward<Args>(args)...);
             return comp;
         }
 
         template<typename T, typename... Args>
-        T &EntityAddOrReplaceComponent(const entt::entity entity, Args &&... args)
+        T &AddOrReplaceComponent(const entt::entity entity, Args &&... args)
         {
             T &comp = registry->emplace_or_replace<T>(entity, std::forward<Args>(args)...);
             return comp;
         }
 
         template<typename T>
-        T &EntityGetComponent(const entt::entity entity)
+        T &GetComponent(const entt::entity entity)
         {
             return registry->get<T>(entity);
         }
 
         template<typename T>
-        bool EntityHasComponent(const entt::entity entity) const
+        bool HasComponent(const entt::entity entity) const
         {
             return registry->all_of<T>(entity);
         }
@@ -62,5 +68,6 @@ namespace ignite
         std::string name;
         entt::registry *registry = nullptr;
         EntityMap entities;
+        Scope<Physics2D> physics2D;
     };
 }

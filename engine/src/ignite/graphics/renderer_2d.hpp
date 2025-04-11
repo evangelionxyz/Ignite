@@ -16,7 +16,7 @@ namespace ignite
 
     struct BatchRender
     {
-        size_t maxCount = 1024 * 2;
+        size_t maxCount = 1024 * 3;
         size_t maxVertices = maxCount * 4;
         size_t maxIndices = maxCount * 6;
         VertexQuad *vertexBufferBase = nullptr;

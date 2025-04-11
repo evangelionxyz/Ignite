@@ -3,12 +3,15 @@
 #include "camera.hpp"
 #include "ignite/graphics/renderer_2d.hpp"
 
+#include "ignite/physics/2d/physics_2d.hpp"
+
 namespace ignite
 {
     Scene::Scene(const std::string &_name)
         : name(_name)
     {
         registry = new entt::registry();
+        physics2D = CreateScope<Physics2D>(this);
     }
 
     Scene::~Scene()
@@ -17,8 +20,19 @@ namespace ignite
             delete registry;
     }
 
+    void Scene::OnStart()
+    {
+        physics2D->SimulationStart();
+    }
+
+    void Scene::OnStop()
+    {
+        physics2D->SimulationStop();
+    }
+
     void Scene::OnUpdate(f32 deltaTime)
     {
+        physics2D->Simulate(deltaTime);
     }
 
     void Scene::OnRender(Camera *camera, nvrhi::IFramebuffer *framebuffer)
@@ -27,8 +41,8 @@ namespace ignite
 
         for (auto &e : entities)
         {
-            Transform &tr = EntityGetComponent<Transform>(e.second);
-            Sprite2D &sprite = EntityGetComponent<Sprite2D>(e.second);
+            Transform &tr = GetComponent<Transform>(e.second);
+            Sprite2D &sprite = GetComponent<Sprite2D>(e.second);
             Renderer2D::DrawQuad(tr.translation, tr.scale, sprite.color);
         }
 
@@ -61,11 +75,18 @@ namespace ignite
 
     void Scene::DestroyEntity(entt::entity entity)
     {
+        if (!registry->valid(entity))
+            return;
+            
+        physics2D->DestroyBody(entity);
         registry->destroy(entity);
-        entities.erase(std::ranges::find_if(entities, [entity](const auto &pair)
-        {
+        auto it = std::find_if(entities.begin(), entities.end(),
+        [entity](const auto& pair) {
             return pair.second == entity;
-        }));
+        });
+
+        if (it != entities.end())
+            entities.erase(it);
     }
 }
 

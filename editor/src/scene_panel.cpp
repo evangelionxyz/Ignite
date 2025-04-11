@@ -6,12 +6,14 @@
 #include "ignite/core/input/key_event.hpp"
 #include "ignite/core/input/mouse_event.hpp"
 
+#include "editor_layer.hpp"
+
 #include "entt/entt.hpp"
 
 namespace ignite
 {
-    ScenePanel::ScenePanel(const char *windowTitle)
-        : IPanel(windowTitle)
+    ScenePanel::ScenePanel(const char *windowTitle, EditorLayer *editor)
+        : IPanel(windowTitle), m_Editor(editor)
     {
         Application *app = Application::GetInstance();
 
@@ -58,6 +60,8 @@ namespace ignite
     {
         ImGui::Begin("Inspector");
         ImGui::Text("Inspector");
+
+        ImGui::Text("Entity count: %zu", m_Editor->m_ActiveScene->entities.size());
 
         ImGui::PushID("CameraID");
 

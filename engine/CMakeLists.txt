@@ -16,6 +16,8 @@ add_library(IgniteEngine
   src/ignite/core/input/input.cpp
   src/ignite/graphics/renderer_2d.cpp
   src/ignite/graphics/renderer.cpp
+  src/ignite/physics/2d/physics_2d.cpp
+  src/ignite/physics/2d/physics_2d_component.hpp
 )
 
 target_precompile_headers(IgniteEngine PRIVATE src/ignite/pch.hpp)
@@ -41,7 +43,7 @@ target_include_directories(IgniteEngine PRIVATE
   ${VULKAN_SDK}/Include
 )
 
-target_link_libraries(IgniteEngine glfw spdlog ShaderMakeBlob imgui stblib)
+target_link_libraries(IgniteEngine glfw spdlog ShaderMakeBlob imgui stblib box2d)
 
 set(IGNITE_WITH_DX12 ON)
 set(IGNITE_WITH_DX11 OFF)
