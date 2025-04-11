@@ -2,21 +2,25 @@
 #include <ignite/core/application.hpp>
 #include "editor_layer.hpp"
 
-class EditorApp final : public Application
+class EditorApp final : public ignite::Application
 {
 public:
-    explicit EditorApp(const ApplicationCreateInfo &createInfo)
+    explicit EditorApp(const ignite::ApplicationCreateInfo &createInfo)
         : Application(createInfo)
     {
-        PushLayer(new IgniteEditorLayer("Ignite Editor Layer"));
+        PushLayer(new ignite::EditorLayer("Ignite Editor Layer"));
     }
 };
 
-Application *CreateApplication(const ApplicationCommandLineArgs args)
+namespace ignite
 {
-    ApplicationCreateInfo createInfo;
-    createInfo.cmdLineArgs = args;
-    createInfo.width = 1280;
-    createInfo.height = 720;
-    return new EditorApp(createInfo);
+    Application *CreateApplication(const ApplicationCommandLineArgs args)
+    {
+        ApplicationCreateInfo createInfo;
+        createInfo.cmdLineArgs = args;
+        createInfo.width = 1280;
+        createInfo.height = 720;
+        return new EditorApp(createInfo);
+    }
 }
+

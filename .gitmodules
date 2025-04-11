@@ -13,3 +13,6 @@
 [submodule "thirdparty/ShaderMake"]
 	path = thirdparty/ShaderMake
 	url = https://github.com/NVIDIA-RTX/ShaderMake.git
+[submodule "thirdparty/BOX2D"]
+	path = thirdparty/BOX2D
+	url = https://github.com/erincatto/box2d.git

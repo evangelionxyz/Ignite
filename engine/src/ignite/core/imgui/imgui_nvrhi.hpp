@@ -11,40 +11,43 @@
 
 #include <imgui.h>
 
-class ShaderFactory;
-
-struct ImGui_NVRHI
+namespace ignite
 {
-    nvrhi::DeviceHandle device;
-    nvrhi::CommandListHandle commandList;
-    nvrhi::ShaderHandle vertexShader;
-    nvrhi::ShaderHandle pixelShader;
-    nvrhi::InputLayoutHandle attributeLayout;
+    class ShaderFactory;
 
-    nvrhi::TextureHandle fontTexture;
-    nvrhi::SamplerHandle fontSampler;
+    struct ImGui_NVRHI
+    {
+        nvrhi::DeviceHandle device;
+        nvrhi::CommandListHandle commandList;
+        nvrhi::ShaderHandle vertexShader;
+        nvrhi::ShaderHandle pixelShader;
+        nvrhi::InputLayoutHandle attributeLayout;
 
-    nvrhi::BufferHandle vertexBuffer;
-    nvrhi::BufferHandle indexBuffer;
+        nvrhi::TextureHandle fontTexture;
+        nvrhi::SamplerHandle fontSampler;
 
-    nvrhi::BindingLayoutHandle bindingLayout;
-    nvrhi::GraphicsPipelineDesc graphicsPipelineDesc;
+        nvrhi::BufferHandle vertexBuffer;
+        nvrhi::BufferHandle indexBuffer;
 
-    nvrhi::GraphicsPipelineHandle graphicsPipeline;
-    std::unordered_map<nvrhi::ITexture *, nvrhi::BindingSetHandle> bindingsCache;
+        nvrhi::BindingLayoutHandle bindingLayout;
+        nvrhi::GraphicsPipelineDesc graphicsPipelineDesc;
 
-    std::vector<ImDrawVert> imguiVertexBuffer;
-    std::vector<ImDrawIdx> imguiIndexBuffer;
+        nvrhi::GraphicsPipelineHandle graphicsPipeline;
+        std::unordered_map<nvrhi::ITexture *, nvrhi::BindingSetHandle> bindingsCache;
 
-    bool Init(nvrhi::IDevice *device, Ref<ShaderFactory> shaderFactory);
-    void Shutdown();
-    bool UpdateFontTexture();
-    bool Render(nvrhi::IFramebuffer *framebuffer);
-    void BackBufferResizing();
+        std::vector<ImDrawVert> imguiVertexBuffer;
+        std::vector<ImDrawIdx> imguiIndexBuffer;
 
-private:
-    bool ReallocateBuffer(nvrhi::BufferHandle &buffer, size_t requiredSize, size_t reallocateSize, bool isIndexBuffer);
-    nvrhi::IGraphicsPipeline *GetPSO(nvrhi::IFramebuffer *framebuffer);
-    nvrhi::IBindingSet *GetBindingSet(nvrhi::ITexture *texture);
-    bool UpdateGeometry(nvrhi::ICommandList *commandList);
-};
+        bool Init(nvrhi::IDevice *device, Ref<ShaderFactory> shaderFactory);
+        void Shutdown();
+        bool UpdateFontTexture();
+        bool Render(nvrhi::IFramebuffer *framebuffer);
+        void BackBufferResizing();
+
+    private:
+        bool ReallocateBuffer(nvrhi::BufferHandle &buffer, size_t requiredSize, size_t reallocateSize, bool isIndexBuffer);
+        nvrhi::IGraphicsPipeline *GetPSO(nvrhi::IFramebuffer *framebuffer);
+        nvrhi::IBindingSet *GetBindingSet(nvrhi::ITexture *texture);
+        bool UpdateGeometry(nvrhi::ICommandList *commandList);
+    };
+}

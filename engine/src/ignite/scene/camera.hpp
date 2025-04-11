@@ -1,10 +1,6 @@
 #pragma once
 
 #include "ignite/core/types.hpp"
-#include "ignite/core/input/event.hpp"
-#include "ignite/core/input/key_codes.hpp"
-#include "ignite/core/input/event.hpp"
-#include "ignite/core/input/mouse_event.hpp"
 
 #include <string>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -12,15 +8,15 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/quaternion.hpp>
-#include <glm/gtx/compatibility.hpp>
 
-
-class Camera
+namespace ignite
 {
-public:
+  class Camera
+  {
+  public:
     enum class Type
     {
-        Unknown, Perspective, Orthographic
+      Unknown, Perspective, Orthographic
     };
 
     Camera() = default;
@@ -52,7 +48,8 @@ public:
     glm::mat4 projectionMatrix;
     Type projectionType;
 
-protected:
+  protected:
     f32 m_AspectRatio = 1.0f;
     std::string m_Name;
-};
+  };
+}

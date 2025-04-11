@@ -1,10 +1,13 @@
 #pragma once
 
-class DeviceManager;
-
-class Renderer
+namespace ignite
 {
-public:
-    static void Init(DeviceManager *deviceManager);
-    static void Shutdown();
-};
+    class DeviceManager;
+
+    class Renderer
+    {
+    public:
+        static void Init(DeviceManager *deviceManager);
+        static void Shutdown();
+    };
+}

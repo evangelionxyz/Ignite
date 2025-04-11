@@ -1,6 +1,5 @@
 add_library(IgniteEngine
   src/ignite/asset/asset.cpp
-
   src/ignite/core/vfs/vfs.cpp
   src/ignite/core/application.cpp
   src/ignite/core/device/device_manager.cpp
@@ -8,11 +7,10 @@ add_library(IgniteEngine
   src/ignite/core/logger.cpp
   src/ignite/core/imgui/imgui_nvrhi.cpp
   src/ignite/core/imgui/imgui_layer.cpp
-
+  src/ignite/core/uuid.cpp
   src/ignite/graphics/shader_factory.cpp
   src/ignite/graphics/texture.cpp
   src/ignite/graphics/window.cpp
-
   src/ignite/scene/scene.cpp
   src/ignite/scene/camera.cpp
   src/ignite/core/input/input.cpp
@@ -23,9 +21,7 @@ add_library(IgniteEngine
 target_precompile_headers(IgniteEngine PRIVATE src/ignite/pch.hpp)
 
 if (MSVC)
-    # MSVC automatically handles /Yu
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    # GCC and Clang typically support `-Winvalid-pch` and `-include`
     target_compile_options(IgniteEngine PRIVATE -Winvalid-pch)
 endif()
 
@@ -33,11 +29,13 @@ target_include_directories(IgniteEngine PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/
   ${THIRDPARTY}/GLFW/src
   ${THIRDPARTY}/GLFW/include
+  ${THIRDPARTY}/BOX2D/include
   ${THIRDPARTY}/NVRHI/include
   ${THIRDPARTY}/NVRHI/thirdparty/Vulkan-Headers/include
   ${THIRDPARTY}/SPDLOG/include
   ${THIRDPARTY}/GLM
   ${THIRDPARTY}/IMGUI
+  ${THIRDPARTY}/entt
   ${THIRDPARTY}/STB/include
   ${THIRDPARTY}/ShaderMake/include
   ${VULKAN_SDK}/Include
@@ -80,3 +78,5 @@ target_compile_definitions(IgniteEngine PRIVATE
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET IgniteEngine PROPERTY CXX_STANDARD 23)
 endif()
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/scripting)

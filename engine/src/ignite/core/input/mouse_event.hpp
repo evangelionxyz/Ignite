@@ -4,7 +4,9 @@
 #include "mouse_codes.hpp"
 #include <sstream>
 
-class MouseMovedEvent : public Event
+namespace ignite
+{
+	class MouseMovedEvent final : public Event
 	{
 	public:
 		MouseMovedEvent(const float x, const float y)
@@ -26,7 +28,7 @@ class MouseMovedEvent : public Event
 		float m_MouseX, m_MouseY;
 	};
 
-	class MouseScrolledEvent : public Event
+	class MouseScrolledEvent final : public Event
 	{
 	public:
 		MouseScrolledEvent(const float xOffset, const float yOffset)
@@ -93,3 +95,4 @@ class MouseMovedEvent : public Event
 
 		EVENT_CLASS_TYPE(MouseButtonReleased)
 	};
+}

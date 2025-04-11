@@ -13,79 +13,81 @@
 
 #include <filesystem>
 
-class ShaderFactory;
-
-struct ApplicationCommandLineArgs
+namespace ignite
 {
-    i32 count = 0;
-    char **args = nullptr;
+    class ShaderFactory;
 
-    const char *operator[](int index) const
+    struct ApplicationCommandLineArgs
     {
-        LOG_ASSERT(index < count, "Invalid index");
-        return args[index];
-    }
-};
+        i32 count = 0;
+        char **args = nullptr;
 
-struct ApplicationCreateInfo
-{
-    ApplicationCommandLineArgs cmdLineArgs;
-    std::string name = "Ignite";
-    std::string iconPath = " ";
-    std::string workingDirectory;
-    nvrhi::GraphicsAPI graphicsApi = nvrhi::GraphicsAPI::D3D12;
+        const char *operator[](int index) const
+        {
+            LOG_ASSERT(index < count, "Invalid index");
+            return args[index];
+        }
+    };
 
-    u32 width = 1280;
-    u32 height = 640;
-    bool maximized = false;
-};
+    struct ApplicationCreateInfo
+    {
+        ApplicationCommandLineArgs cmdLineArgs;
+        std::string name = "Ignite";
+        std::string iconPath = " ";
+        std::string workingDirectory;
+        nvrhi::GraphicsAPI graphicsApi = nvrhi::GraphicsAPI::D3D12;
 
-class Application
-{
-public:
-    Application(const ApplicationCreateInfo &createInfo);
-    virtual ~Application() = default;
+        u32 width = 1280;
+        u32 height = 640;
+        bool maximized = false;
+    };
 
-    void PushLayer(Layer *layer);
-    void PopLayer(Layer *layer);
+    class Application
+    {
+    public:
+        Application(const ApplicationCreateInfo &createInfo);
+        virtual ~Application() = default;
 
-    void Run();
-    void OnEvent(Event &e);
-    bool OnWindowResizeCallback(WindowResizeEvent &event);
+        void PushLayer(Layer *layer);
+        void PopLayer(Layer *layer);
 
-    std::string GetAppName() { return m_CreateInfo.name; }
-    const ApplicationCreateInfo &GetCreateInfo() { return m_CreateInfo; }
+        void Run();
+        void OnEvent(Event &e);
+        bool OnWindowResizeCallback(WindowResizeEvent &event);
 
-    Window *GetWindow() { return m_Window.get(); }
+        std::string GetAppName() { return m_CreateInfo.name; }
+        const ApplicationCreateInfo &GetCreateInfo() { return m_CreateInfo; }
 
-    static Application *GetInstance();
-    static DeviceManager *GetDeviceManager();
-    static Ref<ShaderFactory> GetShaderFactory();
+        Window *GetWindow() { return m_Window.get(); }
 
-    static void SetWindowTitle(const std::string &title);
+        static Application *GetInstance();
+        static DeviceManager *GetDeviceManager();
+        static Ref<ShaderFactory> GetShaderFactory();
 
-    static void WindowIconify();
-    static void WindowMaximize();
-    static void WindowRestore();
+        static void SetWindowTitle(const std::string &title);
 
-private:
-    void UpdateAverageTimeTime(f64 elapsedTime);
+        static void WindowIconify();
+        static void WindowMaximize();
+        static void WindowRestore();
 
-protected:
-    ApplicationCreateInfo m_CreateInfo;
-    Scope<Window> m_Window;
-    Ref<ShaderFactory> m_ShaderFactory;
-    LayerStack m_LayerStack;
-    Ref<ImGuiLayer> m_ImGuiLayer;
-    Input m_Input;
+    private:
+        void UpdateAverageTimeTime(f64 elapsedTime);
 
-    f64 m_PreviousTime = 0.0;
-    f64 m_FrameTimeSum = 0.0;
-    f64 m_AverageFrameTime = 0.0;
-    const f64 m_AverageTimeUpdateInterval = 0.5;
-    i32 m_NumberOfAccumulatedFrames = 0;
-    i32 m_FrameIndex = 0;
+    protected:
+        ApplicationCreateInfo m_CreateInfo;
+        Scope<Window> m_Window;
+        Ref<ShaderFactory> m_ShaderFactory;
+        LayerStack m_LayerStack;
+        Ref<ImGuiLayer> m_ImGuiLayer;
+        Input m_Input;
 
-};
+        f64 m_PreviousTime = 0.0;
+        f64 m_FrameTimeSum = 0.0;
+        f64 m_AverageFrameTime = 0.0;
+        const f64 m_AverageTimeUpdateInterval = 0.5;
+        i32 m_NumberOfAccumulatedFrames = 0;
+        i32 m_FrameIndex = 0;
+    };
 
-Application *CreateApplication(const ApplicationCommandLineArgs args);
+    Application *CreateApplication(ApplicationCommandLineArgs args);
+}

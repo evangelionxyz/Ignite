@@ -8,7 +8,7 @@
 #include <regex>
 #include <vector>
 
-namespace stringutils
+namespace ignite::stringutils
 {
 inline bool ends_with(std::string_view const &value, std::string_view const &ending)
 {

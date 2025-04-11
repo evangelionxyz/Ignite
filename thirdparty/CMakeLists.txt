@@ -5,6 +5,7 @@ include(imgui.cmake)
 include(stbi.cmake)
 add_subdirectory(NVRHI)
 add_subdirectory(SPDLOG)
+add_subdirectory(BOX2D)
 
 if (NOT TARGET ShaderMake)
     add_subdirectory(ShaderMake)

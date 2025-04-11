@@ -1,25 +1,25 @@
 add_executable(IgniteEditor
-    src/editor_layer.cpp
-    src/editor_app.cpp
-    src/scene_panel.cpp
-    src/render_target.cpp
+  src/editor_layer.cpp
+  src/editor_app.cpp
+  src/scene_panel.cpp
+  src/render_target.cpp
 )
 
 target_include_directories(IgniteEditor PRIVATE
-    src
-    ${IGNITE_DIR}/src
-
-    ${THIRDPARTY}/GLFW/src
-    ${THIRDPARTY}/GLFW/include
-    ${THIRDPARTY}/NVRHI/include
-    ${THIRDPARTY}/NVRHI/thirdparty/Vulkan-Headers/include
-
-    ${THIRDPARTY}/SPDLOG/include
-    ${THIRDPARTY}/GLM
-    ${THIRDPARTY}/IMGUI
-    ${THIRDPARTY}/STB/include
-    ${THIRDPARTY}/ShaderMake/include
-    ${VULKAN_SDK}/Include
+  src
+  ${IGNITE_DIR}/src
+  ${THIRDPARTY}/GLFW/src
+  ${THIRDPARTY}/GLFW/include
+  ${THIRDPARTY}/NVRHI/include
+  ${THIRDPARTY}/NVRHI/thirdparty/Vulkan-Headers/include
+  ${THIRDPARTY}/BOX2D/include
+  ${THIRDPARTY}/SPDLOG/include
+  ${THIRDPARTY}/GLM
+  ${THIRDPARTY}/IMGUI
+  ${THIRDPARTY}/entt
+  ${THIRDPARTY}/STB/include
+  ${THIRDPARTY}/ShaderMake/include
+  ${VULKAN_SDK}/Include
 )
 
 target_link_libraries(IgniteEditor IgniteEngine)
@@ -30,6 +30,7 @@ set(IGNITE_WITH_DX11 OFF)
 if (WIN32)
   add_definitions(-DPLATFORM_WINDOWS)
   add_definitions(-DNOMINMAX)
+  add_definitions(-DWIN32_LEAN_AND_MEAN)
 
   if (IGNITE_WITH_DX12)
     target_compile_definitions(IgniteEditor PRIVATE IGNITE_WITH_DX12)

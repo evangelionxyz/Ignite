@@ -10,20 +10,6 @@
     #endif
 #endif
 
-#ifdef SHARED_BUILD
-    #ifdef _WIN32
-        #define IGNITE_API __declspec(dllexport)
-    #else
-        #define IGNITE_API __attribute__((visibility("default")))
-    #endif
-#else
-    #ifdef _WIN32
-        #define IGNITE_API __declspec(dllimport)
-    #else
-        #define IGNITE_API
-    #endif
-#endif
-
 #ifdef DEBUG_BUILD
     #define ENABLE_ASSERTS
     #ifdef _WIN32

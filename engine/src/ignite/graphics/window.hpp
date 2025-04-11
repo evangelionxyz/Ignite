@@ -13,34 +13,37 @@
 
 #include "ignite/core/types.hpp"
 
-class Window
+namespace ignite
 {
-public:
-    explicit Window(const char *windowTitle, const DeviceCreationParameters &createInfo, nvrhi::GraphicsAPI graphicsApi);
+    class Window
+    {
+    public:
+        explicit Window(const char *windowTitle, const DeviceCreationParameters &createInfo, nvrhi::GraphicsAPI graphicsApi);
 
-    [[nodiscard]] GLFWwindow *GetWindowHandle() const { return m_DeviceManager->m_Window; }
-    [[nodiscard]] bool IsLooping() const { return glfwWindowShouldClose(m_DeviceManager->m_Window) == 0; };
+        [[nodiscard]] GLFWwindow *GetWindowHandle() const { return m_DeviceManager->m_Window; }
+        [[nodiscard]] bool IsLooping() const { return glfwWindowShouldClose(m_DeviceManager->m_Window) == 0; };
 
-    void PollEvents();
-    void Destroy();
+        void PollEvents();
+        void Destroy();
 
-    std::string &GetTitle() { return m_WindowTitle; }
-    void SetEventCallback(const std::function<void(Event&)>& callback);
-    [[nodiscard]] DeviceManager *GetDeviceManager() const { return m_DeviceManager; }
+        std::string &GetTitle() { return m_WindowTitle; }
+        void SetEventCallback(const std::function<void(Event&)>& callback);
+        [[nodiscard]] DeviceManager *GetDeviceManager() const { return m_DeviceManager; }
 
-    [[nodiscard]] bool IsVisible() const { return m_DeviceManager->m_WindowVisible; }
-    [[nodiscard]] bool IsInFocus() const { return m_DeviceManager->m_WindowIsInFocus; }
+        [[nodiscard]] bool IsVisible() const { return m_DeviceManager->m_WindowVisible; }
+        [[nodiscard]] bool IsInFocus() const { return m_DeviceManager->m_WindowIsInFocus; }
 
-    void SetTitle(const std::string &title) const;
+        void SetTitle(const std::string &title) const;
 
-    void Iconify() const;
-    void Maximize() const;
-    void Restore() const;
+        void Iconify() const;
+        void Maximize() const;
+        void Restore() const;
 
-private:
-    void SetCallbacks() const;
-    DeviceManager *m_DeviceManager;
-    std::string m_WindowTitle;
+    private:
+        void SetCallbacks() const;
+        DeviceManager *m_DeviceManager;
+        std::string m_WindowTitle;
 
-    std::function<void(Event&)> m_Callback;
-};
+        std::function<void(Event&)> m_Callback;
+    };
+}

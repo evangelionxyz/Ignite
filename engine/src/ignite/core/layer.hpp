@@ -9,28 +9,29 @@ namespace nvrhi
     class IFramebuffer;
 }
 
-class Event;
-
-class Layer
+namespace ignite
 {
-public:
-    virtual ~Layer() = default;
+    class Event;
 
-    Layer() = default;
-
-    Layer(const std::string &name)
-        : m_Name(name)
+    class Layer
     {
-    }
+    public:
+        virtual ~Layer() = default;
+        Layer() = default;
+        Layer(const std::string &name)
+            : m_Name(name)
+        {
+        }
 
-    virtual void OnAttach() { }
-    virtual void OnDetach() { }
-    virtual void OnUpdate(float deltaTime) { }
-    virtual void OnRender(nvrhi::IFramebuffer *framebuffer) { }
-    virtual void OnEvent(Event &e) { }
-    virtual void OnGuiRender() { }
-    std::string GetName() { return m_Name; }
+        virtual void OnAttach() { }
+        virtual void OnDetach() { }
+        virtual void OnUpdate(float deltaTime) { }
+        virtual void OnRender(nvrhi::IFramebuffer *framebuffer) { }
+        virtual void OnEvent(Event &e) { }
+        virtual void OnGuiRender() { }
+        std::string GetName() { return m_Name; }
 
-protected:
-    std::string m_Name;
-};
+    protected:
+        std::string m_Name;
+    };
+}

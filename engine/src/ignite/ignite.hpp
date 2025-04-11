@@ -1,7 +1,7 @@
 #pragma once
 
-#include "asset/asset.hpp"
 
+#include "core/uuid.hpp"
 #include "core/imgui/imgui_nvrhi.hpp"
 #include "core/imgui/imgui_layer.hpp"
 #include "core/vfs/vfs.hpp"
@@ -24,10 +24,16 @@
 #include "core/time.hpp"
 #include "core/input/input.hpp"
 
+#include "asset/asset.hpp"
+
 #include "graphics/renderer.hpp"
 #include "graphics/renderer_2d.hpp"
 #include "graphics/shader_factory.hpp"
 #include "graphics/window.hpp"
 
+#include "physics/2d/physics_2d.hpp"
+
+#include "scene/actor.hpp"
+#include "scene/component.hpp"
 #include "scene/scene.hpp"
 #include "scene/camera.hpp"
