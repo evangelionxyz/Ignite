@@ -12,26 +12,53 @@ struct PushConstant2D
     glm::mat4 mvpMatrix;
 };
 
+struct BatchRender
+{
+    size_t maxCount = 1024 * 2;
+    size_t maxVertices = maxCount * 4;
+    size_t maxIndices = maxCount * 6;
+    VertexQuad *vertexBufferBase = nullptr;
+    VertexQuad *vertexBufferPtr = nullptr;
+    nvrhi::BufferHandle vertexBuffer = nullptr;
+    nvrhi::BufferHandle indexBuffer = nullptr;
+    nvrhi::ShaderHandle vertexShader = nullptr;
+    nvrhi::ShaderHandle pixelShader = nullptr;
+    nvrhi::TextureHandle texture = nullptr;
+    nvrhi::SamplerHandle textureSampler = nullptr;
+    nvrhi::InputLayoutHandle inputLayout = nullptr;
+    nvrhi::BindingLayoutHandle bindingLayout = nullptr;
+    nvrhi::BindingSetHandle bindingSet = nullptr;
+    nvrhi::GraphicsPipelineHandle pipeline = nullptr;
+    u32 indexCount = 0;
+    u32 count = 0;
+
+    void Destroy()
+    {
+        vertexBufferPtr = nullptr;
+        if (vertexBufferBase)
+            delete[] vertexBufferBase;
+
+        vertexBuffer = nullptr;
+        indexBuffer = nullptr;
+        vertexShader = nullptr;
+        pixelShader = nullptr;
+        texture = nullptr;
+        textureSampler = nullptr;
+        inputLayout = nullptr;
+        bindingLayout = nullptr;
+        bindingSet = nullptr;
+        pipeline = nullptr;
+
+        indexCount = 0;
+        count = 0;
+    }
+};
+
 struct Renderer2DData
 {
-    const size_t maxQuadCount = 1024 * 2;
-    const size_t maxQuadVerts = maxQuadCount * 4;
-    const size_t maxQuadIndices = maxQuadCount * 6;
-    u32 quadCount = 0;
-    VertexQuad *quadVertexBufferBase = nullptr;
-    VertexQuad *quadVertexBufferPtr = nullptr;
-    u32 quadIndexCount = 0;
-    nvrhi::BufferHandle quadVertexBuffer = nullptr;
-    nvrhi::BufferHandle quadIndexBuffer = nullptr;
-    nvrhi::ShaderHandle quadVertexShader = nullptr;
-    nvrhi::ShaderHandle quadPixelShader = nullptr;
-    nvrhi::TextureHandle quadTexture = nullptr;
-    nvrhi::SamplerHandle quadTextureSampler = nullptr;
-    nvrhi::InputLayoutHandle quadInputLayout = nullptr;
-    nvrhi::BindingLayoutHandle quadBindingLayout = nullptr;
-    nvrhi::BindingSetHandle quadBindingSet = nullptr;
-    nvrhi::GraphicsPipelineHandle quadPipeline = nullptr;
+    BatchRender quadBatch;
 
+    nvrhi::IFramebuffer *framebuffer;
     nvrhi::BufferHandle constantBuffer = nullptr;
     DeviceManager *deviceManager = nullptr;
     nvrhi::ICommandList *commandList = nullptr;
@@ -43,8 +70,8 @@ public:
     static void Init(DeviceManager *deviceManager);
     static void Shutdown();
 
-    static void Begin(Camera *camera);
-    static void Flush(nvrhi::IFramebuffer *framebuffer);
+    static void Begin(Camera *camera, nvrhi::IFramebuffer *framebuffer);
+    static void Flush();
     static void End();
 
     static void DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color);

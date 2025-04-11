@@ -260,8 +260,7 @@ void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
 
     nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
 
-    Renderer2D::Begin(m_ScenePanel->GetViewportCamera());
-
+    Renderer2D::Begin(m_ScenePanel->GetViewportCamera(), m_ScenePanel->GetRT()->framebuffer);
     i32 gridSize = 20;
     for (i32 y = -gridSize; y < gridSize; y++)
     {
@@ -281,7 +280,7 @@ void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
         }
     }
 
-    Renderer2D::Flush(m_ScenePanel->GetRT()->framebuffer);
+    Renderer2D::Flush();
     Renderer2D::End();
 
     m_CommandList->close();
