@@ -5,8 +5,8 @@ add_library(IgniteEngine
   src/ignite/core/device/device_manager.cpp
   src/ignite/core/device/device_manager_vk.cpp
   src/ignite/core/logger.cpp
-  src/ignite/core/imgui/imgui_nvrhi.cpp
-  src/ignite/core/imgui/imgui_layer.cpp
+  src/ignite/imgui/imgui_nvrhi.cpp
+  src/ignite/imgui/imgui_layer.cpp
   src/ignite/core/uuid.cpp
   src/ignite/graphics/shader_factory.cpp
   src/ignite/graphics/texture.cpp

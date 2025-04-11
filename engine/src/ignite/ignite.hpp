@@ -1,9 +1,5 @@
 #pragma once
-
-
 #include "core/uuid.hpp"
-#include "core/imgui/imgui_nvrhi.hpp"
-#include "core/imgui/imgui_layer.hpp"
 #include "core/vfs/vfs.hpp"
 #include "core/application.hpp"
 #include "core/base.hpp"
@@ -25,6 +21,9 @@
 #include "core/input/input.hpp"
 
 #include "asset/asset.hpp"
+
+#include "imgui/imgui_nvrhi.hpp"
+#include "imgui/imgui_layer.hpp"
 
 #include "graphics/renderer.hpp"
 #include "graphics/renderer_2d.hpp"

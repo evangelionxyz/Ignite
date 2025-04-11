@@ -2,7 +2,7 @@
 
 #include "ignite/graphics/shader_factory.hpp"
 #include "input/app_event.hpp"
-#include "imgui/imgui_layer.hpp"
+#include "ignite/imgui/imgui_layer.hpp"
 #include "nvrhi/utils.h"
 #include "ignite/graphics/renderer.hpp"
 

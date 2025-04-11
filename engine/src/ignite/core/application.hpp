@@ -7,7 +7,7 @@
 #include "device/device_manager.hpp"
 #include "ignite/core/input/event.hpp"
 #include "ignite/graphics/window.hpp"
-#include "imgui/imgui_layer.hpp"
+#include "ignite/imgui/imgui_layer.hpp"
 #include "input/app_event.hpp"
 #include "input/input.hpp"
 
