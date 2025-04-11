@@ -9,6 +9,8 @@
 #include "ignite/core/application.hpp"
 #include "ignite/core/device/device_manager.hpp"
 
+#include "texture.hpp"
+
 Renderer2DData s_Data;
 
 void Renderer2D::Init(DeviceManager *deviceManager)
@@ -76,35 +78,13 @@ void Renderer2D::InitQuadData(nvrhi::IDevice *device, nvrhi::ICommandList *comma
     s_Data.quadBatch.indexBuffer = device->createBuffer(ibDesc);
     LOG_ASSERT(s_Data.quadBatch.indexBuffer, "Failed to create Renderer 2D Quad Index Buffer");
 
-    // FIXME: Temporary texture creation
-    i32 textureWidth, textureHeight, textureNumChannels;
-    stbi_uc *pixelData = stbi_load("Resources/textures/test.png", &textureWidth, &textureHeight, &textureNumChannels, 4);
-    LOG_ASSERT(pixelData, "Failed to write pixel data to texture");
-
-    const auto textureDesc = nvrhi::TextureDesc()
-        .setDimension(nvrhi::TextureDimension::Texture2D)
-        .setWidth(textureWidth)
-        .setHeight(textureHeight)
-        .setFormat(nvrhi::Format::RGBA8_UNORM)
-        .setInitialState(nvrhi::ResourceStates::ShaderResource)
-        .setKeepInitialState(true)
-        .setDebugName("Geometry Texture");
-
-    s_Data.quadBatch.texture = device->createTexture(textureDesc);
-    LOG_ASSERT(s_Data.quadBatch.texture, "Failed to create texture");
-
-    // create sampler
-    const auto samplerDesc = nvrhi::SamplerDesc()
-        .setAllAddressModes(nvrhi::SamplerAddressMode::Repeat)
-        .setAllFilters(true);
-
-    s_Data.quadBatch.textureSampler = device->createSampler(samplerDesc);
-    LOG_ASSERT(s_Data.quadBatch.textureSampler, "Failed to create texture");
+    // create texture
+    s_Data.quadBatch.texture = Texture::Create("Resources/textures/test.png");
 
     // create binding set
     auto bindingSetDesc = nvrhi::BindingSetDesc()
-        .addItem(nvrhi::BindingSetItem::Texture_SRV(0, s_Data.quadBatch.texture))
-        .addItem(nvrhi::BindingSetItem::Sampler(0, s_Data.quadBatch.textureSampler))
+        .addItem(nvrhi::BindingSetItem::Texture_SRV(0, s_Data.quadBatch.texture->GetHandle()))
+        .addItem(nvrhi::BindingSetItem::Sampler(0, s_Data.quadBatch.texture->GetSampler()))
         .addItem(nvrhi::BindingSetItem::ConstantBuffer(1, s_Data.constantBuffer));
 
     s_Data.quadBatch.bindingSet = device->createBindingSet(bindingSetDesc, s_Data.quadBatch.bindingLayout);
@@ -163,9 +143,8 @@ void Renderer2D::InitQuadData(nvrhi::IDevice *device, nvrhi::ICommandList *comma
     delete[] indices;
 
     // write texture buffer
-    size_t rowPitchSize = textureWidth * textureNumChannels;
-    commandList->writeTexture(s_Data.quadBatch.texture, 0, 0, pixelData, rowPitchSize);
-    LOG_ASSERT(commandList, "Failed to write texture to command list");
+    s_Data.quadBatch.texture->Write(commandList);
+    
     commandList->close();
     device->executeCommandList(commandList);
 }

@@ -6,6 +6,7 @@
 
 class Camera;
 class DeviceManager;
+class Texture;
 
 struct PushConstant2D
 {
@@ -23,8 +24,7 @@ struct BatchRender
     nvrhi::BufferHandle indexBuffer = nullptr;
     nvrhi::ShaderHandle vertexShader = nullptr;
     nvrhi::ShaderHandle pixelShader = nullptr;
-    nvrhi::TextureHandle texture = nullptr;
-    nvrhi::SamplerHandle textureSampler = nullptr;
+    Ref<Texture> texture = nullptr;
     nvrhi::InputLayoutHandle inputLayout = nullptr;
     nvrhi::BindingLayoutHandle bindingLayout = nullptr;
     nvrhi::BindingSetHandle bindingSet = nullptr;
@@ -43,7 +43,6 @@ struct BatchRender
         vertexShader = nullptr;
         pixelShader = nullptr;
         texture = nullptr;
-        textureSampler = nullptr;
         inputLayout = nullptr;
         bindingLayout = nullptr;
         bindingSet = nullptr;

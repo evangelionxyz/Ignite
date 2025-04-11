@@ -251,12 +251,13 @@ void IgniteEditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)
     // main scene rendering
     m_CommandList->open();
     m_CommandList->clearTextureFloat(m_ScenePanel->GetRT()->texture,
-                nvrhi::AllSubresources, nvrhi::Color(
-                    m_ScenePanel->GetRT()->clearColor.r,
-                    m_ScenePanel->GetRT()->clearColor.g,
-                    m_ScenePanel->GetRT()->clearColor.b,
-                    1.0f)
-                );
+        nvrhi::AllSubresources, nvrhi::Color(
+            m_ScenePanel->GetRT()->clearColor.r,
+            m_ScenePanel->GetRT()->clearColor.g,
+            m_ScenePanel->GetRT()->clearColor.b,
+            1.0f
+        )
+    );
 
     nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
 

@@ -20,6 +20,15 @@ add_library(IgniteEngine
   src/ignite/graphics/renderer.cpp
 )
 
+target_precompile_headers(IgniteEngine PRIVATE src/ignite/pch.hpp)
+
+if (MSVC)
+    # MSVC automatically handles /Yu
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    # GCC and Clang typically support `-Winvalid-pch` and `-include`
+    target_compile_options(IgniteEngine PRIVATE -Winvalid-pch)
+endif()
+
 target_include_directories(IgniteEngine PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/
   ${THIRDPARTY}/GLFW/src
