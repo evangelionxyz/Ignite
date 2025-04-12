@@ -16,20 +16,24 @@ namespace ignite
 
     struct BatchRender
     {
-        size_t maxCount = 1024 * 3;
-        size_t maxVertices = maxCount * 4;
-        size_t maxIndices = maxCount * 6;
+        const size_t maxCount = 1024 * 3;
+        const size_t maxVertices = maxCount * 4;
+        const size_t maxIndices = maxCount * 6;
+        const i32 maxTextureCount = 16;
+
         VertexQuad *vertexBufferBase = nullptr;
         VertexQuad *vertexBufferPtr = nullptr;
         nvrhi::BufferHandle vertexBuffer = nullptr;
         nvrhi::BufferHandle indexBuffer = nullptr;
         nvrhi::ShaderHandle vertexShader = nullptr;
         nvrhi::ShaderHandle pixelShader = nullptr;
-        Ref<Texture> texture = nullptr;
         nvrhi::InputLayoutHandle inputLayout = nullptr;
         nvrhi::BindingLayoutHandle bindingLayout = nullptr;
-        nvrhi::BindingSetHandle bindingSet = nullptr;
         nvrhi::GraphicsPipelineHandle pipeline = nullptr;
+        nvrhi::SamplerHandle sampler = nullptr;
+        nvrhi::BindingSetHandle bindingSet = nullptr;
+        std::vector<Ref<Texture>> textureSlots;
+        u8 textureSlotIndex = 1; // 0 for white texture
         u32 indexCount = 0;
         u32 count = 0;
 
@@ -43,7 +47,6 @@ namespace ignite
             indexBuffer = nullptr;
             vertexShader = nullptr;
             pixelShader = nullptr;
-            texture = nullptr;
             inputLayout = nullptr;
             bindingLayout = nullptr;
             bindingSet = nullptr;
@@ -74,10 +77,13 @@ namespace ignite
         static void Flush();
         static void End();
 
-        static void DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color);
+        static void DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color, Ref<Texture> texture = nullptr);
 
         static void InitConstantBuffer(nvrhi::IDevice *device);
         static void InitQuadData(nvrhi::IDevice *device, nvrhi::ICommandList *commandList);
+
+        static u32 GetOrInsertTexture(Ref<Texture> texture);
+        static void UpdateTextureBindings();
 
         static nvrhi::ICommandList *GetCommandList();
     };

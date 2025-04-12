@@ -6,6 +6,7 @@
 #include <nvrhi/utils.h>
 
 #include "ignite/scene/camera.hpp"
+#include "ignite/graphics/texture.hpp"
 
 #include <queue>
 
@@ -43,8 +44,14 @@ namespace ignite
         nvrhi::IDevice *device = m_DeviceManager->GetDevice();
 
         // write buffer with command list
-        m_CommandList = m_DeviceManager->GetDevice()->createCommandList();
+        m_CommandList = device->createCommandList();
         Renderer2D::InitQuadData(m_DeviceManager->GetDevice(), m_CommandList);
+
+        m_Texture = Texture::Create("Resources/textures/test.png");
+        m_CommandList->open();
+        m_Texture->Write(m_CommandList);
+        m_CommandList->close();
+        device->executeCommandList(m_CommandList);
 
         m_ScenePanel = CreateRef<ScenePanel>("Scene Panel", this);
         m_ScenePanel->CreateRenderTarget(device, 1280.0f, 720.0f);
@@ -52,33 +59,9 @@ namespace ignite
         m_ActiveScene = CreateRef<Scene>("test scene");
 
         {
-            const entt::entity e = m_ActiveScene->CreateEntity("E1");
-            m_ActiveScene->AddComponent<Sprite2D>(e);
-            m_ActiveScene->GetComponent<Transform>(e).translation.y = 10.0f;
-            auto &rb = m_ActiveScene->AddComponent<Rigidbody2D>(e);
-            auto &bc = m_ActiveScene->AddComponent<BoxCollider2D>(e);
-            rb.type = Body2DType_Dynamic;
-
-            entities.push(e);
-        }
-
-        {
-            const entt::entity e = m_ActiveScene->CreateEntity("E2");
-            m_ActiveScene->AddComponent<Sprite2D>(e);
-            m_ActiveScene->GetComponent<Transform>(e).translation.y = 10.0f;
-            m_ActiveScene->GetComponent<Transform>(e).translation.x = 4.0f;
-            auto &rb = m_ActiveScene->AddComponent<Rigidbody2D>(e);
-            auto &bc = m_ActiveScene->AddComponent<BoxCollider2D>(e);
-            rb.type = Body2DType_Dynamic;
-
-            entities.push(e);
-        }
-
-        {
-            const entt::entity e = m_ActiveScene->CreateEntity("E2");
-            m_ActiveScene->AddComponent<Sprite2D>(e).color.r = 1.0f;
-            m_ActiveScene->GetComponent<Transform>(e).scale.x = 1000.0f;
-            m_ActiveScene->GetComponent<Transform>(e).translation.y = -3.0f;
+            const entt::entity e = m_ActiveScene->CreateEntity("floor");
+            auto &sprite = m_ActiveScene->AddComponent<Sprite2D>(e);
+            m_ActiveScene->GetComponent<Transform>(e).scale.x = 500.0f;
             auto &rb = m_ActiveScene->AddComponent<Rigidbody2D>(e);
             auto &bc = m_ActiveScene->AddComponent<BoxCollider2D>(e);
         }
@@ -104,7 +87,6 @@ namespace ignite
 
         totalTimer += deltaTime * 2.0f;
 
-
         spawnTimer -= deltaTime;
         if (spawnTimer <= 0.0f)
         {
@@ -126,7 +108,9 @@ namespace ignite
             else
             {
                 const entt::entity e = m_ActiveScene->CreateEntity("E1");
-                m_ActiveScene->AddComponent<Sprite2D>(e).color = GetRandomColor();
+                auto &sprite = m_ActiveScene->AddComponent<Sprite2D>(e);
+                sprite.color = GetRandomColor();
+                sprite.texture = m_Texture;
                 m_ActiveScene->GetComponent<Transform>(e).translation.y = glm::sin(totalTimer) + 10.0f;
                 m_ActiveScene->GetComponent<Transform>(e).translation.x = glm::sin(totalTimer) * 10.0f;
                 auto &rb = m_ActiveScene->AddComponent<Rigidbody2D>(e);
@@ -136,8 +120,6 @@ namespace ignite
                 m_ActiveScene->physics2D->Instantiate(e);
                 entities.push(e);
             }
-
-            
         }
 
         if (entities.size() >= maxQuad)

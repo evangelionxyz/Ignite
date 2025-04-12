@@ -3,11 +3,17 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <string>
-
 #include "ignite/core/uuid.hpp"
 
 namespace ignite
 {
+    class Texture;
+
+    enum CompType : u8
+    {
+        CompType_Transform = 0
+    };
+
     class IComponent
     {
     public:
@@ -66,6 +72,7 @@ namespace ignite
     {
     public:
         glm::vec4 color = {1.0f, 1.0f, 1.0f, 1.0f};
+        Ref<Texture> texture = nullptr;
     };
 }
 

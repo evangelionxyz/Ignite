@@ -26,6 +26,7 @@ namespace ignite
     private:
         Ref<ScenePanel> m_ScenePanel;
         Ref<Scene> m_ActiveScene;
+        Ref<Texture> m_Texture;
         
         nvrhi::CommandListHandle m_CommandList;
         DeviceManager *m_DeviceManager;

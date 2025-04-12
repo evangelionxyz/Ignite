@@ -5,9 +5,8 @@
 #include "ignite/core/input/event.hpp"
 #include "ignite/core/input/key_event.hpp"
 #include "ignite/core/input/mouse_event.hpp"
-
+#include "ignite/graphics/texture.hpp"
 #include "editor_layer.hpp"
-
 #include "entt/entt.hpp"
 
 namespace ignite
@@ -18,9 +17,9 @@ namespace ignite
         Application *app = Application::GetInstance();
 
         m_ViewportCamera = CreateScope<Camera>("ScenePanel-Editor Camera");
-        //m_ViewportCamera->CreateOrthographic(app->GetCreateInfo().width, app->GetCreateInfo().height, 8.0f, 0.1f, 350.0f);
-        m_ViewportCamera->CreatePerspective(45.0f, app->GetCreateInfo().width, app->GetCreateInfo().height, 0.1f, 350.0f);
-        m_ViewportCamera->position.z = 8.0f;
+        m_ViewportCamera->CreateOrthographic(app->GetCreateInfo().width, app->GetCreateInfo().height, 8.0f, 0.1f, 350.0f);
+        //m_ViewportCamera->CreatePerspective(45.0f, app->GetCreateInfo().width, app->GetCreateInfo().height, 0.1f, 350.0f);
+        //m_ViewportCamera->position.z = 8.0f;
     }
 
     void ScenePanel::CreateRenderTarget(nvrhi::IDevice *device, f32 width, f32 height)

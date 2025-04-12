@@ -1,4 +1,5 @@
 #include "renderer_2d.hpp"
+#include "renderer.hpp"
 
 #include <stb_image.h>
 #include <ignite/scene/camera.hpp>
@@ -81,16 +82,26 @@ namespace ignite
         LOG_ASSERT(s_Data.quadBatch.indexBuffer, "Failed to create Renderer 2D Quad Index Buffer");
 
         // create texture
-        //s_Data.quadBatch.texture = Texture::Create("Resources/textures/test.png");
-        u32 white = 0xffffffff;
-        Buffer buffer(&white, sizeof(white));
-        s_Data.quadBatch.texture = Texture::Create(buffer);
+        s_Data.quadBatch.textureSlots.resize(s_Data.quadBatch.maxTextureCount);
+        s_Data.quadBatch.textureSlots[0] = Renderer::whiteTexture;
 
         // create binding set
-        auto bindingSetDesc = nvrhi::BindingSetDesc()
-            .addItem(nvrhi::BindingSetItem::Texture_SRV(0, s_Data.quadBatch.texture->GetHandle()))
-            .addItem(nvrhi::BindingSetItem::Sampler(0, s_Data.quadBatch.texture->GetSampler()))
-            .addItem(nvrhi::BindingSetItem::ConstantBuffer(1, s_Data.constantBuffer));
+        nvrhi::BindingSetDesc bindingSetDesc;
+        // add constant buffer
+        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, s_Data.constantBuffer));
+
+        // then add textures
+        const auto samplerDesc = nvrhi::SamplerDesc()
+            .setAllAddressModes(nvrhi::SamplerAddressMode::Repeat)
+            .setAllFilters(true);
+
+        s_Data.quadBatch.sampler = device->createSampler(samplerDesc);
+        bindingSetDesc.addItem(nvrhi::BindingSetItem::Sampler(0, s_Data.quadBatch.sampler));
+
+        for (u32 i = 0; i < s_Data.quadBatch.maxTextureCount; ++i)
+        {
+            bindingSetDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(i, Renderer::whiteTexture->GetHandle()));
+        }
 
         s_Data.quadBatch.bindingSet = device->createBindingSet(bindingSetDesc, s_Data.quadBatch.bindingLayout);
         LOG_ASSERT(s_Data.quadBatch.bindingSet, "Failed to create binding");
@@ -125,7 +136,6 @@ namespace ignite
         s_Data.quadBatch.pipeline = device->createGraphicsPipeline(pipelineDesc, framebuffer);
         LOG_ASSERT(s_Data.quadBatch.pipeline, "Failed to create graphics pipeline");
 
-        commandList->open();
 
         // write index buffer
         u32 *indices = new u32[s_Data.quadBatch.maxIndices];
@@ -144,14 +154,12 @@ namespace ignite
             offset += 4;
         }
 
-        commandList->writeBuffer(s_Data.quadBatch.indexBuffer, indices, s_Data.quadBatch.maxIndices * sizeof(u32));
-        delete[] indices;
-
-        // write texture buffer
-        s_Data.quadBatch.texture->Write(commandList);
-
+        commandList->open();
+        commandList->writeBuffer(s_Data.quadBatch.indexBuffer, indices, s_Data.quadBatch.maxIndices * sizeof(u32));        
         commandList->close();
         device->executeCommandList(commandList);
+        
+        delete[] indices;
     }
 
     void Renderer2D::Begin(Camera *camera, nvrhi::IFramebuffer *framebuffer)
@@ -196,7 +204,7 @@ namespace ignite
     {
     }
 
-    void Renderer2D::DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color)
+    void Renderer2D::DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color, Ref<Texture> texture)
     {
         if (s_Data.quadBatch.count >= s_Data.quadBatch.maxCount)
             Renderer2D::Flush();
@@ -215,16 +223,74 @@ namespace ignite
         quadPositions[2] = position + glm::vec3(-size.x * 0.5f,  size.y * 0.5f, 1.0f); // top-left
         quadPositions[3] = position + glm::vec3( size.x * 0.5f, -size.y * 0.5f, 1.0f); // bottom-right
 
+        u32 texIndex = GetOrInsertTexture(texture);
+
         for (u32 i = 0; i < quadVertexCount; ++i)
         {
             s_Data.quadBatch.vertexBufferPtr->position = quadPositions[i];
             s_Data.quadBatch.vertexBufferPtr->texCoord = textureCoords[i];
             s_Data.quadBatch.vertexBufferPtr->color = color;
+            s_Data.quadBatch.vertexBufferPtr->texIndex = texIndex;
             s_Data.quadBatch.vertexBufferPtr++;
         }
 
         s_Data.quadBatch.indexCount += 6;
         s_Data.quadBatch.count++;
+    }
+
+    u32 Renderer2D::GetOrInsertTexture(Ref<Texture> texture)
+    {
+        if (texture == nullptr)
+            return 0;
+
+        u32 textureIndex = 0;
+
+        // find texture
+        for (u32 i = 0; i < s_Data.quadBatch.textureSlotIndex; ++i)
+        {
+            if (*s_Data.quadBatch.textureSlots[i] == *texture)
+            {
+                textureIndex = i;
+                break;
+            }
+        }
+
+        // insert if not found
+        if (textureIndex == 0)
+        {
+            if (s_Data.quadBatch.textureSlotIndex >= s_Data.quadBatch.maxTextureCount)
+            {
+                Flush();
+                return s_Data.quadBatch.maxTextureCount;
+            }
+            
+            textureIndex = s_Data.quadBatch.textureSlotIndex;
+            s_Data.quadBatch.textureSlots[s_Data.quadBatch.textureSlotIndex] = texture;
+            s_Data.quadBatch.textureSlotIndex++;
+
+            UpdateTextureBindings();
+        }
+
+        return textureIndex;
+    }
+
+    void Renderer2D::UpdateTextureBindings()
+    {
+        nvrhi::BindingSetDesc bindingSetDesc;
+        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, s_Data.constantBuffer));
+        bindingSetDesc.addItem(nvrhi::BindingSetItem::Sampler(0, s_Data.quadBatch.sampler));
+
+        for (u32 i = 0; i < s_Data.quadBatch.maxTextureCount; ++i)
+        {
+            Ref<Texture> tex = s_Data.quadBatch.textureSlots[i];
+            if (!tex)
+            {
+                tex = Renderer::whiteTexture;
+            }
+            bindingSetDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(i, tex->GetHandle()));
+        }
+
+        s_Data.quadBatch.bindingSet = s_Data.deviceManager->GetDevice()->createBindingSet(bindingSetDesc, s_Data.quadBatch.bindingLayout);
     }
 
     nvrhi::ICommandList *Renderer2D::GetCommandList()

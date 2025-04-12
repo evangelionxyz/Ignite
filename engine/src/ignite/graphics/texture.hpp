@@ -30,6 +30,11 @@ namespace ignite
         i32 GetHeight() { return m_Height; }
         i32 GetChannels() { return m_Channels; }
 
+        bool operator ==(const Texture &other) const 
+        { 
+            return m_Sampler.Get() == other.m_Sampler.Get();
+        }
+
     private:
         i32 m_Width, m_Height, m_Channels;
         Buffer m_Buffer;
