@@ -16,7 +16,7 @@ namespace ignite
   public:
     enum class Type
     {
-      Unknown, Perspective, Orthographic
+      Orthographic, Perspective
     };
 
     Camera() = default;

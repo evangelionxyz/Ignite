@@ -42,10 +42,27 @@ namespace ignite
         void RenderHierarchy();
         void RenderInspector();
 
+        void RenderSettings();
+        void UpdateCameraInput(f32 deltaTime);
+
         CameraMode m_CameraMode = CAMERA_MODE_2D;
         Scope<Camera> m_ViewportCamera;
         Ref<RenderTarget> m_RenderTarget;
         EditorLayer *m_Editor;
+
+        struct UIState
+        {
+            bool settingsWindow = true;
+
+        } m_State;
+
+        struct CameraData
+        {
+            f32 moveSpeed = 6.0f;
+            const f32 maxMoveSpeed = 200.0f;
+            const f32 rotationSpeed = 0.8f;
+            glm::vec3 lastPosition = { 0.0f, 0.0f, 0.0f };
+        } m_CameraData;
 
         struct ViewportData
         {

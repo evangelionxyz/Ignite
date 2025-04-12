@@ -9,12 +9,12 @@
 
 #include <queue>
 
-const f32 spawnInterval = 0.01f;
+const f32 spawnInterval = 1.5f;
 f32 spawnTimer = spawnInterval;
 f32 despawnTimer = spawnInterval;
 f32 spawnXPos = 0.0f;
 f32 totalTimer = 0.0f;
-const size_t maxQuad = 8096;
+const size_t maxQuad = 20;
 std::queue<entt::entity> entities;
 
 #include <cstdlib> // for rand()

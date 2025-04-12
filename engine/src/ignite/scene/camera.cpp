@@ -8,6 +8,8 @@ namespace ignite
     , position({0.0f, 0.0f, 0.0f})
     , m_AspectRatio(16.0f / 9.0f)
     , zoom(1.0f)
+    , yaw(0.0f)
+    , pitch(0.0f)
     , projectionMatrix(glm::mat4(1.0f))
     , viewMatrix(glm::mat4(1.0f))
     , nearClip(0.1f)
@@ -15,7 +17,7 @@ namespace ignite
     , width(1280.0f)
     , height(720.0f)
     , fov(45.0f)
-    , projectionType(Type::Unknown)
+    , projectionType(Type::Orthographic)
     {
     }
 
@@ -75,8 +77,8 @@ namespace ignite
         switch (projectionType)
         {
             case Type::Orthographic:
-                default:
-                    viewMatrix = glm::translate(glm::mat4(1.0f), position);
+            default:
+                viewMatrix = glm::translate(glm::mat4(1.0f), position);
             break;
             case Type::Perspective:
                 viewMatrix = glm::translate(glm::mat4(1.0f), position) * glm::toMat4(glm::quat({ -pitch, -yaw, 0.0f }));
