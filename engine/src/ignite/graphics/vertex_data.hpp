@@ -51,7 +51,7 @@ namespace ignite
 
     struct VertexQuad
     {
-        glm::vec2 position;
+        glm::vec3 position;
         glm::vec2 texCoord;
         glm::vec2 tilingFactor;
         glm::vec4 color;
@@ -64,7 +64,7 @@ namespace ignite
                 nvrhi::VertexAttributeDesc()
                     .setName("POSITION")
                     .setBufferIndex(0)
-                    .setFormat(nvrhi::Format::RG32_FLOAT)
+                    .setFormat(nvrhi::Format::RGB32_FLOAT)
                     .setOffset(offsetof(VertexQuad, position))
                     .setElementStride(sizeof(VertexQuad)),
                 nvrhi::VertexAttributeDesc()

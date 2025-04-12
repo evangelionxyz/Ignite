@@ -5,7 +5,7 @@ cbuffer PushConstants : register(b1)
 
 struct VSInput
 {
-    float2 position     : POSITION;
+    float3 position     : POSITION;
     float2 texCoord     : TEXCOORD;
     float2 tilingFactor : TILINGFACTOR;
     float4 color        : COLOR;
@@ -24,7 +24,7 @@ struct PSInput
 PSInput main(VSInput input)
 {
     PSInput output;
-    float4 pos          = float4(input.position.x, input.position.y, 0.0f, 1.0f);
+    float4 pos          = float4(input.position.x, input.position.y, input.position.z, 1.0f);
     output.position     = mul(mvp, pos);
     output.color        = input.color;
     output.tilingFactor = input.tilingFactor;

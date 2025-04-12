@@ -60,6 +60,7 @@ namespace ignite
     struct Renderer2DData
     {
         BatchRender quadBatch;
+        glm::vec4 quadPositions[4];
 
         nvrhi::IFramebuffer *framebuffer;
         nvrhi::BufferHandle constantBuffer = nullptr;
@@ -77,7 +78,9 @@ namespace ignite
         static void Flush();
         static void End();
 
+        static void DrawQuad(const glm::vec3 &position, const glm::vec2 &size, f32 rotation, const glm::vec4 &color, Ref<Texture> texture = nullptr, const glm::vec2 &tilingFactor = glm::vec2(1.0f));
         static void DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color, Ref<Texture> texture = nullptr, const glm::vec2 &tilingFactor = glm::vec2(1.0f));
+        static void DrawQuad(const glm::mat4 &transform, const glm::vec4 &color, Ref<Texture> texture = nullptr, const glm::vec2 &tilingFactor = glm::vec2(1.0f));
 
         static void InitConstantBuffer(nvrhi::IDevice *device);
         static void InitQuadData(nvrhi::IDevice *device, nvrhi::ICommandList *commandList);

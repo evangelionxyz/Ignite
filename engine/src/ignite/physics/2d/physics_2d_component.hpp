@@ -32,7 +32,7 @@ namespace ignite
         bool fixedRotation       = false;
         bool isAwake             = true;
         bool isEnabled           = true;
-        bool isEnableSleep       = true;
+        bool isEnableSleep       = false;
         b2BodyId bodyId          = {};
 
         static CompType StaticType() { return CompType_Rigidbody2D; }

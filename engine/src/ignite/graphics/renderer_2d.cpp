@@ -158,6 +158,12 @@ namespace ignite
         device->executeCommandList(commandList);
         
         delete[] indices;
+
+        
+        s_Data.quadPositions[0] = {-0.5f, -0.5f, 0.0f, 1.0f }; // bottom-left
+        s_Data.quadPositions[1] = { 0.5f,  0.5f, 0.0f, 1.0f }; // top-right
+        s_Data.quadPositions[2] = {-0.5f,  0.5f, 0.0f, 1.0f }; // top-left
+        s_Data.quadPositions[3] = { 0.5f, -0.5f, 0.0f, 1.0f }; // bottom-right
     }
 
     void Renderer2D::Begin(Camera *camera, nvrhi::IFramebuffer *framebuffer)
@@ -201,8 +207,22 @@ namespace ignite
     void Renderer2D::End()
     {
     }
+    
+    void Renderer2D::DrawQuad(const glm::vec3 &position, const glm::vec2 &size, f32 rotation, const glm::vec4 &color, Ref<Texture> texture, const glm::vec2 &tilingFactor)
+    {
+        glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) 
+            * glm::rotate(glm::mat4(1.0f), rotation, {0.0f, 0.0f, 1.0f }) 
+            * glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
+        DrawQuad(transform, color, texture, tilingFactor);
+    }
 
     void Renderer2D::DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color, Ref<Texture> texture, const glm::vec2 &tilingFactor)
+    {
+        glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
+        DrawQuad(transform, color, texture, tilingFactor);
+    }
+    
+    void Renderer2D::DrawQuad(const glm::mat4 &transform, const glm::vec4 &color, Ref<Texture> texture, const glm::vec2 &tilingFactor)
     {
         if (s_Data.quadBatch.count >= s_Data.quadBatch.maxCount)
             Renderer2D::Flush();
@@ -215,17 +235,11 @@ namespace ignite
             { 1.0f, 1.0f }
         };
 
-        glm::vec2 quadPositions[4];
-        quadPositions[0] = position + glm::vec3(-size.x * 0.5f, -size.y * 0.5f, 1.0f); // bottom-left
-        quadPositions[1] = position + glm::vec3( size.x * 0.5f,  size.y * 0.5f, 1.0f); // top-right
-        quadPositions[2] = position + glm::vec3(-size.x * 0.5f,  size.y * 0.5f, 1.0f); // top-left
-        quadPositions[3] = position + glm::vec3( size.x * 0.5f, -size.y * 0.5f, 1.0f); // bottom-right
-
         u32 texIndex = GetOrInsertTexture(texture);
 
         for (u32 i = 0; i < quadVertexCount; ++i)
         {
-            s_Data.quadBatch.vertexBufferPtr->position     = quadPositions[i];
+            s_Data.quadBatch.vertexBufferPtr->position     = transform * s_Data.quadPositions[i];
             s_Data.quadBatch.vertexBufferPtr->texCoord     = textureCoords[i];
             s_Data.quadBatch.vertexBufferPtr->tilingFactor = tilingFactor;
             s_Data.quadBatch.vertexBufferPtr->color        = color;

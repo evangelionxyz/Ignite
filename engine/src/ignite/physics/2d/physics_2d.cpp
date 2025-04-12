@@ -37,6 +37,7 @@ namespace ignite
             bodyDef.linearDamping    = rb.linearDamping;
             bodyDef.isEnabled        = rb.isEnabled;
             bodyDef.isAwake          = rb.isAwake;
+            bodyDef.fixedRotation    = rb.fixedRotation;
 
             rb.bodyId = b2CreateBody(m_WorldId, &bodyDef);
             b2Body_SetUserData(rb.bodyId, static_cast<void *>(&e));
@@ -74,6 +75,7 @@ namespace ignite
         bodyDef.linearDamping    = rb.linearDamping;
         bodyDef.isEnabled        = rb.isEnabled;
         bodyDef.isAwake          = rb.isAwake;
+        bodyDef.fixedRotation    = rb.fixedRotation;
 
         rb.bodyId = b2CreateBody(m_WorldId, &bodyDef);
         b2Body_SetUserData(rb.bodyId, static_cast<void *>(&e));
@@ -105,7 +107,7 @@ namespace ignite
 
     void Physics2D::Simulate(f32 deltaTime)
     {
-        constexpr i32 subStepCount = 4;
+        constexpr i32 subStepCount = 12;
         b2World_Step(m_WorldId, deltaTime, subStepCount);
 
         const auto reg = m_Scene->registry;
@@ -132,7 +134,7 @@ namespace ignite
 
             const auto [x, y] = b2Body_GetPosition(rb.bodyId);
             const b2Rot rotation = b2Body_GetRotation(rb.bodyId);
-            tr.translation = { x, y, tr.translation.x };
+            tr.translation = { x, y, tr.translation.z };
             tr.rotation = glm::quat({ 0.0f, 0.0f, b2Rot_GetAngle(rotation) });
         }
     }

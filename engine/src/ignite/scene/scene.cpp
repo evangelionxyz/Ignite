@@ -47,7 +47,7 @@ namespace ignite
         {
             Transform &tr = GetComponent<Transform>(e.second);
             Sprite2D &sprite = GetComponent<Sprite2D>(e.second);
-            Renderer2D::DrawQuad(tr.translation, tr.scale, sprite.color, sprite.texture);
+            Renderer2D::DrawQuad(tr.WorldTransform(), sprite.color, sprite.texture);
         }
 
         Renderer2D::Flush();
