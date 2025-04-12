@@ -92,7 +92,7 @@ namespace ignite
 
         // then add textures
         const auto samplerDesc = nvrhi::SamplerDesc()
-            .setAllAddressModes(nvrhi::SamplerAddressMode::Repeat)
+            .setAllAddressModes(nvrhi::SamplerAddressMode::ClampToEdge)
             .setAllFilters(true);
 
         s_Data.quadBatch.sampler = device->createSampler(samplerDesc);
@@ -116,7 +116,6 @@ namespace ignite
 
         auto rasterState = nvrhi::RasterState()
             .setCullNone()
-            .setFillSolid()
             .setMultisampleEnable(false);
 
         auto renderState = nvrhi::RenderState()
@@ -135,7 +134,6 @@ namespace ignite
         auto framebuffer = s_Data.deviceManager->GetCurrentFramebuffer();
         s_Data.quadBatch.pipeline = device->createGraphicsPipeline(pipelineDesc, framebuffer);
         LOG_ASSERT(s_Data.quadBatch.pipeline, "Failed to create graphics pipeline");
-
 
         // write index buffer
         u32 *indices = new u32[s_Data.quadBatch.maxIndices];
@@ -204,7 +202,7 @@ namespace ignite
     {
     }
 
-    void Renderer2D::DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color, Ref<Texture> texture)
+    void Renderer2D::DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color, Ref<Texture> texture, const glm::vec2 &tilingFactor)
     {
         if (s_Data.quadBatch.count >= s_Data.quadBatch.maxCount)
             Renderer2D::Flush();
@@ -227,10 +225,11 @@ namespace ignite
 
         for (u32 i = 0; i < quadVertexCount; ++i)
         {
-            s_Data.quadBatch.vertexBufferPtr->position = quadPositions[i];
-            s_Data.quadBatch.vertexBufferPtr->texCoord = textureCoords[i];
-            s_Data.quadBatch.vertexBufferPtr->color = color;
-            s_Data.quadBatch.vertexBufferPtr->texIndex = texIndex;
+            s_Data.quadBatch.vertexBufferPtr->position     = quadPositions[i];
+            s_Data.quadBatch.vertexBufferPtr->texCoord     = textureCoords[i];
+            s_Data.quadBatch.vertexBufferPtr->tilingFactor = tilingFactor;
+            s_Data.quadBatch.vertexBufferPtr->color        = color;
+            s_Data.quadBatch.vertexBufferPtr->texIndex     = texIndex;
             s_Data.quadBatch.vertexBufferPtr++;
         }
 

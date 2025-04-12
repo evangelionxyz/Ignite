@@ -53,10 +53,11 @@ namespace ignite
     {
         glm::vec2 position;
         glm::vec2 texCoord;
+        glm::vec2 tilingFactor;
         glm::vec4 color;
         u32 texIndex;
 
-        static std::array<nvrhi::VertexAttributeDesc, 4> GetAttributes()
+        static std::array<nvrhi::VertexAttributeDesc, 5> GetAttributes()
         {
             return
             {
@@ -70,6 +71,11 @@ namespace ignite
                     .setName("TEXCOORD")
                     .setFormat(nvrhi::Format::RG32_FLOAT)
                     .setOffset(offsetof(VertexQuad, texCoord))
+                    .setElementStride(sizeof(VertexQuad)),
+                nvrhi::VertexAttributeDesc()
+                    .setName("TILINGFACTOR")
+                    .setFormat(nvrhi::Format::RG32_FLOAT)
+                    .setOffset(offsetof(VertexQuad, tilingFactor))
                     .setElementStride(sizeof(VertexQuad)),
                 nvrhi::VertexAttributeDesc()
                     .setName("COLOR")

@@ -22,11 +22,15 @@ namespace ignite
 
     void Scene::OnStart()
     {
+        m_Playing = true;
+
         physics2D->SimulationStart();
     }
 
     void Scene::OnStop()
     {
+        m_Playing = false;
+        
         physics2D->SimulationStop();
     }
 
@@ -53,8 +57,8 @@ namespace ignite
     entt::entity Scene::CreateEntity(const std::string &name, UUID uuid)
     {
         entt::entity entity = registry->create();
-        registry->emplace<ID>(entity, ID(name, uuid));
-        registry->emplace<Transform>(entity, Transform({0.0f, 0.0f, 0.0f}));
+        AddComponent<ID>(entity, ID(name, uuid));
+        AddComponent<Transform>(entity, Transform({0.0f, 0.0f, 0.0f}));
         entities[uuid] = entity;
         return entity;
     }

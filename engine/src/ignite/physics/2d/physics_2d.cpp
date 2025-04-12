@@ -103,7 +103,6 @@ namespace ignite
         }
     }
 
-
     void Physics2D::Simulate(f32 deltaTime)
     {
         constexpr i32 subStepCount = 4;
@@ -122,7 +121,12 @@ namespace ignite
                 b2Shape_SetDensity(bc.shapeId, bc.density, true);
                 b2Shape_SetRestitution(bc.shapeId, bc.restitution);
 
-                const b2Polygon boxShape = b2MakeBox(bc.size.x * tr.scale.x, bc.size.y * tr.scale.y);
+                f32 width = glm::abs(bc.size.x * tr.scale.x);
+                f32 height = glm::abs(bc.size.y * tr.scale.y);
+
+                width = glm::max(width, glm::epsilon<f32>());
+                height = glm::max(height, glm::epsilon<f32>());
+                const b2Polygon boxShape = b2MakeBox(width, height);
                 b2Shape_SetPolygon(bc.shapeId, &boxShape);
             }
 
@@ -135,8 +139,14 @@ namespace ignite
 
     void Physics2D::CreateBoxCollider(BoxCollider2D *box, b2BodyId bodyId, b2Vec2 size)
     {
-        box->currentSize = { size.x, size.y };
-        const b2Polygon boxShape = b2MakeBox(size.x, size.y);
+        f32 width = glm::abs(size.x);
+        f32 height = glm::abs(size.y);
+        width = glm::max(width, glm::epsilon<f32>());
+        height = glm::max(height, glm::epsilon<f32>());
+        
+        box->currentSize = { width, height };
+
+        const b2Polygon boxShape = b2MakeBox(width, height);
 
         b2ShapeDef shapeDef           = b2DefaultShapeDef();
         shapeDef.density              = box->density;

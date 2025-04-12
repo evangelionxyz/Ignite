@@ -53,13 +53,202 @@ namespace ignite
     {
         ImGui::Begin("Hierarchy");
         ImGui::Text("Entity count: %zu", m_Editor->m_ActiveScene->entities.size());
+
+        for (auto &[uuid, e] : m_Editor->m_ActiveScene->entities)
+        {
+            RenderEntityNode(e, uuid, 0);
+        }
+
         ImGui::End();
+    }
+
+    void ScenePanel::RenderEntityNode(entt::entity entity, UUID uuid, i32 index)
+    {
+        ID &idComp = m_Editor->m_ActiveScene->GetComponent<ID>(entity);
+
+        ImGuiTreeNodeFlags flags = (m_SelectedEntity == entity ? ImGuiTreeNodeFlags_Selected : 0)
+            | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow
+            | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
+
+        bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity, flags, idComp.name.c_str());
+
+        bool isDeleting = false;
+
+        if (!isDeleting)
+        {
+            if (ImGui::IsItemHovered(ImGuiMouseButton_Left) && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+                m_SelectedEntity = entity;
+        }
+
+        if (opened)
+        {
+
+            if (!isDeleting)
+            {
+                // TODO: traverse child
+            }
+
+            ImGui::TreePop();
+        }
     }
 
     void ScenePanel::RenderInspector()
     {
         ImGui::Begin("Inspector");
-        ImGui::Text("Inspector");
+
+
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen
+            | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth
+            | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+
+        if (m_SelectedEntity != (entt::entity)-1)
+        {
+            std::vector<IComponent *> comps = m_Editor->m_ActiveScene->registeredComps[m_SelectedEntity];
+
+            ImGui::PushID((i32)m_SelectedEntity);
+            for (IComponent *comp : comps)
+            {
+                switch (comp->GetType())
+                {
+                case CompType_ID:
+                {
+                    if (ImGui::TreeNodeEx("ID", flags))
+                    {
+                        ID *c = comp->As<ID>();
+                        ImGui::Text(c->name.c_str());
+
+                        ImGui::TreePop();
+                    }
+                    break;
+                }
+                case CompType_Sprite2D:
+                {
+                    if (ImGui::TreeNodeEx("Sprite2D", flags))
+                    {
+                        Sprite2D *c = comp->As<Sprite2D>();
+                        ImGui::ColorEdit4("Color", &c->color.x);
+                        ImGui::DragFloat2("Tiling", &c->tilingFactor.x, 0.025f);
+
+                        ImGui::TreePop();
+                    }
+                    break;
+                }
+                case CompType_Transform:
+                {
+                    if (ImGui::TreeNodeEx("Transfrorm", flags))
+                    {
+                        Transform *c = comp->As<Transform>();
+                        ImGui::DragFloat3("Translation", &c->translation.x, 0.025f);
+
+                        glm::vec3 euler = eulerAngles(c->rotation);
+                        if (ImGui::DragFloat3("Rotation", &euler.x, 0.025f))
+                        {
+                            c->rotation = glm::quat(euler);
+                        }
+                        ImGui::DragFloat3("Scale", &c->scale.x, 0.025f);
+
+                        ImGui::TreePop();
+                    }
+                    break;
+                }
+                case CompType_Rigidbody2D:
+                {
+                    if (ImGui::TreeNodeEx("Rigidbody 2D", flags))
+                    {
+                        Rigidbody2D *c = comp->As<Rigidbody2D>();
+                        
+                        static const char *bodyTypeStr[3] = { "Static", "Dynamic", "Kinematic" };
+                        const char *currentBodyType = bodyTypeStr[static_cast<i32>(c->GetType())];
+    
+                        if (ImGui::BeginCombo("Type", currentBodyType))
+                        {
+                            for (i32 i = 0; i < std::size(bodyTypeStr); ++i)
+                            {
+                                if (ImGui::Selectable(bodyTypeStr[i]))
+                                {
+                                    c->type = static_cast<Body2DType>(i);
+                                    break;
+                                }
+    
+                                bool isSelected = (strcmp(bodyTypeStr[i], currentBodyType) == 0);
+                                if (isSelected)
+                                {
+                                    ImGui::SetItemDefaultFocus();
+                                }
+                            }
+                            ImGui::EndCombo();
+                        }
+    
+                        if (m_Editor->m_ActiveScene->IsPlaying())
+                        {
+                            if (ImGui::DragFloat2("Linear Vel", &c->linearVelocity.x, 0.025f))
+                                b2Body_SetLinearVelocity(c->bodyId, {c->linearVelocity.x, c->linearVelocity.y});
+                                
+                            if (ImGui::DragFloat("Angular Vel", &c->angularVelocity, 0.025f))
+                                b2Body_SetAngularVelocity(c->bodyId, c->angularVelocity);
+        
+                            if (ImGui::DragFloat("Gravity", &c->gravityScale, 0.025f))
+                                b2Body_SetGravityScale(c->bodyId, c->gravityScale);
+        
+        
+                            if (ImGui::DragFloat("Linear Damping", &c->linearDamping, 0.025f))
+                                b2Body_SetLinearDamping(c->bodyId, c->linearDamping);
+        
+                            if (ImGui::DragFloat("Angular Damping", &c->angularDamping, 0.025f))
+                                b2Body_SetAngularDamping(c->bodyId, c->angularDamping);
+        
+        
+                            if (ImGui::Checkbox("Fixed Rotation", &c->fixedRotation))
+                                b2Body_SetFixedRotation(c->bodyId, c->fixedRotation);
+        
+                            if (ImGui::Checkbox("Awake", &c->isAwake))
+                                b2Body_SetAwake(c->bodyId, c->isAwake);
+        
+                            if (ImGui::Checkbox("Enabled", &c->isEnabled))
+                            {
+                                c->isEnabled ? b2Body_Enable(c->bodyId) : b2Body_Disable(c->bodyId);
+                            }
+        
+                            if (ImGui::Checkbox("Sleep", &c->isEnableSleep))
+                                b2Body_EnableSleep(c->bodyId, c->isEnableSleep);
+                        }
+                        else
+                        {
+                            ImGui::DragFloat2("Linear Vel", &c->linearVelocity.x, 0.025f);
+                            ImGui::DragFloat("Angular Vel", &c->angularVelocity, 0.025f);
+                            ImGui::DragFloat("Gravity", &c->gravityScale, 0.025f);
+                            ImGui::DragFloat("Linear Damping", &c->linearDamping, 0.025f);
+                            ImGui::DragFloat("Angular Damping", &c->angularDamping, 0.025f);
+                            ImGui::Checkbox("Fixed Rotation", &c->fixedRotation);
+                            ImGui::Checkbox("Awake", &c->isAwake);
+                            ImGui::Checkbox("Enabled", &c->isEnabled);
+                            ImGui::Checkbox("Sleep", &c->isEnableSleep);
+                        }
+
+                        ImGui::TreePop();
+                    }
+
+                    break;
+                }
+                case CompType_BoxCollider2D:
+                {
+                    if (ImGui::TreeNodeEx("Box Collider 2D", flags))
+                    {
+                        BoxCollider2D *c = comp->As<BoxCollider2D>();
+                        ImGui::DragFloat2("Size", &c->size.x, 0.025f);
+                        ImGui::DragFloat2("Offset", &c->offset.x, 0.025f);
+                        ImGui::DragFloat("Restitution", &c->restitution, 0.025f);
+                        ImGui::DragFloat("Friction", &c->friction, 0.025f);
+                        ImGui::DragFloat("Density", &c->density, 0.025f);
+                        ImGui::Checkbox("Is Sensor", &c->isSensor);
+                        ImGui::TreePop();
+                    }
+                    break;
+                }
+                }
+            }
+            ImGui::PopID();
+        }
 
         ImGui::End();
     }

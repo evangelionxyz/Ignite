@@ -34,6 +34,9 @@ namespace ignite
         bool isEnabled           = true;
         bool isEnableSleep       = true;
         b2BodyId bodyId          = {};
+
+        static CompType StaticType() { return CompType_Rigidbody2D; }
+        virtual CompType GetType() override { return StaticType(); }
     };
 
     class BoxCollider2D : public IComponent
@@ -48,5 +51,8 @@ namespace ignite
         bool isSensor         = false;
 
         b2ShapeId shapeId{};
+
+        static CompType StaticType() { return CompType_BoxCollider2D; }
+        virtual CompType GetType() override { return StaticType(); }
     };
 }

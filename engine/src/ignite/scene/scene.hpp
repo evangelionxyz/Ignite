@@ -16,6 +16,7 @@ namespace ignite
     class Physics2D;
 
     using EntityMap = std::unordered_map<UUID, entt::entity>;
+    using EntityComponents = std::unordered_map<entt::entity, std::vector<IComponent *>>;
 
     class Scene
     {
@@ -43,6 +44,12 @@ namespace ignite
                 return GetComponent<T>(entity);
 
             T &comp = registry->emplace_or_replace<T>(entity, std::forward<Args>(args)...);
+
+            if constexpr (std::is_base_of<IComponent, T>::value)
+            {
+                registeredComps[entity].push_back(static_cast<IComponent*>(&comp));
+            }
+
             return comp;
         }
 
@@ -65,9 +72,28 @@ namespace ignite
             return registry->all_of<T>(entity);
         }
 
+        template<typename T>
+        void RemoveComponent(const entt::entity entity)
+        {
+            T &comp = registry->get<T>(entity);
+            registry->remove<T>(entity);
+
+            registeredComps[entity].erase(std::ranges::find_if(registeredComps[entity], [comp](IComponent *component)
+            {
+                return static_cast<IComponent *>(&comp) == component;
+            }));
+        }
+
         std::string name;
         entt::registry *registry = nullptr;
         EntityMap entities;
+        EntityComponents registeredComps;
+
         Scope<Physics2D> physics2D;
+
+        bool IsPlaying() { return m_Playing; }
+    
+    private:
+        bool m_Playing = false;
     };
 }

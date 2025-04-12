@@ -11,6 +11,7 @@ add_library(IgniteEngine
   src/ignite/graphics/shader_factory.cpp
   src/ignite/graphics/texture.cpp
   src/ignite/graphics/window.cpp
+  src/ignite/math/math.cpp
   src/ignite/scene/scene.cpp
   src/ignite/scene/camera.cpp
   src/ignite/core/input/input.cpp

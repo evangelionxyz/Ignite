@@ -30,6 +30,12 @@ namespace ignite
         
         nvrhi::CommandListHandle m_CommandList;
         DeviceManager *m_DeviceManager;
+
+        struct State
+        {
+            bool debugMode = false;
+            bool developerMode = false;
+        } m_State;
         
         friend class ScenePanel;
     };

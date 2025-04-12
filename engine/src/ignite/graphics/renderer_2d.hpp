@@ -77,7 +77,7 @@ namespace ignite
         static void Flush();
         static void End();
 
-        static void DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color, Ref<Texture> texture = nullptr);
+        static void DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color, Ref<Texture> texture = nullptr, const glm::vec2 &tilingFactor = glm::vec2(1.0f));
 
         static void InitConstantBuffer(nvrhi::IDevice *device);
         static void InitQuadData(nvrhi::IDevice *device, nvrhi::ICommandList *commandList);

@@ -3,6 +3,9 @@
 #include "ipanel.hpp"
 #include "render_target.hpp"
 
+#include "entt/entt.hpp"
+#include "ignite/core/uuid.hpp"
+
 namespace ignite
 {
     class Scene;
@@ -40,6 +43,8 @@ namespace ignite
 
     private:
         void RenderHierarchy();
+        void RenderEntityNode(entt::entity entity, UUID uuid, i32 index = 0);
+        
         void RenderInspector();
 
         void RenderSettings();
@@ -49,6 +54,8 @@ namespace ignite
         Scope<Camera> m_ViewportCamera;
         Ref<RenderTarget> m_RenderTarget;
         EditorLayer *m_Editor;
+
+        entt::entity m_SelectedEntity = { entt::null };
 
         struct UIState
         {

@@ -30,6 +30,10 @@
 #include "graphics/shader_factory.hpp"
 #include "graphics/window.hpp"
 
+#include "math/math.hpp"
+#include "math/aabb.hpp"
+#include "math/obb.hpp"
+
 #include "physics/2d/physics_2d.hpp"
 #include "physics/2d/physics_2d_component.hpp"
 
