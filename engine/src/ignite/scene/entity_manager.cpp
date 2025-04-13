@@ -76,7 +76,7 @@ namespace ignite
         
         std::string uniqueName = GenerateUniqueName(name, scene->entityNames, scene->entityNamesMapCounter);
         
-        entity.AddComponent<ID>(uniqueName, uuid);
+        entity.AddComponent<ID>(uniqueName, type, uuid);
         entity.AddComponent<Transform>(Transform({0.0f, 0.0f, 0.0f}));
         
         scene->entities[uuid] = entity;

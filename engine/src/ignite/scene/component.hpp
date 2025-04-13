@@ -63,8 +63,10 @@ namespace ignite
         UUID uuid;
         EntityType type;
 
-        ID(const std::string &_name, const UUID &_uuid = UUID())
-            : name(_name), uuid(_uuid)
+        ID(const std::string &_name,  EntityType _type, const UUID &_uuid = UUID())
+            : name(_name)
+            , type(_type)
+            , uuid(_uuid)
         {
         }
 
