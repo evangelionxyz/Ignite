@@ -149,7 +149,7 @@ namespace ignite
         ImDrawList *draw_list = ImGui::GetWindowDrawList();
         const ImVec2 minPos = viewport->Pos;
         const ImVec2 maxPos = ImVec2(viewport->Pos.x + viewport->Size.x, totalTitlebarHeight);
-        draw_list->AddRectFilled(minPos, maxPos, IM_COL32(40, 40, 40, 255));
+        draw_list->AddRectFilled(minPos, maxPos, IM_COL32(30, 30, 30, 255));
 
         // play stop and simulate button
         ImVec2 buttonSize = {40.0f, 25.0f};

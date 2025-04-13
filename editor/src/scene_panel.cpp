@@ -231,13 +231,14 @@ namespace ignite
                 {
                 case CompType_ID:
                 {
-                    if (ImGui::TreeNodeEx("ID", flags))
+                    ID *c = comp->As<ID>();
+                    char buffer[255] = { };
+                    strncpy(buffer, c->name.c_str(), sizeof(buffer) - 1);
+                    if (ImGui::InputText("##label", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue))
                     {
-                        ID *c = comp->As<ID>();
-                        ImGui::Text(c->name.c_str());
-
-                        ImGui::TreePop();
+                        c->name = std::string(buffer);
                     }
+                    
                     break;
                 }
                 case CompType_Sprite2D:
@@ -531,6 +532,47 @@ namespace ignite
         }
 
         ImGui::End();
+    }
+
+    template<typename T, typename UIFunction>
+    void ScenePanel::RenderComponent(const std::string &name, Entity entity, UIFunction uiFunction)
+    {
+        constexpr ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_DefaultOpen
+            | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth
+            | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+
+        if (entity.HasComponent<T>())
+        {
+            auto &component = entity.GetComponent<T>();
+
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2 { 0.5f, 2.0f });
+            ImGui::Separator();
+            const bool open = ImGui::TreeNodeEx(reinterpret_cast<void *>(typeid(T).hash_code()), tree_node_flags, name.c_str());
+            ImGui::PopStyleVar();
+
+            ImGui::SameLine(ImGui::GetContentRegionAvail().x - 24.0f);
+            const ImTextureID tex_id = reinterpret_cast<void *>(static_cast<uintptr_t>(EditorLayer::Get().m_UITextures.at("plus")->GetID()));
+            if (ImGui::ImageButton("component_more_button", tex_id, { 14.0f, 14.0f }))
+                ImGui::OpenPopup("Component Settings");
+
+            bool componentRemoved = false;
+            if (ImGui::BeginPopup("Component Settings"))
+            {
+                if (ImGui::MenuItem("Remove component"))
+                    componentRemoved = true;
+
+                ImGui::EndPopup();
+            }
+
+            if (open)
+            {
+                uiFunction(component);
+                ImGui::TreePop();
+            }
+
+            if (componentRemoved)
+                entity.RemoveComponent<T>();
+        }
     }
 
     void ScenePanel::OnEvent(Event &event)
