@@ -12,6 +12,13 @@ set(imgui_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/IMGUI/imstb_textedit.h
     ${CMAKE_CURRENT_SOURCE_DIR}/IMGUI/imstb_truetype.h
     ${CMAKE_CURRENT_SOURCE_DIR}/IMGUI/imgui_demo.cpp
+
+    # IMGUIZMO
+    ${CMAKE_CURRENT_SOURCE_DIR}/IMGUIZMO/GraphEditor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/IMGUIZMO/ImCurveEdit.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/IMGUIZMO/ImGradient.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/IMGUIZMO/ImGuizmo.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/IMGUIZMO/ImSequencer.cpp
 )
 
 add_library(imgui STATIC ${imgui_srcs})

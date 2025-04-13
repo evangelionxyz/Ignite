@@ -4,6 +4,7 @@
 #include "ignite/core/vfs/vfs.hpp"
 
 #include <backends/imgui_impl_glfw.h>
+#include <ImGuizmo.h>
 
 #ifdef _WIN32
 #include <backends/imgui_impl_dx12.h>
@@ -201,6 +202,7 @@ namespace ignite
 
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        ImGuizmo::BeginFrame();
 
         m_BeginFrameCalled = true;
     }
