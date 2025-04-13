@@ -1,6 +1,8 @@
 #pragma once
 #include "box2d/types.h"
-#include "ignite/scene/component.hpp"
+#include "ignite/scene/icomponent.hpp"
+
+#include <glm/glm.hpp>
 
 namespace ignite
 {

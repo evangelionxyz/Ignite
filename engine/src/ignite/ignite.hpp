@@ -36,8 +36,8 @@
 
 #include "physics/2d/physics_2d.hpp"
 #include "physics/2d/physics_2d_component.hpp"
+#include "project/project.hpp"
 
-#include "scene/actor.hpp"
 #include "scene/component.hpp"
 #include "scene/camera.hpp"
 #include "scene/entity.hpp"

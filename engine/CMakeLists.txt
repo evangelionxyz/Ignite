@@ -5,9 +5,11 @@ add_library(IgniteEngine
   src/ignite/core/device/device_manager.cpp
   src/ignite/core/device/device_manager_vk.cpp
   src/ignite/core/logger.cpp
+  src/ignite/core/command.cpp
+  src/ignite/core/uuid.cpp
+  src/ignite/core/input/input.cpp
   src/ignite/imgui/imgui_nvrhi.cpp
   src/ignite/imgui/imgui_layer.cpp
-  src/ignite/core/uuid.cpp
   src/ignite/graphics/shader_factory.cpp
   src/ignite/graphics/texture.cpp
   src/ignite/graphics/window.cpp
@@ -15,13 +17,13 @@ add_library(IgniteEngine
   src/ignite/scene/entity.cpp
   src/ignite/scene/scene.cpp
   src/ignite/scene/camera.cpp
-  src/ignite/core/input/input.cpp
+  src/ignite/scene/entity_manager.cpp
+  src/ignite/scene/scene_manager.cpp
   src/ignite/graphics/renderer_2d.cpp
   src/ignite/graphics/renderer.cpp
   src/ignite/physics/2d/physics_2d.cpp
   src/ignite/physics/2d/physics_2d_component.hpp
-  src/ignite/scene/entity_manager.cpp
-  src/ignite/scene/scene_manager.cpp
+  src/ignite/project/project.cpp
 )
 
 target_precompile_headers(IgniteEngine PRIVATE src/ignite/pch.hpp)

@@ -1,13 +1,13 @@
 #pragma once
 
-#include "component.hpp"
+#include "component_group.hpp"
 #include "ignite/core/uuid.hpp"
+#include "ignite/core/command.hpp"
+
+#include "entity.hpp"
 
 namespace ignite
 {
-    class Entity;
-    class Scene;
-
     class EntityManager
     {
     public:
@@ -17,6 +17,106 @@ namespace ignite
         static void DestroyEntity(Scene *scene, Entity entity);
         static void DestroyEntity(Scene *scene, UUID uuid);
         static Entity GetEntity(Scene *scene, UUID uuid);
+
+        static void DestroyEntityWithCommand(Scene *scene, Entity entity);
     };
+
+    class EntityManagerCommand : public ICommand
+    {
+    public:
+        EntityManagerCommand(const CommandFunc &createFunc, const CommandFunc &destroyFunc, CommandState state)
+        {
+            m_CreateFunc = createFunc;
+            m_DestroyFunc = destroyFunc;
+            m_State = CommandState_Create;
+        }
+
+        virtual void Execute() override
+        {
+            switch (m_State)
+            {
+            case CommandState_Create:
+            {
+                m_CreateFunc();
+                break;
+            }
+            case CommandState_Destroy:
+            {
+                m_DestroyFunc();
+                break;
+            }
+            }
+        }
+
+        virtual void Undo() override
+        {
+            switch (m_State)
+            {
+            case CommandState_Create:
+            {
+                m_DestroyFunc();
+                break;
+            }
+            case CommandState_Destroy:
+            {
+                m_CreateFunc();
+                break;
+            }
+            }
+        }
+
+    private:
+        CommandFunc m_CreateFunc;
+        CommandFunc m_DestroyFunc;
+        CommandState m_State;
+    };
+
+    using EntityMap = std::unordered_map<UUID, entt::entity>;
+
+    template<typename... Component>
+    static void CopyComponent(entt::registry *destRegistry, entt::registry *srcRegistry, EntityMap entityMap)
+    {
+        ([&]()
+            {
+                auto view = srcRegistry->view<Component>();
+                for (auto srcEntity : view)
+                {
+                    for (auto e : entityMap)
+                    {
+                        // key (UUID)
+                        if (e.first == srcRegistry->get<ID>(srcEntity).uuid)
+                        {
+                            entt::entity dstEntity = e.second;
+                            destRegistry->emplace_or_replace<Component>(dstEntity, srcRegistry->get<Component>(srcEntity));
+                        }
+                    }
+                }
+            }(), ...
+        );
+    }
+
+    template<typename... Component>
+    static void CopyComponent(ComponentGroup<Component...>, entt::registry *destRegistry, entt::registry *srcRegistry, EntityMap entityMap)
+    {
+        CopyComponent<Component...>(destRegistry, srcRegistry, entityMap);
+    }
+
+    template <typename... Component>
+    static void CopyComponentIfExists(Entity dstEntity, Entity srcEntity)
+    {
+        ([&]()
+        {
+            if (srcEntity.HasComponent<Component>())
+            {
+                dstEntity.AddOrReplaceComponent<Component>(srcEntity.GetComponent<Component>());
+            }
+        }(), ...);
+    }
+
+    template<typename... Component>
+    static void CopyComponentIfExists(ComponentGroup<Component...>, Entity dstEntity, Entity srcEntity)
+    {
+        CopyComponentIfExists<Component...>(dstEntity, srcEntity);
+    }
 }
 

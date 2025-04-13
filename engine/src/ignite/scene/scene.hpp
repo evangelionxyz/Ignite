@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include "ignite/core/logger.hpp"
 #include "ignite/core/types.hpp"
+#include "ignite/core/uuid.hpp"
 
 namespace ignite
 {

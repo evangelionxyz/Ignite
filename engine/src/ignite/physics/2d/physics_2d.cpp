@@ -2,6 +2,8 @@
 #include "physics_2d.hpp"
 #include <ignite/scene/scene.hpp>
 
+#include "ignite/scene/component.hpp"
+
 namespace ignite
 {
     Physics2D::Physics2D(Scene *scene)

@@ -15,6 +15,8 @@ namespace ignite
     {
         s_Instance = this;
 
+        m_CommandManager = CreateScope<CommandManager>();
+
         DeviceCreationParameters deviceCreateInfo;
         deviceCreateInfo.backBufferWidth = createInfo.width;
         deviceCreateInfo.backBufferHeight = createInfo.height;
@@ -187,5 +189,10 @@ namespace ignite
     void Application::WindowRestore()
     {
         GetInstance()->m_Window->Restore();
+    }
+
+    CommandManager *Application::GetCommandManager()
+    {
+        return GetInstance()->m_CommandManager.get();
     }
 }

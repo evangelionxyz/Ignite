@@ -10,6 +10,7 @@
 #include "ignite/imgui/imgui_layer.hpp"
 #include "input/app_event.hpp"
 #include "input/input.hpp"
+#include "command.hpp"
 
 #include <filesystem>
 
@@ -63,6 +64,7 @@ namespace ignite
         static Application *GetInstance();
         static DeviceManager *GetDeviceManager();
         static Ref<ShaderFactory> GetShaderFactory();
+        static CommandManager *GetCommandManager();
 
         static void SetWindowTitle(const std::string &title);
 
@@ -76,6 +78,7 @@ namespace ignite
     protected:
         ApplicationCreateInfo m_CreateInfo;
         Scope<Window> m_Window;
+        Scope<CommandManager> m_CommandManager;
         Ref<ShaderFactory> m_ShaderFactory;
         LayerStack m_LayerStack;
         Ref<ImGuiLayer> m_ImGuiLayer;

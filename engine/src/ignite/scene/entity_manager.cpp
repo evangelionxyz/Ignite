@@ -1,7 +1,7 @@
 #include "entity_manager.hpp"
 #include "scene.hpp"
 #include "entity.hpp"
-
+#include "ignite/core/uuid.hpp"
 #include <string>
 #include <unordered_map>
 
@@ -69,27 +69,54 @@ namespace ignite
         return uniqueKey;
     }
 
-
     Entity EntityManager::CreateEntity(Scene *scene, const std::string &name, EntityType type, UUID uuid)
     {
         Entity entity = Entity { scene->registry->create(), scene };
-        
         std::string uniqueName = GenerateUniqueName(name, scene->entityNames, scene->entityNamesMapCounter);
-        
         entity.AddComponent<ID>(uniqueName, type, uuid);
         entity.AddComponent<Transform>(Transform({0.0f, 0.0f, 0.0f}));
-        
         scene->entities[uuid] = entity;
         scene->entityNames.push_back(uniqueName);
-
         return entity;
     }
 
     Entity EntityManager::CreateSprite(Scene *scene, const std::string &name, UUID uuid)
     {
-        Entity entity = CreateEntity(scene, name, EntityType_Common, uuid);
-        entity.AddComponent<Sprite2D>();
-        return entity;
+        // create local storage for entity data
+        Entity createdEntity;
+
+        // prepare entity creation logic
+        std::function<void()> createFunc = [=, &createdEntity]() mutable
+        {
+            createdEntity = CreateEntity(scene, name, EntityType_Common, uuid);
+            createdEntity.AddComponent<Sprite2D>();
+        };
+
+        // immediately call createFunc to initialize createdEntity
+        createFunc();
+
+        // capture scene and entity by value to preserve the for undo
+        Scene *capturedScene = scene;
+        UUID capturedUUID = createdEntity.GetComponent<ID>().uuid;
+
+        std::function<void()> destroyFunc = [capturedScene, capturedUUID]()
+        {
+            Entity entityToDestroy = EntityManager::GetEntity(capturedScene, capturedUUID);
+            if (entityToDestroy)
+            {
+                DestroyEntity(capturedScene, entityToDestroy);
+            }
+        };
+
+        CommandManager::AddCommand(
+            CreateScope<EntityManagerCommand>(
+                createFunc, 
+                destroyFunc, 
+                CommandState_Create
+            )
+        );
+       
+        return createdEntity;
     }
 
     void EntityManager::RenameEntity(Scene *scene, Entity entity, const std::string &newName)
@@ -115,7 +142,7 @@ namespace ignite
 
     void EntityManager::DestroyEntity(Scene *scene, Entity entity)
     {
-        if (!scene->registry->valid(entity))
+        if (!scene || !scene->registry->valid(entity))
             return;
 
         ID idComp = entity.GetComponent<ID>();
@@ -161,5 +188,15 @@ namespace ignite
 
         return Entity{};
     }
+
+    void EntityManager::DestroyEntityWithCommand(Scene *scene, Entity entity)
+    {
+        // initialize create function
+        auto view = scene->registry->view<ID>();
+        
+
+        DestroyEntity(scene, entity);
+    }
+
 
 } // namespace ignite

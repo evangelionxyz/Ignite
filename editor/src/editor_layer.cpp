@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <nvrhi/utils.h>
 
+#include "ignite/core/command.hpp"
 #include "ignite/scene/camera.hpp"
 #include "ignite/graphics/texture.hpp"
 
@@ -64,6 +65,31 @@ namespace ignite
     {
         Layer::OnEvent(e);
         m_ScenePanel->OnEvent(e);
+
+        EventDispatcher dispatcher(e);
+        dispatcher.Dispatch<KeyPressedEvent>(BIND_CLASS_EVENT_FN(EditorLayer::OnKeyPressedEvent));
+    }
+
+    bool EditorLayer::OnKeyPressedEvent(KeyPressedEvent &event)
+    {
+        bool control = Input::IsKeyPressed(KEY_LEFT_CONTROL);
+        bool shift = Input::IsKeyPressed(KEY_LEFT_SHIFT);
+
+        switch (event.GetKeyCode())
+        {
+        case Key::Z:
+        {
+            if (control)
+            {
+                if (shift)
+                    Application::GetCommandManager()->Redo();
+                else
+                    Application::GetCommandManager()->Undo();
+            }
+            break;
+        }
+        }
+        return false;
     }
 
     void EditorLayer::OnRender(nvrhi::IFramebuffer *framebuffer)

@@ -28,6 +28,7 @@ namespace ignite
         void OnDetach() override;
         void OnUpdate(float deltaTime) override;
         void OnEvent(Event& e) override;
+        bool OnKeyPressedEvent(KeyPressedEvent &event);
         void OnRender(nvrhi::IFramebuffer *framebuffer) override;
         void OnGuiRender() override;
 
