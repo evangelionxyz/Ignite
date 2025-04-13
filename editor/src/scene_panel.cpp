@@ -22,6 +22,11 @@ namespace ignite
         //m_ViewportCamera->position.z = 8.0f;
     }
 
+    void ScenePanel::SetActiveScene(Scene *scene)
+    {
+        m_Scene = scene;
+    }
+
     void ScenePanel::CreateRenderTarget(nvrhi::IDevice *device, f32 width, f32 height)
     {
         m_RenderTarget = CreateRef<RenderTarget>(device, width, height);
@@ -52,40 +57,141 @@ namespace ignite
     void ScenePanel::RenderHierarchy()
     {
         ImGui::Begin("Hierarchy");
-        ImGui::Text("Entity count: %zu", m_Editor->m_ActiveScene->entities.size());
 
-        for (auto &[uuid, e] : m_Editor->m_ActiveScene->entities)
+        static ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar;
+        ImGui::BeginChild("scene_hierarchy", { ImGui::GetContentRegionAvail().x, 20.0f }, 0, windowFlags);
+        ImGui::Button(m_Scene->name.c_str(), ImGui::GetContentRegionAvail());
+        ImGui::EndChild();
+
+        ImGui::BeginChild("entity_hierachy", ImGui::GetContentRegionAvail(), 0, windowFlags);
+        ImGui::Text("Entity count: %zu", m_Scene->entities.size());
+
+        static ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_ScrollX;
+        if (ImGui::BeginTable("entity_hierarchy_table", 3, tableFlags))
         {
-            RenderEntityNode(e, uuid, 0);
+
+            // setup table 3 columns
+            // Name, Type, Active (check box)
+            ImGui::TableSetupScrollFreeze(0, 1);
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+            ImGui::TableSetupColumn("Active", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+            ImGui::TableHeadersRow();
+
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 2.0f, 0.0f });
+            m_Scene->registry->view<ID>().each([&](entt::entity e, ID &id)
+            {
+                RenderEntityNode(Entity{ e, m_Scene }, id.uuid, 0);
+            });
+            ImGui::PopStyleVar();
+
+            // show right click entity create context
+            if (ImGui::BeginPopupContextWindow("create_entity_context", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+            {
+                ShowEntityContextMenu();
+                ImGui::EndPopup();
+            }
+
+            ImGui::EndTable();
         }
+
+        ImGui::EndChild();
 
         ImGui::End();
     }
 
-    void ScenePanel::RenderEntityNode(entt::entity entity, UUID uuid, i32 index)
+    Entity ScenePanel::ShowEntityContextMenu()
     {
-        ID &idComp = m_Editor->m_ActiveScene->GetComponent<ID>(entity);
+        Entity entity = {};
+        if (ImGui::MenuItem("Empty"))
+        {
+            entity = SetSelectedEntity(EntityManager::CreateEntity(m_Scene, "Empty", EntityType_Common));
+        }
+
+        if (ImGui::BeginMenu("2D"))
+        {
+            if (ImGui::MenuItem("Sprite"))
+            {
+                entity = SetSelectedEntity(EntityManager::CreateSprite(m_Scene, "Sprite"));
+            }
+            ImGui::End();
+        }
+
+        if (ImGui::MenuItem("Camera"))
+        {
+
+        }
+
+        return entity;
+    }
+
+    void ScenePanel::RenderEntityNode(Entity entity, UUID uuid, i32 index)
+    {
+        ID &idComp = entity.GetComponent<ID>();
 
         ImGuiTreeNodeFlags flags = (m_SelectedEntity == entity ? ImGuiTreeNodeFlags_Selected : 0)
             | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow
             | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
 
-        bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity, flags, idComp.name.c_str());
+        void *imguiPushId = (void*)(uint64_t)(uint32_t)entity;
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        bool opened = ImGui::TreeNodeEx(imguiPushId, flags, idComp.name.c_str());
 
         bool isDeleting = false;
+
+        if (!m_Scene->IsPlaying() || true)
+        {
+            ImGui::PushID(imguiPushId);
+            if (ImGui::BeginPopupContextItem(idComp.name.c_str()))
+            {
+                if (ImGui::BeginMenu("Create"))
+                {
+                    if (const Entity e = ShowEntityContextMenu())
+                    {
+                        // TODO: Add to child child
+                    }
+
+                    ImGui::EndMenu();
+                }
+                
+                if (ImGui::MenuItem("Delete"))
+                {
+                    DestroyEntity(entity);
+                    isDeleting = true;
+                }
+
+                ImGui::EndPopup();
+            }
+            ImGui::PopID();
+        }
 
         if (!isDeleting)
         {
             if (ImGui::IsItemHovered(ImGuiMouseButton_Left) && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-                m_SelectedEntity = entity;
+            {
+                SetSelectedEntity(entity);
+            }
+
+            ImGui::PushID(imguiPushId);
+
+            // second column
+            ImGui::TableNextColumn();
+            ImGui::TextWrapped(EntityTypeToString(idComp.type));
+
+            // third column (last)
+            ImGui::TableNextColumn();
+            auto &tc = entity.GetComponent<Transform>();
+            ImGui::Checkbox("##Active", &tc.visible);
+            ImGui::PopID();
         }
 
         if (opened)
         {
-
             if (!isDeleting)
             {
-                // TODO: traverse child
+                // TODO: Traverese children
+
             }
 
             ImGui::TreePop();
@@ -103,7 +209,7 @@ namespace ignite
 
         if (m_SelectedEntity != (entt::entity)-1)
         {
-            std::vector<IComponent *> comps = m_Editor->m_ActiveScene->registeredComps[m_SelectedEntity];
+            std::vector<IComponent *> comps = m_Scene->registeredComps[m_SelectedEntity];
 
             ImGui::PushID((i32)m_SelectedEntity);
             for (IComponent *comp : comps)
@@ -179,7 +285,7 @@ namespace ignite
                             ImGui::EndCombo();
                         }
     
-                        if (m_Editor->m_ActiveScene->IsPlaying())
+                        if (m_Scene->IsPlaying())
                         {
                             if (ImGui::DragFloat2("Linear Vel", &c->linearVelocity.x, 0.025f))
                                 b2Body_SetLinearVelocity(c->bodyId, {c->linearVelocity.x, c->linearVelocity.y});
@@ -486,5 +592,20 @@ namespace ignite
                 m_ViewportCamera->position += m_ViewportCamera->GetRightDirection() * deltaTime * m_CameraData.moveSpeed;
             }
         }
+    }
+
+    void ScenePanel::DestroyEntity(Entity entity)
+    {
+        EntityManager::DestroyEntity(m_Scene, entity);
+    }
+
+    Entity ScenePanel::SetSelectedEntity(Entity entity)
+    {
+        return m_SelectedEntity = entity;
+    }
+
+    Entity ScenePanel::GetSelectedEntity()
+    {
+        return m_SelectedEntity;
     }
 }

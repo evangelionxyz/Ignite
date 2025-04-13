@@ -13,6 +13,14 @@ namespace ignite
 
     class EditorLayer final : public Layer
     {
+    private:
+        struct State
+        {
+            bool debugMode = false;
+            bool developerMode = false;
+            bool scenePlaying = false;
+        };
+
     public:
         EditorLayer(const std::string &name);
 
@@ -23,20 +31,16 @@ namespace ignite
         void OnRender(nvrhi::IFramebuffer *framebuffer) override;
         void OnGuiRender() override;
 
+        Scene *GetActiveScene() { return m_ActiveScene.get(); }
+        State GetState() { return m_State; }
+
     private:
         Ref<ScenePanel> m_ScenePanel;
         Ref<Scene> m_ActiveScene;
         Ref<Texture> m_Texture;
+        State m_State;
         
         nvrhi::CommandListHandle m_CommandList;
         DeviceManager *m_DeviceManager;
-
-        struct State
-        {
-            bool debugMode = false;
-            bool developerMode = false;
-        } m_State;
-        
-        friend class ScenePanel;
     };
 }

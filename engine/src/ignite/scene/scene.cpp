@@ -1,9 +1,13 @@
  #include "scene.hpp"
 
+#include <ranges>
+
+#include <entt/entt.hpp>
 #include "camera.hpp"
 #include "ignite/graphics/renderer_2d.hpp"
-
 #include "ignite/physics/2d/physics_2d.hpp"
+
+#include "entity.hpp"
 
 namespace ignite
 {
@@ -43,54 +47,39 @@ namespace ignite
     {
         Renderer2D::Begin(camera, framebuffer);
 
-        for (auto &e : entities)
+        for (auto e: entities | std::views::values)
         {
-            Transform &tr = GetComponent<Transform>(e.second);
-            Sprite2D &sprite = GetComponent<Sprite2D>(e.second);
-            Renderer2D::DrawQuad(tr.WorldTransform(), sprite.color, sprite.texture);
+            Entity entity = { e, this };
+            auto &tr = entity.GetComponent<Transform>();
+            
+            if (!tr.visible)
+                continue;
+
+            if (entity.HasComponent<Sprite2D>())
+            {
+                auto &sprite = entity.GetComponent<Sprite2D>();
+                Renderer2D::DrawQuad(tr.WorldTransform(), sprite.color, sprite.texture);
+            }
         }
 
         Renderer2D::Flush();
         Renderer2D::End();
     }
 
-    entt::entity Scene::CreateEntity(const std::string &name, UUID uuid)
+    Ref<Scene> Scene::Copy(Ref<Scene> other)
     {
-        entt::entity entity = registry->create();
-        AddComponent<ID>(entity, ID(name, uuid));
-        AddComponent<Transform>(entity, Transform({0.0f, 0.0f, 0.0f}));
-        entities[uuid] = entity;
-        return entity;
-    }
+        Ref<Scene> newScene = CreateRef<Scene>(other->name);
 
-    entt::entity Scene::GetEntity(UUID uuid)
-    {
-        if (entities.contains(uuid))
-            return entities[uuid];
+        auto srcReg = other->registry;
+        auto dstReg = newScene->registry;
 
-        return entt::null;
-    }
+        auto view = srcReg->view<ID>();
+        for (auto e : view)
+        {
+            Entity entity { e, other.get() };
+        }
 
-    void Scene::DestroyEntity(UUID uuid)
-    {
-        entt::entity entity = GetEntity(uuid);
-        registry->destroy(entity);
-    }
-
-    void Scene::DestroyEntity(entt::entity entity)
-    {
-        if (!registry->valid(entity))
-            return;
-            
-        physics2D->DestroyBody(entity);
-        registry->destroy(entity);
-        auto it = std::find_if(entities.begin(), entities.end(),
-        [entity](const auto& pair) {
-            return pair.second == entity;
-        });
-
-        if (it != entities.end())
-            entities.erase(it);
+        return newScene;
     }
 }
 

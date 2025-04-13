@@ -2,8 +2,7 @@
 
 #include "ipanel.hpp"
 #include "render_target.hpp"
-
-#include "entt/entt.hpp"
+#include "ignite/scene/entity.hpp"
 #include "ignite/core/uuid.hpp"
 
 namespace ignite
@@ -26,7 +25,8 @@ namespace ignite
     {
     public:
         explicit ScenePanel(const char *windowTitle, EditorLayer *editor);
-
+        
+        void SetActiveScene(Scene *scene);
         void CreateRenderTarget(nvrhi::IDevice *device, f32 width, f32 height);
 
         void OnUpdate(f32 deltaTime) override;
@@ -43,24 +43,28 @@ namespace ignite
 
     private:
         void RenderHierarchy();
-        void RenderEntityNode(entt::entity entity, UUID uuid, i32 index = 0);
+        Entity ShowEntityContextMenu();
+        void RenderEntityNode(Entity entity, UUID uuid, i32 index = 0);
         
         void RenderInspector();
 
         void RenderSettings();
         void UpdateCameraInput(f32 deltaTime);
+        void DestroyEntity(Entity entity);
+        Entity SetSelectedEntity(Entity entity);
+        Entity GetSelectedEntity();
 
         CameraMode m_CameraMode = CAMERA_MODE_2D;
         Scope<Camera> m_ViewportCamera;
         Ref<RenderTarget> m_RenderTarget;
         EditorLayer *m_Editor;
+        Scene *m_Scene = nullptr;
 
-        entt::entity m_SelectedEntity = { entt::null };
+        Entity m_SelectedEntity = { };
 
-        struct UIState
+        struct State
         {
             bool settingsWindow = true;
-
         } m_State;
 
         struct CameraData

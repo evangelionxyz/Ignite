@@ -1,13 +1,38 @@
 #pragma once
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
+
 #include <string>
 #include "ignite/core/uuid.hpp"
 
 namespace ignite
 {
     class Texture;
+
+    enum EntityType : u8
+    {
+        EntityType_Common = 0,
+        EntityType_Camera,
+        EntityType_Mesh,
+        EntityType_Prefab,
+        EntityType_Invalid
+    };
+
+    static const char *EntityTypeToString(EntityType type)
+    {
+        switch (type)
+        {
+        case EntityType_Common: return "Common";
+        case EntityType_Camera: return "Camera";
+        case EntityType_Mesh: return "Mesh";
+        case EntityType_Prefab: return "Common";
+        case EntityType_Invalid:
+        default:
+            return "Invalid";
+        }
+    }
 
     enum CompType : u8
     {
@@ -36,6 +61,7 @@ namespace ignite
     public:
         std::string name;
         UUID uuid;
+        EntityType type;
 
         ID(const std::string &_name, const UUID &_uuid = UUID())
             : name(_name), uuid(_uuid)
@@ -57,6 +83,8 @@ namespace ignite
         // local transforms
         glm::vec3 local_translation, local_scale;
         glm::quat local_rotation;
+
+        bool visible = true;
 
         Transform() = default;
 

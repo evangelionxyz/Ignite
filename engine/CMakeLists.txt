@@ -12,6 +12,7 @@ add_library(IgniteEngine
   src/ignite/graphics/texture.cpp
   src/ignite/graphics/window.cpp
   src/ignite/math/math.cpp
+  src/ignite/scene/entity.cpp
   src/ignite/scene/scene.cpp
   src/ignite/scene/camera.cpp
   src/ignite/core/input/input.cpp
@@ -19,6 +20,8 @@ add_library(IgniteEngine
   src/ignite/graphics/renderer.cpp
   src/ignite/physics/2d/physics_2d.cpp
   src/ignite/physics/2d/physics_2d_component.hpp
+  src/ignite/scene/entity_manager.cpp
+  src/ignite/scene/scene_manager.cpp
 )
 
 target_precompile_headers(IgniteEngine PRIVATE src/ignite/pch.hpp)

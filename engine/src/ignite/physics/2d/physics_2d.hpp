@@ -1,8 +1,6 @@
 #pragma once
 
 #include "physics_2d_component.hpp"
-
-
 #include <box2d/box2d.h>
 #include <entt/entt.hpp>
 #include <ignite/core/types.hpp>
@@ -10,7 +8,6 @@
 namespace ignite
 {
     class Scene;
-
     class Physics2D
     {
     public:
