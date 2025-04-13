@@ -8,7 +8,7 @@ namespace ignite
 {
     enum Body2DType
     {
-        Body2DType_Static, Body2DType_Dynamic, Body2DType_Kinematic
+        Body2DType_Static = 0, Body2DType_Dynamic, Body2DType_Kinematic
     };
 
     static b2BodyType GetB2BodyType(Body2DType type)

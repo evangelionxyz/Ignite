@@ -8,9 +8,23 @@
 #include "ignite/graphics/texture.hpp"
 #include "editor_layer.hpp"
 #include "entt/entt.hpp"
+#include <set>
 
 namespace ignite
 {
+    std::map<std::string, CompType> componentsName = 
+    {
+        { "Rigidbody2D", CompType_Rigidbody2D },
+        { "BoxCollider2D", CompType_BoxCollider2D }
+    };
+
+    std::string ToLower(const std::string &str)
+    {
+        std::string result = str;
+        std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+        return result;
+    }
+
     ScenePanel::ScenePanel(const char *windowTitle, EditorLayer *editor)
         : IPanel(windowTitle), m_Editor(editor)
     {
@@ -69,7 +83,6 @@ namespace ignite
         static ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_ScrollX;
         if (ImGui::BeginTable("entity_hierarchy_table", 3, tableFlags))
         {
-
             // setup table 3 columns
             // Name, Type, Active (check box)
             ImGui::TableSetupScrollFreeze(0, 1);
@@ -263,10 +276,10 @@ namespace ignite
                     {
                         Rigidbody2D *c = comp->As<Rigidbody2D>();
                         
-                        static const char *bodyTypeStr[3] = { "Static", "Dynamic", "Kinematic" };
-                        const char *currentBodyType = bodyTypeStr[static_cast<i32>(c->GetType())];
+                        const char *bodyTypeStr[3] = { "Static", "Dynamic", "Kinematic" };
+                        const char *currentBodyType = bodyTypeStr[static_cast<i32>(c->type)];
     
-                        if (ImGui::BeginCombo("Type", currentBodyType))
+                        if (ImGui::BeginCombo("Body Type", currentBodyType))
                         {
                             for (i32 i = 0; i < std::size(bodyTypeStr); ++i)
                             {
@@ -320,11 +333,11 @@ namespace ignite
                         }
                         else
                         {
-                            ImGui::DragFloat2("Linear Vel", &c->linearVelocity.x, 0.025f);
-                            ImGui::DragFloat("Angular Vel", &c->angularVelocity, 0.025f);
-                            ImGui::DragFloat("Gravity", &c->gravityScale, 0.025f);
-                            ImGui::DragFloat("Linear Damping", &c->linearDamping, 0.025f);
-                            ImGui::DragFloat("Angular Damping", &c->angularDamping, 0.025f);
+                            ImGui::DragFloat2("Linear Vel", &c->linearVelocity.x, 0.025f, FLT_MIN, FLT_MAX);
+                            ImGui::DragFloat("Angular Vel", &c->angularVelocity, 0.025f, FLT_MIN, FLT_MAX);
+                            ImGui::DragFloat("Gravity", &c->gravityScale, 0.025f, FLT_MIN, FLT_MAX);
+                            ImGui::DragFloat("Linear Damping", &c->linearDamping, 0.0f, FLT_MAX);
+                            ImGui::DragFloat("Angular Damping", &c->angularDamping, 0.025f, 0.0f, FLT_MAX);
                             ImGui::Checkbox("Fixed Rotation", &c->fixedRotation);
                             ImGui::Checkbox("Awake", &c->isAwake);
                             ImGui::Checkbox("Enabled", &c->isEnabled);
@@ -341,10 +354,10 @@ namespace ignite
                     if (ImGui::TreeNodeEx("Box Collider 2D", flags))
                     {
                         BoxCollider2D *c = comp->As<BoxCollider2D>();
-                        ImGui::DragFloat2("Size", &c->size.x, 0.025f);
-                        ImGui::DragFloat2("Offset", &c->offset.x, 0.025f);
-                        ImGui::DragFloat("Restitution", &c->restitution, 0.025f);
-                        ImGui::DragFloat("Friction", &c->friction, 0.025f);
+                        ImGui::DragFloat2("Size", &c->size.x, 0.025f, 0.0f, FLT_MAX);
+                        ImGui::DragFloat2("Offset", &c->offset.x, 0.025f, 0.0f, FLT_MAX);
+                        ImGui::DragFloat("Restitution", &c->restitution, 0.025f, 0.0f, FLT_MAX);
+                        ImGui::DragFloat("Friction", &c->friction, 0.025f, 0.0f, FLT_MAX);
                         ImGui::DragFloat("Density", &c->density, 0.025f);
                         ImGui::Checkbox("Is Sensor", &c->isSensor);
                         ImGui::TreePop();
@@ -354,6 +367,78 @@ namespace ignite
                 }
             }
             ImGui::PopID();
+
+            if (ImGui::Button("Add Component", { ImGui::GetContentRegionAvail().x, 20.0f }))
+            {
+                ImGui::OpenPopupOnItemClick("add_component_context");
+            }
+
+            // add component context
+            if (ImGui::BeginPopupContextItem("add_component_context", ImGuiPopupFlags_NoOpenOverExistingPopup))
+            {
+                ImGui::Text("Hello world");
+
+                static char buffer[256] = { 0 };
+                static std::string compNameResult;
+                static std::set<std::pair<std::string, CompType>> filteredCompName;
+
+                ImGui::InputTextWithHint("##component_name", "Component", buffer, sizeof(buffer) + 1, ImGuiInputTextFlags_EscapeClearsAll);
+                
+                compNameResult = std::string(buffer);
+                filteredCompName.clear();
+
+                if (!compNameResult.empty())
+                {
+                    std::string search = ToLower(compNameResult);
+                    for (const auto& [strName, type] : componentsName)
+                    {
+                        std::string nameLower = ToLower(strName);
+                        if (nameLower.find(search) != std::string::npos)
+                        {
+                            filteredCompName.insert({strName, type});
+                        }
+                    }
+                }
+
+                static std::function<void(Entity, CompType)> addCompFunc = [=](Entity entity, CompType type)
+                {
+                    switch (type)
+                    {
+                    case CompType_Rigidbody2D:
+                    {
+                        entity.AddComponent<Rigidbody2D>();
+                        break;
+                    }
+                    case CompType_BoxCollider2D:
+                    {
+                        entity.AddComponent<BoxCollider2D>();
+                        break;
+                    }
+                    }
+                };
+                
+                if (compNameResult.empty())
+                {
+                    for (const auto& [strName, type] : componentsName)
+                    {
+                        if (ImGui::Selectable(strName.c_str()))
+                        {
+                            addCompFunc(Entity {m_SelectedEntity, m_Scene}, type);
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+                }
+
+                for (const auto &[strName, type] : filteredCompName)
+                {
+                    if (ImGui::Selectable(strName.c_str()))
+                    {
+                        addCompFunc(Entity {m_SelectedEntity, m_Scene}, type);
+                        ImGui::CloseCurrentPopup();
+                    }
+                }
+                ImGui::EndPopup();
+            }
         }
 
         ImGui::End();
