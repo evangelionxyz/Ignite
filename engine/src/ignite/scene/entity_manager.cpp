@@ -120,6 +120,7 @@ namespace ignite
 
         ID idComp = entity.GetComponent<ID>();
 
+        scene->registeredComps.erase(entity);
         scene->physics2D->DestroyBody(entity);
         scene->registry->destroy(entity);
 
