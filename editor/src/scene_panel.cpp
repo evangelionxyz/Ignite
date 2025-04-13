@@ -384,7 +384,7 @@ namespace ignite
 
     void ScenePanel::RenderSettings()
     {
-        ImGui::Begin("Settings", &m_State.settingsWindow);
+        ImGui::Begin("Settings", &m_Data.settingsWindow);
 
         // =================================
         // Camera settings

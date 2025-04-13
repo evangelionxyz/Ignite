@@ -62,10 +62,10 @@ namespace ignite
 
         Entity m_SelectedEntity = { };
 
-        struct State
+        struct Data
         {
             bool settingsWindow = true;
-        } m_State;
+        } m_Data;
 
         struct CameraData
         {

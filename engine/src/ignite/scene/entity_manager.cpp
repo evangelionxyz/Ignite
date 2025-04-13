@@ -1,6 +1,7 @@
 #include "entity_manager.hpp"
 #include "scene.hpp"
 #include "entity.hpp"
+#include "entity_command_manager.hpp"
 #include "ignite/core/uuid.hpp"
 #include <string>
 #include <unordered_map>

@@ -6,6 +6,8 @@
 #include "ignite/core/logger.hpp"
 #include "ignite/core/types.hpp"
 
+#include "states.hpp"
+
 namespace ignite
 {
     class IPanel

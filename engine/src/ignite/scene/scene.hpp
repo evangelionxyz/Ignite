@@ -29,10 +29,13 @@ namespace ignite
         void OnStart();
         void OnStop();
         
-        void OnUpdate(f32 deltaTime);
-        void OnRender(Camera *camera, nvrhi::IFramebuffer *framebuffer);
+        void OnUpdateRuntimeSimulate(f32 deltaTime);
+        void OnUpdateEdit(f32 deltaTime);
 
-        static Ref<Scene> Copy(Ref<Scene> other);
+        void OnRenderRuntimeSimulate(Camera *camera, nvrhi::IFramebuffer *framebuffer);
+        void OnRenderRuntime(nvrhi::IFramebuffer *framebuffer);
+
+        static Ref<Scene> Copy(const Ref<Scene> &other);
 
         std::string name;
         entt::registry *registry = nullptr;

@@ -38,16 +38,17 @@ namespace ignite
         m_ScenePanel = CreateRef<ScenePanel>("Scene Panel", this);
         m_ScenePanel->CreateRenderTarget(device, 1280.0f, 720.0f);
 
-        m_ActiveScene = CreateRef<Scene>("test scene");
-        m_ScenePanel->SetActiveScene(m_ActiveScene.get());
-        
-        m_ActiveScene->OnStart();
+        NewScene();
+
+        Entity e = EntityManager::CreateEntity(m_ActiveScene.get(), "Box", EntityType_Common);
+        e.AddComponent<Sprite2D>();
+        e.AddComponent<Rigidbody2D>().type = Body2DType_Dynamic;
+        e.AddComponent<BoxCollider2D>();
     }
 
     void EditorLayer::OnDetach()
     {
         Layer::OnDetach();
-        m_ActiveScene->OnStop();
         m_CommandList = nullptr;
     }
 
@@ -55,7 +56,19 @@ namespace ignite
     {
         Layer::OnUpdate(deltaTime);
 
-        m_ActiveScene->OnUpdate(deltaTime);
+        switch (m_Data.sceneState)
+        {
+        case State_ScenePlay:
+        {
+            m_ActiveScene->OnUpdateRuntimeSimulate(deltaTime);
+            break;
+        }
+        case State_SceneEdit:
+        {
+            m_ActiveScene->OnUpdateEdit(deltaTime);
+            break;
+        }
+        }
 
         // update panels
         m_ScenePanel->OnUpdate(deltaTime);
@@ -109,7 +122,7 @@ namespace ignite
 
         nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
 
-        m_ActiveScene->OnRender(m_ScenePanel->GetViewportCamera(), m_ScenePanel->GetRT()->framebuffer);
+        m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), m_ScenePanel->GetRT()->framebuffer);
 
         m_CommandList->close();
         m_DeviceManager->GetDevice()->executeCommandList(m_CommandList);
@@ -120,13 +133,14 @@ namespace ignite
         constexpr f32 TITLE_BAR_HEIGHT = 45.0f;
 
         constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse
-            | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBringToFrontOnFocus |
-            ImGuiWindowFlags_NoNavFocus;
+            | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
         const ImGuiViewport *viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->Pos);
         ImGui::SetNextWindowSize(viewport->Size);
         ImGui::SetNextWindowViewport(viewport->ID);
+
+        f32 totalTitlebarHeight = viewport->Pos.y + TITLE_BAR_HEIGHT;
 
         ImGui::Begin("##main_dockspace", nullptr, windowFlags);
         ImGuiWindow *window = ImGui::GetCurrentWindow();
@@ -134,11 +148,25 @@ namespace ignite
         window->DC.NavLayerCurrent = ImGuiNavLayer_Menu;
         ImDrawList *draw_list = ImGui::GetWindowDrawList();
         const ImVec2 minPos = viewport->Pos;
-        const ImVec2 maxPos = ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + TITLE_BAR_HEIGHT);
+        const ImVec2 maxPos = ImVec2(viewport->Pos.x + viewport->Size.x, totalTitlebarHeight);
         draw_list->AddRectFilled(minPos, maxPos, IM_COL32(40, 40, 40, 255));
 
+        // play stop and simulate button
+        ImVec2 buttonSize = {40.0f, 25.0f};
+        ImVec2 buttonCursorPos = { viewport->Pos.x, totalTitlebarHeight / 2.0f - buttonSize.y / 2.0f};
+        ImGui::SetCursorScreenPos(buttonCursorPos);
+
+        bool sceneStatePlaying = m_Data.sceneState == State_ScenePlay;
+        if (ImGui::Button(sceneStatePlaying ? "Stop" : "Play", buttonSize))
+        {
+            if (sceneStatePlaying)
+                OnSceneStop();
+            else 
+                OnScenePlay();
+        }
+
         // dockspace
-        ImGui::SetCursorScreenPos({viewport->Pos.x, viewport->Pos.y + TITLE_BAR_HEIGHT});
+        ImGui::SetCursorScreenPos({viewport->Pos.x, totalTitlebarHeight});
         ImGui::DockSpace(ImGui::GetID("main_dockspace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
         {
             // scene dockspace
@@ -146,5 +174,35 @@ namespace ignite
         }
 
         ImGui::End(); // end dockspace
+    }
+
+    void EditorLayer::NewScene()
+    {
+        // create editor scene
+        m_EditorScene = CreateRef<Scene>("test scene");
+
+        // pass to active scene
+        m_ActiveScene = m_EditorScene;
+        m_ScenePanel->SetActiveScene(m_ActiveScene.get()); // then set it to scene panel
+    }
+
+    void EditorLayer::OnScenePlay()
+    {
+        m_Data.sceneState = State_ScenePlay;
+
+        // copy initial components to new scene
+        m_ActiveScene = Scene::Copy(m_EditorScene);
+        m_ActiveScene->OnStart();
+
+        m_ScenePanel->SetActiveScene(m_ActiveScene.get());
+    }
+
+    void EditorLayer::OnSceneStop()
+    {
+        m_Data.sceneState = State_SceneEdit;
+        
+        m_ActiveScene->OnStop();
+        m_ActiveScene = m_EditorScene;
+        m_ScenePanel->SetActiveScene(m_EditorScene.get());
     }
 }

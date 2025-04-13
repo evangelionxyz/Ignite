@@ -9,6 +9,8 @@
 
 #include "entity.hpp"
 
+#include "entity_manager.hpp"
+
 namespace ignite
 {
     Scene::Scene(const std::string &_name)
@@ -38,12 +40,23 @@ namespace ignite
         physics2D->SimulationStop();
     }
 
-    void Scene::OnUpdate(f32 deltaTime)
+    void Scene::OnUpdateEdit(f32 deltaTime)
+    {
+        // NOTE: currently we are not updating transformation with edit mode
+        // TODO: calulcate parent & child transformation
+    }
+
+    void Scene::OnUpdateRuntimeSimulate(f32 deltaTime)
     {
         physics2D->Simulate(deltaTime);
     }
 
-    void Scene::OnRender(Camera *camera, nvrhi::IFramebuffer *framebuffer)
+    void Scene::OnRenderRuntime(nvrhi::IFramebuffer *framebuffer)
+    {
+        // TODO: render with camera component
+    }
+
+    void Scene::OnRenderRuntimeSimulate(Camera *camera, nvrhi::IFramebuffer *framebuffer)
     {
         Renderer2D::Begin(camera, framebuffer);
 
@@ -66,18 +79,34 @@ namespace ignite
         Renderer2D::End();
     }
 
-    Ref<Scene> Scene::Copy(Ref<Scene> other)
+    Ref<Scene> Scene::Copy(const Ref<Scene> &other)
     {
+        // create new scene with other's name
         Ref<Scene> newScene = CreateRef<Scene>(other->name);
 
-        auto srcReg = other->registry;
-        auto dstReg = newScene->registry;
+        // create source and destination registry
+        auto srcRegistry = other->registry;
+        auto destRegistry = newScene->registry;
 
-        auto view = srcReg->view<ID>();
+        EntityMap entityMap;
+        Entity newEntity = Entity{ };
+
+        // create entities for new new scene
+        auto view = srcRegistry->view<ID>();
         for (auto e : view)
         {
-            Entity entity { e, other.get() };
+            // get src entity component
+            Entity srcEntity = { e, other.get() };
+            const ID &srcIdComp = srcEntity.GetComponent<ID>();
+
+            // store src entity component to new entity (destination entity)
+            newEntity = EntityManager::CreateEntity(newScene.get(), srcIdComp.name, srcIdComp.type, srcIdComp.uuid);
+
+            // TODO: store parent and child
+            entityMap[srcIdComp.uuid] = newEntity;
         }
+
+        EntityManager::CopyComponent(AllComponents{}, destRegistry, srcRegistry, entityMap);
 
         return newScene;
     }

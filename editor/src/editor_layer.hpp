@@ -4,21 +4,23 @@
 #include "ignite/core/layer.hpp"
 #include "ignite/ignite.hpp"
 
-class ShaderFactory;
-class DeviceManager;
+#include "states.hpp"
 
 namespace ignite
 {
+    class ShaderFactory;
+    class DeviceManager;
+
     class ScenePanel;
 
     class EditorLayer final : public Layer
     {
     private:
-        struct State
+        struct EditorData
         {
             bool debugMode = false;
             bool developerMode = false;
-            bool scenePlaying = false;
+            State sceneState = State_SceneEdit;
         };
 
     public:
@@ -33,13 +35,20 @@ namespace ignite
         void OnGuiRender() override;
 
         Scene *GetActiveScene() { return m_ActiveScene.get(); }
-        State GetState() { return m_State; }
+        EditorData GetState() { return m_Data; }
 
     private:
+        void NewScene();
+        void OnScenePlay();
+        void OnSceneStop();
+        
         Ref<ScenePanel> m_ScenePanel;
+        
         Ref<Scene> m_ActiveScene;
+        Ref<Scene> m_EditorScene;
+
         Ref<Texture> m_Texture;
-        State m_State;
+        EditorData m_Data;
         
         nvrhi::CommandListHandle m_CommandList;
         DeviceManager *m_DeviceManager;
