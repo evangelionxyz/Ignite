@@ -185,7 +185,7 @@ namespace ignite
 
         // pass to active scene
         m_ActiveScene = m_EditorScene;
-        m_ScenePanel->SetActiveScene(m_ActiveScene.get()); // then set it to scene panel
+        m_ScenePanel->SetActiveScene(m_ActiveScene.get(), true); // reset selected entity
     }
 
     void EditorLayer::OnScenePlay()
@@ -205,6 +205,7 @@ namespace ignite
         
         m_ActiveScene->OnStop();
         m_ActiveScene = m_EditorScene;
+        
         m_ScenePanel->SetActiveScene(m_EditorScene.get());
     }
 }

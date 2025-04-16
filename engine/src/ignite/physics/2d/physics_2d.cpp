@@ -1,8 +1,9 @@
-#define GLM_ENABLE_EXPERIMENTAL
 #include "physics_2d.hpp"
 #include <ignite/scene/scene.hpp>
 
 #include "ignite/scene/component.hpp"
+
+#include "ignite/scene/scene_manager.hpp"
 
 namespace ignite
 {
@@ -24,8 +25,15 @@ namespace ignite
         auto view = reg->view<Rigidbody2D>();
         for (entt::entity e : view)
         {
-            Rigidbody2D &rb          = reg->get<Rigidbody2D>(e);
-            const Transform &tr      = reg->get<Transform>(e);
+            ID &id          = reg->get<ID>(e);
+            Rigidbody2D &rb = reg->get<Rigidbody2D>(e);
+            Transform &tr   = reg->get<Transform>(e);
+
+            // first, calculate the transformed matrix from parent
+            if (id.parent != 0)
+            {
+                SceneManager::CalculateParentTransform(m_Scene, tr, id.parent);
+            }
 
             b2BodyDef bodyDef        = b2DefaultBodyDef();
             bodyDef.type             = GetB2BodyType(rb.type);
@@ -62,8 +70,17 @@ namespace ignite
     void Physics2D::Instantiate(entt::entity e)
     {
         entt::registry *reg = m_Scene->registry;
+
+        ID &id = reg->get<ID>(e);
+        Transform &tr      = reg->get<Transform>(e);
+
+        // first, calculate the transformed matrix from parent
+        if (id.parent != 0)
+        {
+            SceneManager::CalculateParentTransform(m_Scene, tr, id.parent);
+        }
+
         Rigidbody2D &rb          = reg->get<Rigidbody2D>(e);
-        const Transform &tr      = reg->get<Transform>(e);
 
         b2BodyDef bodyDef        = b2DefaultBodyDef();
         bodyDef.type             = GetB2BodyType(rb.type);
@@ -126,6 +143,7 @@ namespace ignite
         const auto reg = m_Scene->registry;
         for (const auto e : reg->view<Rigidbody2D>())
         {
+            ID &id = reg->get<ID>(e);
             Transform &tr = reg->get<Transform>(e);
             Rigidbody2D &rb = reg->get<Rigidbody2D>(e);
 
@@ -145,10 +163,15 @@ namespace ignite
                 b2Shape_SetPolygon(bc.shapeId, &boxShape);
             }
 
+            // first, calculate the local transform
             const auto [x, y] = b2Body_GetPosition(rb.bodyId);
             const b2Rot rotation = b2Body_GetRotation(rb.bodyId);
-            tr.translation = { x, y, tr.translation.z };
-            tr.rotation = glm::quat({ 0.0f, 0.0f, b2Rot_GetAngle(rotation) });
+            tr.local_translation = { x, y, tr.translation.z };
+            tr.local_rotation = glm::quat({ 0.0f, 0.0f, b2Rot_GetAngle(rotation) });
+
+            tr.translation = tr.local_translation;
+            tr.rotation = tr.local_rotation;
+            tr.scale = tr.local_scale;
         }
     }
 

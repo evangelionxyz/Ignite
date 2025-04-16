@@ -26,7 +26,7 @@ namespace ignite
     public:
         explicit ScenePanel(const char *windowTitle, EditorLayer *editor);
         
-        void SetActiveScene(Scene *scene);
+        void SetActiveScene(Scene *scene, bool reset = false);
         void CreateRenderTarget(nvrhi::IDevice *device, f32 width, f32 height);
 
         void OnUpdate(f32 deltaTime) override;
@@ -65,6 +65,7 @@ namespace ignite
         Scene *m_Scene = nullptr;
 
         Entity m_SelectedEntity = { };
+        static UUID m_TrackingSelectedEntity;
 
         struct Data
         {

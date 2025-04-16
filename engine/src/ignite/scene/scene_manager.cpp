@@ -6,6 +6,9 @@
 #include <string>
 #include <unordered_map>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/matrix_decompose.hpp>
+
 namespace ignite
 {    
     std::string GenerateUniqueName(const std::string &name, const std::vector<std::string> &names, StringCounterMap &strMap)
@@ -326,12 +329,16 @@ namespace ignite
         {
             // get src entity component
             Entity srcEntity = { e, other.get() };
-            const ID &srcIdComp = srcEntity.GetComponent<ID>();
+            ID &srcIdComp = srcEntity.GetComponent<ID>();
 
             // store src entity component to new entity (destination entity)
             newEntity = SceneManager::CreateEntity(newScene.get(), srcIdComp.name, srcIdComp.type, srcIdComp.uuid);
 
             // TODO: store parent and child
+            ID &newEntityIdComp = newEntity.GetComponent<ID>();
+            newEntityIdComp.parent = srcIdComp.parent;
+            newEntityIdComp.children = std::vector<UUID>(srcIdComp.children.begin(), srcIdComp.children.end());
+
             entityMap[srcIdComp.uuid] = newEntity;
         }
 
@@ -340,7 +347,19 @@ namespace ignite
         return newScene;
     }
 
+    void SceneManager::CalculateParentTransform(Scene *scene, Transform &transform, UUID parentUUID)
+    {
+        entt::entity parent = scene->entities[parentUUID];
+        Transform &parentTr = scene->registry->get<Transform>(parent);
 
+        const glm::mat4 &transformedMatrix = parentTr.WorldTransform() * transform.LocalTransform();
+
+        static glm::vec3 skew(1.0f);
+        static glm::vec4 perspective(1.0f);
+
+        glm::decompose(transformedMatrix, transform.scale, transform.rotation, transform.translation,
+            skew, perspective); // unused
+    }
 
 
 } // namespace ignite

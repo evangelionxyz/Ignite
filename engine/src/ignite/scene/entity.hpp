@@ -14,6 +14,12 @@ namespace ignite
         Entity(entt::entity e, Scene *scene);
         Entity(const Entity &other) = default;
 
+        ~Entity()
+        {
+            m_Handle = {entt::null};
+            m_Scene = nullptr;
+        }
+
         template<typename T, typename... Args>
         T &AddComponent(Args &&... args)
         {
@@ -89,6 +95,9 @@ namespace ignite
 
         bool operator==(const Entity &other) const { return other.m_Handle == m_Handle && other.m_Scene == m_Scene; }
         bool operator!=(const Entity &other) const { return !(*this == other); }
+
+        UUID GetUUID() { return GetComponent<ID>().uuid; }
+        const std::string &GetName() { return GetComponent<ID>().name; }
 
     private:
         entt::entity m_Handle;

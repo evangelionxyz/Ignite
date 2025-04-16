@@ -7,10 +7,9 @@
 #include "ignite/graphics/renderer_2d.hpp"
 #include "ignite/physics/2d/physics_2d.hpp"
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/matrix_decompose.hpp>
-
 #include "entity.hpp"
+
+#include "scene_manager.hpp"
 
 namespace ignite
 {
@@ -54,16 +53,7 @@ namespace ignite
             // calculate transform from entity's parent
             if (id.parent != 0)
             {
-                entt::entity parent = entities[id.parent];
-                Transform &parentTr = registry->get<Transform>(parent);
-
-                const glm::mat4 &transformedMatrix = parentTr.WorldTransform() * tr.LocalTransform();
-
-                static glm::vec3 skew(1.0f);
-                static glm::vec4 perspective(1.0f);
-
-                glm::decompose(transformedMatrix, tr.scale, tr.rotation, tr.translation,
-                    skew, perspective); // unused
+                SceneManager::CalculateParentTransform(this, tr, id.parent);
             }
             else
             {

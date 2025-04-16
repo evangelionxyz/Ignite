@@ -26,6 +26,8 @@ namespace ignite
         return result;
     }
 
+    UUID ScenePanel::m_TrackingSelectedEntity = UUID(0);
+
     ScenePanel::ScenePanel(const char *windowTitle, EditorLayer *editor)
         : IPanel(windowTitle), m_Editor(editor)
     {
@@ -37,9 +39,10 @@ namespace ignite
         //m_ViewportCamera->position.z = 8.0f;
     }
 
-    void ScenePanel::SetActiveScene(Scene *scene)
+    void ScenePanel::SetActiveScene(Scene *scene, bool reset)
     {
         m_Scene = scene;
+        m_SelectedEntity = SceneManager::GetEntity(m_Scene, m_TrackingSelectedEntity);
     }
 
     void ScenePanel::CreateRenderTarget(nvrhi::IDevice *device, f32 width, f32 height)
@@ -170,8 +173,8 @@ namespace ignite
         if (!entity.IsValid() || (idComp.parent && index == 0))
             return;
 
-        ImGuiTreeNodeFlags flags = (m_SelectedEntity == entity ? ImGuiTreeNodeFlags_Selected : 0)
-            | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow
+        ImGuiTreeNodeFlags flags = (m_SelectedEntity == entity ? ImGuiTreeNodeFlags_Selected : 0) | (!idComp.HasChild() ? ImGuiTreeNodeFlags_Leaf : 0)
+            | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen
             | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
 
         void *imguiPushId = (void*)(uint64_t)(uint32_t)entity;
@@ -597,14 +600,14 @@ namespace ignite
     template<typename T, typename UIFunction>
     void ScenePanel::RenderComponent(const std::string &name, Entity entity, UIFunction uiFunction, bool allowedToRemove)
     {
-        constexpr ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth
+        constexpr ImGuiTreeNodeFlags treeNdeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth
             | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
 
         if (entity.HasComponent<T>())
         {
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2 { 0.5f, 2.0f });
             ImGui::Separator();
-            const bool open = ImGui::TreeNodeEx(reinterpret_cast<void *>(typeid(T).hash_code()), tree_node_flags, name.c_str());
+            const bool open = ImGui::TreeNodeEx(reinterpret_cast<void *>(typeid(T).hash_code()), treeNdeFlags, name.c_str());
             ImGui::PopStyleVar();
 
             ImGui::SameLine(ImGui::GetContentRegionAvail().x - 24.0f);
@@ -789,6 +792,7 @@ namespace ignite
 
     Entity ScenePanel::SetSelectedEntity(Entity entity)
     {
+        m_TrackingSelectedEntity = entity.GetUUID();
         return m_SelectedEntity = entity;
     }
 

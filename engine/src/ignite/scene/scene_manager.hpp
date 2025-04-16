@@ -21,6 +21,7 @@ namespace ignite
         static bool ChildExists(Scene *scene, Entity destination, Entity source);
         static bool IsParent(Scene *scene, UUID target, UUID source);
         static Entity FindChild(Scene *scene, Entity parent, UUID uuid);
+        static void CalculateParentTransform(Scene *scene, Transform &transform, UUID parentUUID);
 
         static Ref<Scene> Copy(Ref<Scene> &other);
 
