@@ -9,6 +9,17 @@ struct PSInput
 
 float4 main(PSInput input) : SV_TARGET
 {
-    float4 texColor = input.color;
-    return texColor;
+    float3 normal = normalize(input.normal);
+
+    float3 lightDirection = normalize(float3(-0.5f, -1.0f, -3.0f));
+
+    float diffuseIntensity = max(dot(normal, -lightDirection), 0.0f);
+
+    float ambientIntensity = 0.2f;
+
+    float lighting = saturate(ambientIntensity + diffuseIntensity);
+
+    float4 finalColor = input.color * lighting;
+
+    return finalColor;
 }

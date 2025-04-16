@@ -34,9 +34,11 @@ namespace ignite
         Application *app = Application::GetInstance();
 
         m_ViewportCamera = CreateScope<Camera>("ScenePanel-Editor Camera");
-        m_ViewportCamera->CreateOrthographic(app->GetCreateInfo().width, app->GetCreateInfo().height, 8.0f, 0.1f, 350.0f);
-        //m_ViewportCamera->CreatePerspective(45.0f, app->GetCreateInfo().width, app->GetCreateInfo().height, 0.1f, 350.0f);
-        //m_ViewportCamera->position.z = 8.0f;
+        // m_ViewportCamera->CreateOrthographic(app->GetCreateInfo().width, app->GetCreateInfo().height, 8.0f, 0.1f, 350.0f);
+        m_ViewportCamera->CreatePerspective(45.0f, app->GetCreateInfo().width, app->GetCreateInfo().height, 0.1f, 350.0f);
+        m_ViewportCamera->position = {3.0f, 2.0f, 3.0f};
+        m_ViewportCamera->yaw = -0.729f;
+        m_ViewportCamera->pitch = 0.410f;
     }
 
     void ScenePanel::SetActiveScene(Scene *scene, bool reset)
@@ -660,7 +662,7 @@ namespace ignite
                     }
                     else
                     {
-                        m_ViewportCamera->position += m_ViewportCamera->GetForwardDirection() * dy * m_CameraData.moveSpeed;
+                        m_ViewportCamera->position += m_ViewportCamera->GetForwardDirection() * dy * m_CameraData.moveSpeed * 0.1f;
                     }
                     break;
                 }
@@ -710,7 +712,6 @@ namespace ignite
     {
         if (!m_ViewportData.isHovered)
             return;
-
         
         // Static to preserve state between frames
         static glm::vec2 lastMousePos = { ImGui::GetMousePos().x, ImGui::GetMousePos().y };
@@ -757,8 +758,8 @@ namespace ignite
             }
             else if (Input::IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE))
             {
-                m_ViewportCamera->position.x += mouseDelta.x * xFactor * m_CameraData.moveSpeed * 0.03f;
-                m_ViewportCamera->position.y += -mouseDelta.y * yFactor * m_CameraData.moveSpeed * 0.03f;
+                m_ViewportCamera->position += m_ViewportCamera->GetRightDirection() * mouseDelta.x * xFactor * m_CameraData.moveSpeed * 0.03f;
+                m_ViewportCamera->position += m_ViewportCamera->GetUpDirection() * -mouseDelta.y * yFactor * m_CameraData.moveSpeed * 0.03f;
             }
 
             // key input

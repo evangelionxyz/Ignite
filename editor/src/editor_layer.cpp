@@ -158,7 +158,7 @@ namespace ignite
             .setDepthTestEnable(false);
 
         auto rasterState = nvrhi::RasterState()
-            .setCullNone()
+            .setCullFront()
             .setMultisampleEnable(false);
 
         auto renderState = nvrhi::RenderState()
