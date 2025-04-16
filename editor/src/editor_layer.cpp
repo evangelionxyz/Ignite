@@ -24,9 +24,16 @@ namespace ignite
         nvrhi::BindingSetHandle bindingSet;
         nvrhi::GraphicsPipelineHandle pipeline;
 
+        glm::vec3 position = glm::vec3(0.0f);
+        glm::vec3 rotation = glm::vec3(0.0f);
+        glm::vec3 scale = glm::vec3(1.0f);
+
         struct MeshPushConstant
         {
             glm::mat4 mvp;
+            glm::mat4 modelMatrix;
+            glm::mat4 normalMatrix;
+            glm::vec4 cameraPosition;
         } pushConstant;
     };
     MeshRenderData meshData;
@@ -306,6 +313,11 @@ namespace ignite
         // mesh command list m_CommandLists index 1
         m_CommandLists[1]->open();
         meshData.pushConstant.mvp = m_ScenePanel->GetViewportCamera()->GetViewProjectionMatrix();
+        meshData.pushConstant.modelMatrix = glm::translate(glm::mat4(1.0f), meshData.position) 
+            * glm::toMat4(glm::quat(meshData.rotation)) * glm::scale(meshData.scale);
+        glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(meshData.pushConstant.modelMatrix)));
+        meshData.pushConstant.normalMatrix = glm::mat4(normalMat3);
+        meshData.pushConstant.cameraPosition = glm::vec4(m_ScenePanel->GetViewportCamera()->position, 1.0f);
         m_CommandLists[1]->writeBuffer(meshData.constantBuffer, &meshData.pushConstant, sizeof(meshData.pushConstant));
 
         const auto meshGraphicsState = nvrhi::GraphicsState()
@@ -368,6 +380,14 @@ namespace ignite
         {
             // scene dockspace
             m_ScenePanel->OnGuiRender();
+
+            ImGui::Begin("Cube");
+            ImGui::PushID("CubeID");
+            ImGui::DragFloat3("Position", &meshData.position.x, 0.025f);
+            ImGui::DragFloat3("Rotation", &meshData.rotation.x, 0.025f);
+            ImGui::DragFloat3("Scale", &meshData.scale.x, 0.025f);
+            ImGui::PopID();
+            ImGui::End();
         }
 
         ImGui::End(); // end dockspace

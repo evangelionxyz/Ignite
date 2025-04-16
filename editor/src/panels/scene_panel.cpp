@@ -293,7 +293,7 @@ namespace ignite
             strncpy(buffer, idComp.name.c_str(), sizeof(buffer) - 1);
             if (ImGui::InputText("##label", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue))
             {
-                idComp.name = std::string(buffer);
+                SceneManager::RenameEntity(m_Scene, m_SelectedEntity, std::string(buffer));
             }
 
             ImGui::SameLine();
