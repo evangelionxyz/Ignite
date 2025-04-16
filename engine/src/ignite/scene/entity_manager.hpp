@@ -18,6 +18,11 @@ namespace ignite
 
         static void DestroyEntityWithCommand(Scene *scene, Entity entity);
 
+        static void AddChild(Scene *scene, Entity destination, Entity source);
+        static bool ChildExists(Scene *scene, Entity destination, Entity source);
+        static bool IsParent(Scene *scene, UUID target, UUID source);
+        static Entity FindChild(Scene *scene, Entity parent, UUID uuid);
+
         using EntityMap = std::unordered_map<UUID, entt::entity>;
 
         template<typename... Component>

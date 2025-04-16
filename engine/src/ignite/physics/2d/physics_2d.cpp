@@ -99,11 +99,22 @@ namespace ignite
             if (reg->any_of<BoxCollider2D>(e))
             {
                 auto &bc = reg->get<BoxCollider2D>(e);
-                b2DestroyShape(bc.shapeId, false);
+
+                // check b2world is already created
+                if (bc.shapeId.world0 != 0)
+                {
+                    b2DestroyShape(bc.shapeId, false);
+                }
+                
             }
 
             Rigidbody2D &rb = reg->get<Rigidbody2D>(e);
-            b2DestroyBody(rb.bodyId);
+
+            // check b2world is already created
+            if (rb.bodyId.world0 != 0)
+            {
+                b2DestroyBody(rb.bodyId);
+            }
         }
     }
 

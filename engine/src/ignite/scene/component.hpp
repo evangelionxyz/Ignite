@@ -42,6 +42,27 @@ namespace ignite
         UUID uuid;
         EntityType type;
 
+        UUID parent = UUID(0);
+        std::vector<UUID> children;
+
+        void AddChild(UUID childId)
+        {
+            children.push_back(childId);
+        }
+
+        void RemoveChild(UUID childId)
+        {
+            children.erase(std::remove_if(children.begin(), children.end(), [childId](const UUID id) 
+            { 
+                return id == childId;
+            }), children.end());
+        }
+
+        bool HasChild() const
+        {
+            return !children.empty();
+        }
+
         ID(const std::string &_name,  EntityType _type, const UUID &_uuid = UUID())
             : name(_name)
             , type(_type)

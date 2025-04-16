@@ -148,6 +148,13 @@ namespace ignite
 
         ID idComp = entity.GetComponent<ID>();
 
+        // recursively destroy children
+        for (UUID childId : idComp.children)
+        {
+            entity.GetComponent<ID>().RemoveChild(childId);
+            DestroyEntity(scene, GetEntity(scene, childId));
+        }
+
         scene->registeredComps.erase(entity);
         scene->physics2D->DestroyBody(entity);
         scene->registry->destroy(entity);
@@ -178,8 +185,7 @@ namespace ignite
 
     void EntityManager::DestroyEntity(Scene *scene, UUID uuid)
     {
-        Entity entity = GetEntity(scene, uuid);
-        scene->registry->destroy(entity);
+        DestroyEntity(scene, GetEntity(scene, uuid));
     }
 
     Entity EntityManager::GetEntity(Scene *scene, UUID uuid)
@@ -198,6 +204,72 @@ namespace ignite
 
         DestroyEntity(scene, entity);
     }
+
+    void EntityManager::AddChild(Scene *scene, Entity destination, Entity source)
+    {
+        ID &destIDComp = destination.GetComponent<ID>();
+        ID &sourceIDComp = source.GetComponent<ID>();
+
+        if (!IsParent(scene, destIDComp.uuid, sourceIDComp.uuid))
+        {
+            // remove from current parent
+            if (sourceIDComp.parent != 0)
+            {
+                Entity currentParent = GetEntity(scene, sourceIDComp.parent);
+                currentParent.GetComponent<ID>().RemoveChild(sourceIDComp.uuid);
+            }
+
+            // add to target parent
+            destIDComp.AddChild(sourceIDComp.uuid);
+            sourceIDComp.parent = destIDComp.uuid;
+        }
+    }
+
+    bool EntityManager::ChildExists(Scene *scene, Entity destination, Entity source)
+    {
+        ID &destIDComp = destination.GetComponent<ID>();
+        ID &sourceIDComp = source.GetComponent<ID>();
+
+        // source parent is the destination
+        if (sourceIDComp.parent == destIDComp.uuid)
+        {
+            return true;
+        }
+
+        // recursively search
+        Entity nextParent = GetEntity(scene, sourceIDComp.parent);
+        if (ChildExists(scene, nextParent, source)) // find until it is not source's parent
+            return true;
+
+        return false;
+    }
+
+    bool EntityManager::IsParent(Scene *scene, UUID target, UUID source)
+    {
+        Entity destParent = GetEntity(scene, target);
+        if (!destParent.IsValid())
+            return false;
+
+        const ID &destIDComp = destParent.GetComponent<ID>();
+
+        if (target == source)
+            return true;
+
+        if (destIDComp.parent && IsParent(scene, destIDComp.parent, source))
+            return true;
+
+        return false;
+    }
+
+    Entity EntityManager::FindChild(Scene *scene, Entity parent, UUID uuid)
+    {
+        UUID parentUUID = parent.GetComponent<ID>().uuid;
+        if (IsParent(scene, parentUUID, uuid))
+            return GetEntity(scene, uuid);
+
+        return {entt::null, nullptr};
+    }
+
 
 
 } // namespace ignite

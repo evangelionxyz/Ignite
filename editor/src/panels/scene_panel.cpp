@@ -76,6 +76,30 @@ namespace ignite
         static ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar;
         ImGui::BeginChild("scene_hierarchy", { ImGui::GetContentRegionAvail().x, 20.0f }, 0, windowFlags);
         ImGui::Button(m_Scene->name.c_str(), ImGui::GetContentRegionAvail());
+        // target drop
+        if (ImGui::BeginDragDropTarget())
+        {
+            if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("ENTITY_SOURCE_ITEM"))
+            {
+                LOG_ASSERT(payload->DataSize == sizeof(Entity), "WRONG ITEM, that should be an entity");
+                Entity src { *static_cast<entt::entity *>(payload->Data), m_Scene };
+                ID &idComp = src.GetComponent<ID>();
+
+                // check if src entity has parent
+                if (idComp.parent != 0)
+                {
+                    // current parent should be remove it
+                    Entity parent = EntityManager::GetEntity(m_Scene, idComp.parent);
+                    parent.GetComponent<ID>().RemoveChild(idComp.uuid);
+
+                    // reset the parent to 0
+                    idComp.parent = UUID(0);
+                }
+            }
+
+            ImGui::EndDragDropTarget();
+        }
+        
         ImGui::EndChild();
 
         ImGui::BeginChild("entity_hierachy", ImGui::GetContentRegionAvail(), 0, windowFlags);
@@ -128,7 +152,7 @@ namespace ignite
             {
                 entity = SetSelectedEntity(EntityManager::CreateSprite(m_Scene, "Sprite"));
             }
-            ImGui::End();
+            ImGui::EndMenu();
         }
 
         if (ImGui::MenuItem("Camera"))
@@ -142,6 +166,9 @@ namespace ignite
     void ScenePanel::RenderEntityNode(Entity entity, UUID uuid, i32 index)
     {
         ID &idComp = entity.GetComponent<ID>();
+
+        if (!entity.IsValid() || (idComp.parent && index == 0))
+            return;
 
         ImGuiTreeNodeFlags flags = (m_SelectedEntity == entity ? ImGuiTreeNodeFlags_Selected : 0)
             | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow
@@ -163,7 +190,8 @@ namespace ignite
                 {
                     if (const Entity e = ShowEntityContextMenu())
                     {
-                        // TODO: Add to child child
+                        EntityManager::AddChild(m_Scene, entity, e);
+                        SetSelectedEntity(e);
                     }
 
                     ImGui::EndMenu();
@@ -182,6 +210,34 @@ namespace ignite
 
         if (!isDeleting)
         {
+            // drag and drop
+            // drop source
+            if (ImGui::BeginDragDropSource())
+            {
+                ImGui::SetDragDropPayload("ENTITY_SOURCE_ITEM", &entity, sizeof(Entity));
+
+                ImGui::BeginTooltip();
+                ImGui::Text("%s %zu", idComp.name.c_str(), idComp.uuid);
+                ImGui::EndTooltip();
+
+                ImGui::EndDragDropSource();
+            }
+
+            // target drop
+            if (ImGui::BeginDragDropTarget())
+            {
+                if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("ENTITY_SOURCE_ITEM"))
+                {
+                    LOG_ASSERT(payload->DataSize == sizeof(Entity), "WRONG ITEM, that should be an entity");
+                    Entity src { *static_cast<entt::entity *>(payload->Data), m_Scene };
+                    
+                    // the current 'entity' is the target (new parent for src)
+                    EntityManager::AddChild(m_Scene, entity, src);
+                }
+
+                ImGui::EndDragDropTarget();
+            }
+
             if (ImGui::IsItemHovered(ImGuiMouseButton_Left) && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
             {
                 SetSelectedEntity(entity);
@@ -204,8 +260,11 @@ namespace ignite
         {
             if (!isDeleting)
             {
-                // TODO: Traverese children
-
+                for (UUID uuid : entity.GetComponent<ID>().children)
+                {
+                    Entity childEntity = EntityManager::GetEntity(m_Scene, uuid);
+                    RenderEntityNode(childEntity, uuid, index + 1);
+                }
             }
 
             ImGui::TreePop();
@@ -219,7 +278,7 @@ namespace ignite
 
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
 
-        if (m_SelectedEntity != (entt::entity)-1)
+        if (m_SelectedEntity.IsValid())
         {
             // Main Component
             
@@ -724,6 +783,8 @@ namespace ignite
     void ScenePanel::DestroyEntity(Entity entity)
     {
         EntityManager::DestroyEntity(m_Scene, entity);
+
+        m_SelectedEntity = {entt::null, nullptr};
     }
 
     Entity ScenePanel::SetSelectedEntity(Entity entity)
