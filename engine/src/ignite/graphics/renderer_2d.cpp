@@ -58,7 +58,7 @@ namespace ignite
 
         const auto layoutDesc = VertexQuad::GetBindingLayoutDesc();
         s_Data.quadBatch.bindingLayout = device->createBindingLayout(layoutDesc);
-        LOG_ASSERT(s_Data.quadBatch.bindingLayout, "Failed to create input layout");
+        LOG_ASSERT(s_Data.quadBatch.bindingLayout, "Failed to create binding layout");
 
         // create buffers
         const auto vbDesc = nvrhi::BufferDesc()

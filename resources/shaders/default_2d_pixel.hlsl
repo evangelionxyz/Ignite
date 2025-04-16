@@ -7,7 +7,7 @@ struct PSInput
     uint texIndex       : TEXINDEX;
 };
 
-Texture2D textures[16] : register(t0);
+Texture2D textures[16]    : register(t0);
 SamplerState samplerState : register(s0);
 
 float4 main(PSInput input) : SV_TARGET

@@ -11,6 +11,81 @@
 
 namespace ignite
 {
+
+    struct MeshRenderData
+    {
+        nvrhi::ShaderHandle vertexShader;
+        nvrhi::ShaderHandle pixelShader;
+        nvrhi::BufferHandle vertexBuffer;
+        nvrhi::BufferHandle indexBuffer;
+        nvrhi::BufferHandle constantBuffer;
+        nvrhi::InputLayoutHandle inputLayout;
+        nvrhi::BindingLayoutHandle bindingLayout;
+        nvrhi::BindingSetHandle bindingSet;
+        nvrhi::GraphicsPipelineHandle pipeline;
+
+        struct MeshPushConstant
+        {
+            glm::mat4 mvp;
+        } pushConstant;
+    };
+    MeshRenderData meshData;
+
+    std::array<VertexMesh, 24> cubeVertices = {
+        // Front face
+        VertexMesh{{-0.5f, -0.5f,  0.5f}, { 0.f,  0.f,  1.f}, {0.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{ 0.5f, -0.5f,  0.5f}, { 0.f,  0.f,  1.f}, {1.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{ 0.5f,  0.5f,  0.5f}, { 0.f,  0.f,  1.f}, {1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{-0.5f,  0.5f,  0.5f}, { 0.f,  0.f,  1.f}, {0.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+    
+        // Back face
+        VertexMesh{{ 0.5f, -0.5f, -0.5f}, { 0.f,  0.f, -1.f}, {0.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{-0.5f, -0.5f, -0.5f}, { 0.f,  0.f, -1.f}, {1.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{-0.5f,  0.5f, -0.5f}, { 0.f,  0.f, -1.f}, {1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{ 0.5f,  0.5f, -0.5f}, { 0.f,  0.f, -1.f}, {0.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+    
+        // Left face
+        VertexMesh{{-0.5f, -0.5f, -0.5f}, {-1.f,  0.f,  0.f}, {0.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{-0.5f, -0.5f,  0.5f}, {-1.f,  0.f,  0.f}, {1.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{-0.5f,  0.5f,  0.5f}, {-1.f,  0.f,  0.f}, {1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{-0.5f,  0.5f, -0.5f}, {-1.f,  0.f,  0.f}, {0.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+    
+        // Right face
+        VertexMesh{{ 0.5f, -0.5f,  0.5f}, { 1.f,  0.f,  0.f}, {0.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{ 0.5f, -0.5f, -0.5f}, { 1.f,  0.f,  0.f}, {1.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{ 0.5f,  0.5f, -0.5f}, { 1.f,  0.f,  0.f}, {1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{ 0.5f,  0.5f,  0.5f}, { 1.f,  0.f,  0.f}, {0.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+    
+        // Top face
+        VertexMesh{{-0.5f,  0.5f,  0.5f}, { 0.f,  1.f,  0.f}, {0.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{ 0.5f,  0.5f,  0.5f}, { 0.f,  1.f,  0.f}, {1.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{ 0.5f,  0.5f, -0.5f}, { 0.f,  1.f,  0.f}, {1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{-0.5f,  0.5f, -0.5f}, { 0.f,  1.f,  0.f}, {0.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+    
+        // Bottom face
+        VertexMesh{{-0.5f, -0.5f, -0.5f}, { 0.f, -1.f,  0.f}, {0.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{ 0.5f, -0.5f, -0.5f}, { 0.f, -1.f,  0.f}, {1.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{ 0.5f, -0.5f,  0.5f}, { 0.f, -1.f,  0.f}, {1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+        VertexMesh{{-0.5f, -0.5f,  0.5f}, { 0.f, -1.f,  0.f}, {0.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
+    };
+
+    std::array<uint32_t, 36> cubeIndices = {
+        // Front face
+        0, 1, 2,  2, 3, 0,
+        // Back face
+        4, 5, 6,  6, 7, 4,
+        // Left face
+        8, 9,10, 10,11, 8,
+        // Right face
+       12,13,14, 14,15,12,
+        // Top face
+       16,17,18, 18,19,16,
+        // Bottom face
+       20,21,22, 22,23,20
+    };
+    
+    
+
     EditorLayer::EditorLayer(const std::string &name) : Layer(name), m_DeviceManager(nullptr)
     {
     }
@@ -22,31 +97,113 @@ namespace ignite
         m_DeviceManager = Application::GetDeviceManager();
         nvrhi::IDevice *device = m_DeviceManager->GetDevice();
 
+        // create push constant
+        const auto constantBufferDesc = nvrhi::BufferDesc()
+            .setByteSize(sizeof(meshData.pushConstant))
+            .setIsConstantBuffer(true)
+            .setIsVolatile(true)
+            .setInitialState(nvrhi::ResourceStates::ConstantBuffer)
+            .setMaxVersions(16);
+
+        meshData.constantBuffer = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(meshData.constantBuffer, "Failed to create constant buffer");
+
+        // create shaders
+        meshData.vertexShader = Application::GetShaderFactory()->CreateShader("default_vertex", "main", nullptr, nvrhi::ShaderType::Vertex);
+        meshData.pixelShader = Application::GetShaderFactory()->CreateShader("default_pixel", "main", nullptr, nvrhi::ShaderType::Pixel);
+        LOG_ASSERT(meshData.vertexShader && meshData.pixelShader, "Failed to create shaders");
+
+        const auto attributes = VertexMesh::GetAttributes();
+        meshData.inputLayout = device->createInputLayout(attributes.data(), attributes.size(), meshData.vertexShader);
+        LOG_ASSERT(meshData.inputLayout, "Failed to create input layout");
+
+        const auto layoutDesc = VertexMesh::GetBindingLayoutDesc();
+        meshData.bindingLayout = device->createBindingLayout(layoutDesc);
+        LOG_ASSERT(meshData.bindingLayout, "Failed to create binding layout");
+
+        // create buffers
+        const auto vbDesc = nvrhi::BufferDesc()
+            .setByteSize(sizeof(cubeVertices))
+            .setIsVertexBuffer(true)
+            .setInitialState(nvrhi::ResourceStates::VertexBuffer)
+            .setKeepInitialState(true)
+            .setDebugName("Cube vertex buffer");
+
+        meshData.vertexBuffer = device->createBuffer(vbDesc);
+        LOG_ASSERT(meshData.vertexBuffer, "Failed to create vertex buffer");
+        
+        const auto ibDesc = nvrhi::BufferDesc()
+            .setByteSize(sizeof(cubeIndices))
+            .setIsIndexBuffer(true)
+            .setInitialState(nvrhi::ResourceStates::IndexBuffer)
+            .setKeepInitialState(true)
+            .setDebugName("Cube index buffer");
+        
+        meshData.indexBuffer = device->createBuffer(ibDesc);
+        LOG_ASSERT(meshData.indexBuffer, "Failed to create index buffer");
+
+        // create binding set
+        const auto bindingSetDesc = nvrhi::BindingSetDesc()
+            .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, meshData.constantBuffer));
+
+        meshData.bindingSet = device->createBindingSet(bindingSetDesc, meshData.bindingLayout);
+        LOG_ASSERT(meshData.bindingSet, "Failed to create binding set");
+
+        // create graphics pipeline
+        nvrhi::BlendState blendState;
+        blendState.targets[0].setBlendEnable(true);
+
+        auto depthStencilState = nvrhi::DepthStencilState()
+            .setDepthWriteEnable(false)
+            .setDepthTestEnable(false);
+
+        auto rasterState = nvrhi::RasterState()
+            .setCullNone()
+            .setMultisampleEnable(false);
+
+        auto renderState = nvrhi::RenderState()
+            .setRasterState(rasterState)
+            .setDepthStencilState(depthStencilState)
+            .setBlendState(blendState);
+
+        auto pipelineDesc = nvrhi::GraphicsPipelineDesc()
+            .setVertexShader(meshData.vertexShader)
+            .setPixelShader(meshData.pixelShader)
+            .setInputLayout(meshData.inputLayout)
+            .addBindingLayout(meshData.bindingLayout)
+            .setRenderState(renderState)
+            .setPrimType(nvrhi::PrimitiveType::TriangleList);
+
+        auto framebuffer = m_DeviceManager->GetCurrentFramebuffer();
+        meshData.pipeline = device->createGraphicsPipeline(pipelineDesc, framebuffer);
+        LOG_ASSERT(meshData.pipeline, "Failed to create graphics pipeline");
+
         // write buffer with command list
-        m_CommandList = device->createCommandList();
-        Renderer2D::InitQuadData(m_DeviceManager->GetDevice(), m_CommandList);
+        m_CommandLists[0] = device->createCommandList();
+        m_CommandLists[1] = device->createCommandList();
+        Renderer2D::InitQuadData(m_DeviceManager->GetDevice(), m_CommandLists[0]);
 
         m_Texture = Texture::Create("Resources/textures/test.png");
-        m_CommandList->open();
-        m_Texture->Write(m_CommandList);
-        m_CommandList->close();
-        device->executeCommandList(m_CommandList);
+        m_CommandLists[0]->open();
+        m_Texture->Write(m_CommandLists[0]);
+
+        m_CommandLists[0]->writeBuffer(meshData.vertexBuffer, cubeVertices.data(), sizeof(cubeVertices));
+        m_CommandLists[0]->writeBuffer(meshData.indexBuffer, cubeIndices.data(), sizeof(cubeIndices));
+
+        m_CommandLists[0]->close();
+        device->executeCommandList(m_CommandLists[0]);
 
         m_ScenePanel = CreateRef<ScenePanel>("Scene Panel", this);
         m_ScenePanel->CreateRenderTarget(device, 1280.0f, 720.0f);
 
         NewScene();
-
-        Entity e = SceneManager::CreateEntity(m_ActiveScene.get(), "Box", EntityType_Common);
-        e.AddComponent<Sprite2D>();
-        e.AddComponent<Rigidbody2D>().type = Body2DType_Dynamic;
-        e.AddComponent<BoxCollider2D>();
     }
 
     void EditorLayer::OnDetach()
     {
         Layer::OnDetach();
-        m_CommandList = nullptr;
+        m_CommandLists[0] = nullptr;
+        m_CommandLists[1] = nullptr;
     }
 
     void EditorLayer::OnUpdate(const f32 deltaTime)
@@ -104,7 +261,8 @@ namespace ignite
         }
         case Key::D:
         {
-            m_ScenePanel->DuplicateSelectedEntity();
+            if (control)
+                m_ScenePanel->DuplicateSelectedEntity();
             break;
         }
         case Key::Z:
@@ -126,9 +284,11 @@ namespace ignite
     {
         Layer::OnRender(framebuffer);
 
+        nvrhi::Viewport viewport = m_ScenePanel->GetRT()->framebuffer->getFramebufferInfo().getViewport();
+
         // main scene rendering
-        m_CommandList->open();
-        m_CommandList->clearTextureFloat(m_ScenePanel->GetRT()->texture,
+        m_CommandLists[0]->open();
+        m_CommandLists[0]->clearTextureFloat(m_ScenePanel->GetRT()->texture,
             nvrhi::AllSubresources, nvrhi::Color(
                 m_ScenePanel->GetRT()->clearColor.r,
                 m_ScenePanel->GetRT()->clearColor.g,
@@ -136,13 +296,33 @@ namespace ignite
                 1.0f
             )
         );
-
-        nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
+        nvrhi::utils::ClearColorAttachment(m_CommandLists[0], framebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
 
         m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), m_ScenePanel->GetRT()->framebuffer);
+        m_CommandLists[0]->close();
+        m_DeviceManager->GetDevice()->executeCommandList(m_CommandLists[0]);
+        
+        
+        // mesh command list m_CommandLists index 1
+        m_CommandLists[1]->open();
+        meshData.pushConstant.mvp = m_ScenePanel->GetViewportCamera()->GetViewProjectionMatrix();
+        m_CommandLists[1]->writeBuffer(meshData.constantBuffer, &meshData.pushConstant, sizeof(meshData.pushConstant));
 
-        m_CommandList->close();
-        m_DeviceManager->GetDevice()->executeCommandList(m_CommandList);
+        const auto meshGraphicsState = nvrhi::GraphicsState()
+            .setPipeline(meshData.pipeline)
+            .setFramebuffer(m_ScenePanel->GetRT()->framebuffer)
+            .addBindingSet(meshData.bindingSet)
+            .setViewport(nvrhi::ViewportState().addViewportAndScissorRect(viewport))
+            .addVertexBuffer(nvrhi::VertexBufferBinding{meshData.vertexBuffer, 0, 0})
+            .setIndexBuffer({meshData.indexBuffer, nvrhi::Format::R32_UINT});
+
+        m_CommandLists[1]->setGraphicsState(meshGraphicsState);
+        nvrhi::DrawArguments args;
+        args.setVertexCount(cubeIndices.size());
+        args.instanceCount = 1;
+        m_CommandLists[1]->drawIndexed(args);
+        m_CommandLists[1]->close();
+        m_DeviceManager->GetDevice()->executeCommandList(m_CommandLists[1]);
     }
 
     void EditorLayer::OnGuiRender()

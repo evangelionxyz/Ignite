@@ -10,7 +10,6 @@ namespace ignite
 {
     class ShaderFactory;
     class DeviceManager;
-
     class ScenePanel;
 
     class EditorLayer final : public Layer
@@ -51,7 +50,7 @@ namespace ignite
         Ref<Texture> m_Texture;
         EditorData m_Data;
         
-        nvrhi::CommandListHandle m_CommandList;
+        nvrhi::CommandListHandle m_CommandLists[2];
         DeviceManager *m_DeviceManager;
     };
 }

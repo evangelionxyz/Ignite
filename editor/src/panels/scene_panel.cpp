@@ -300,7 +300,6 @@ namespace ignite
                 ImGui::OpenPopupOnItemClick("add_component_context");
             }
 
-
             // transform component
             RenderComponent<Transform>("Transform", m_SelectedEntity, [this]()
             {

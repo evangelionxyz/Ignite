@@ -10,9 +10,10 @@ namespace ignite
         glm::vec3 position;
         glm::vec3 normal;
         glm::vec2 texCoord;
+        glm::vec2 tilingFactor;
         glm::vec4 color;
 
-        std::array<nvrhi::VertexAttributeDesc, 4> GetAttributes()
+        static std::array<nvrhi::VertexAttributeDesc, 5> GetAttributes()
         {
             return 
             {
@@ -32,6 +33,11 @@ namespace ignite
                     .setOffset(offsetof(VertexMesh, texCoord))
                     .setElementStride(sizeof(VertexMesh)),
                 nvrhi::VertexAttributeDesc()
+                    .setName("TILINGFACTOR")
+                    .setFormat(nvrhi::Format::RG32_FLOAT)
+                    .setOffset(offsetof(VertexMesh, tilingFactor))
+                    .setElementStride(sizeof(VertexMesh)),
+                nvrhi::VertexAttributeDesc()
                     .setName("COLOR")
                     .setFormat(nvrhi::Format::RGBA32_FLOAT)
                     .setOffset(offsetof(VertexMesh, color))
@@ -43,9 +49,7 @@ namespace ignite
         {
             return nvrhi::BindingLayoutDesc()
                 .setVisibility(nvrhi::ShaderType::All)
-                .addItem(nvrhi::BindingLayoutItem::Texture_SRV(0))
-                .addItem(nvrhi::BindingLayoutItem::Sampler(0))
-                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1));
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0));
         }
     };
 
