@@ -196,15 +196,6 @@ namespace ignite
         return Entity{};
     }
 
-    void EntityManager::DestroyEntityWithCommand(Scene *scene, Entity entity)
-    {
-        // initialize create function
-        auto view = scene->registry->view<ID>();
-        
-
-        DestroyEntity(scene, entity);
-    }
-
     void EntityManager::AddChild(Scene *scene, Entity destination, Entity source)
     {
         ID &destIDComp = destination.GetComponent<ID>();
