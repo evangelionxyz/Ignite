@@ -171,7 +171,6 @@ namespace ignite
 
             tr.translation = tr.local_translation;
             tr.rotation = tr.local_rotation;
-            tr.scale = tr.local_scale;
         }
     }
 
