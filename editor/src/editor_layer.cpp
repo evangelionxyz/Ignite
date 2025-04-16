@@ -87,6 +87,11 @@ namespace ignite
 
         switch (event.GetKeyCode())
         {
+        case Key::D:
+        {
+            m_ScenePanel->DuplicateSelectedEntity();
+            break;
+        }
         case Key::Z:
         {
             if (control)

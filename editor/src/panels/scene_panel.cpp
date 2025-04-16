@@ -99,7 +99,7 @@ namespace ignite
 
             ImGui::EndDragDropTarget();
         }
-        
+
         ImGui::EndChild();
 
         ImGui::BeginChild("entity_hierachy", ImGui::GetContentRegionAvail(), 0, windowFlags);
@@ -796,4 +796,14 @@ namespace ignite
     {
         return m_SelectedEntity;
     }
+
+    void ScenePanel::DuplicateSelectedEntity()
+    {
+        if (m_SelectedEntity.IsValid())
+        {
+            EntityManager::DuplicateEntity(m_Scene, m_SelectedEntity);
+        }
+    }
+
+
 }

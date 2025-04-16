@@ -188,6 +188,53 @@ namespace ignite
         DestroyEntity(scene, GetEntity(scene, uuid));
     }
 
+    Entity EntityManager::DuplicateEntity(Scene *scene, Entity entity, bool addToParent)
+    {
+        // first, get current entity's ID Component
+        ID &idComp = entity.GetComponent<ID>();
+
+        // generate unique name for the new entity
+        // and then create it 
+        std::string newEntityName = GenerateUniqueName(idComp.name, scene->entityNames, scene->entityNamesMapCounter);
+        Entity newEntity = EntityManager::CreateEntity(scene, idComp.name, idComp.type);
+
+        // copy current entity's components to new entity
+        EntityManager::CopyComponentIfExists(AllComponents{}, newEntity, entity);
+
+        // get new entity's ID Component
+        ID &newEntityIDComp = newEntity.GetComponent<ID>();
+
+        // create its children
+        for (UUID childId : idComp.children)
+        {
+            Entity newChildEntity = DuplicateEntity(scene, GetEntity(scene, childId), false); // add to parent false
+
+            ID &childId = newChildEntity.GetComponent<ID>();
+            
+            // add this child to new entity
+            newEntityIDComp.AddChild(childId.uuid);
+
+            // set child parent to new entity
+            childId.parent = newEntityIDComp.uuid;
+        }
+
+        // check if current entity has a parent
+        if (idComp.parent != 0 && addToParent)
+        {
+            // get the current entity's parent
+            Entity parent = GetEntity(scene, idComp.parent);
+            ID &parentIDComp = parent.GetComponent<ID>();
+
+            // set new entity parent to this parent
+            newEntityIDComp.parent = parentIDComp.uuid;
+
+            // add child to parent
+            parentIDComp.AddChild(newEntityIDComp.uuid);
+        }
+
+        return newEntity;
+    }
+
     Entity EntityManager::GetEntity(Scene *scene, UUID uuid)
     {
         if (scene->entities.contains(uuid))

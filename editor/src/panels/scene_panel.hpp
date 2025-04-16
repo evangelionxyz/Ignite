@@ -41,7 +41,6 @@ namespace ignite
 
         Camera *GetViewportCamera() { return m_ViewportCamera.get(); }
 
-    private:
         void RenderHierarchy();
         Entity ShowEntityContextMenu();
         void RenderEntityNode(Entity entity, UUID uuid, i32 index = 0);
@@ -53,6 +52,8 @@ namespace ignite
         void DestroyEntity(Entity entity);
         Entity SetSelectedEntity(Entity entity);
         Entity GetSelectedEntity();
+        
+        void DuplicateSelectedEntity();
 
         template<typename T, typename UIFunction>
         void RenderComponent(const std::string &name, Entity entity, UIFunction uiFunction, bool allowedToRemove = true);

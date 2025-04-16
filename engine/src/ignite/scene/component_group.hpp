@@ -10,7 +10,7 @@ namespace ignite
     };
 
     using AllComponents = ComponentGroup<
-        ID, 
+        // ID, // do not copy ID component
         Transform, 
         Sprite2D,
         Rigidbody2D,
