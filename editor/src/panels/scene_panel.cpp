@@ -302,15 +302,15 @@ namespace ignite
             RenderComponent<Transform>("Transform", m_SelectedEntity, [this]()
             {
                 Transform &comp = m_SelectedEntity.GetComponent<Transform>();
-                ImGui::DragFloat3("Translation", &comp.translation.x, 0.025f);
+                ImGui::DragFloat3("Translation", &comp.local_translation.x, 0.025f);
 
-                glm::vec3 euler = eulerAngles(comp.rotation);
+                glm::vec3 euler = eulerAngles(comp.local_rotation);
                 if (ImGui::DragFloat3("Rotation", &euler.x, 0.025f))
                 {
-                    comp.rotation = glm::quat(euler);
+                    comp.local_rotation = glm::quat(euler);
                 }
-                ImGui::DragFloat3("Scale", &comp.scale.x, 0.025f);
-            }, false); // not allowed to remove
+                ImGui::DragFloat3("Scale", &comp.local_scale.x, 0.025f);
+            }, false); // false: not allowed to remove the component
 
 
             std::vector<IComponent *> comps = m_Scene->registeredComps[m_SelectedEntity];

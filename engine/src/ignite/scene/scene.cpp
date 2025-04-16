@@ -7,6 +7,9 @@
 #include "ignite/graphics/renderer_2d.hpp"
 #include "ignite/physics/2d/physics_2d.hpp"
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/matrix_decompose.hpp>
+
 #include "entity.hpp"
 
 namespace ignite
@@ -42,6 +45,33 @@ namespace ignite
     {
         // NOTE: currently we are not updating transformation with edit mode
         // TODO: calulcate parent & child transformation
+
+        for (entt::entity e: entities | std::views::values)
+        {
+            const ID &id = registry->get<ID>(e);
+            Transform &tr = registry->get<Transform>(e);
+
+            // calculate transform from entity's parent
+            if (id.parent != 0)
+            {
+                entt::entity parent = entities[id.parent];
+                Transform &parentTr = registry->get<Transform>(parent);
+
+                const glm::mat4 &transformedMatrix = parentTr.WorldTransform() * tr.LocalTransform();
+
+                static glm::vec3 skew(1.0f);
+                static glm::vec4 perspective(1.0f);
+
+                glm::decompose(transformedMatrix, tr.scale, tr.rotation, tr.translation,
+                    skew, perspective); // unused
+            }
+            else
+            {
+                tr.translation = tr.local_translation;
+                tr.rotation = tr.local_rotation;
+                tr.scale = tr.local_scale;
+            }
+        }
     }
 
     void Scene::OnUpdateRuntimeSimulate(f32 deltaTime)
@@ -58,7 +88,7 @@ namespace ignite
     {
         Renderer2D::Begin(camera, framebuffer);
 
-        for (auto e: entities | std::views::values)
+        for (entt::entity e: entities | std::views::values)
         {
             Entity entity = { e, this };
             auto &tr = entity.GetComponent<Transform>();

@@ -91,12 +91,22 @@ namespace ignite
         Transform() = default;
 
         Transform(const glm::vec3 &_translation)
-            : translation(_translation), rotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)), scale(glm::vec3(1.0f))
+            : translation(_translation)
+            , rotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f))
+            , scale(glm::vec3(1.0f))
+            , local_translation(_translation)
+            , local_rotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f))
+            , local_scale(glm::vec3(1.0f))
         {
         }
 
         Transform(const glm::vec3 &_translation, const glm::quat &_rot, const glm::vec3 _size)
-            : translation(_translation), rotation(_rot), scale(_size)
+            : translation(_translation)
+            , rotation(_rot)
+            , scale(_size)
+            , local_translation(_translation)
+            , local_rotation(_rot)
+            , local_scale(_size)
         {
         }
 
