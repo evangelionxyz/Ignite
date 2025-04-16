@@ -26,22 +26,27 @@ namespace ignite
         static Ref<Scene> Copy(Ref<Scene> &other);
 
         using EntityMap = std::unordered_map<UUID, entt::entity>;
+        using EntityComponents = std::unordered_map<entt::entity, std::vector<IComponent *>>;
 
         template<typename... Component>
-        static void CopyComponent(entt::registry *destRegistry, entt::registry *srcRegistry, EntityMap entityMap)
+        static void CopyComponent(entt::registry *destRegistry, entt::registry *srcRegistry, const EntityMap &entityMap, EntityComponents &registerComps)
         {
             ([&]()
                 {
                     auto view = srcRegistry->view<Component>();
                     for (auto srcEntity : view)
                     {
-                        for (auto e : entityMap)
+                        for (auto [uuid, destEntity] : entityMap)
                         {
                             // key (UUID)
-                            if (e.first == srcRegistry->get<ID>(srcEntity).uuid)
+                            if (uuid == srcRegistry->get<ID>(srcEntity).uuid)
                             {
-                                entt::entity dstEntity = e.second;
-                                destRegistry->emplace_or_replace<Component>(dstEntity, srcRegistry->get<Component>(srcEntity));
+                                Component &comp = destRegistry->emplace_or_replace<Component>(destEntity, srcRegistry->get<Component>(srcEntity));
+
+                                if constexpr (std::is_base_of<IComponent, Component>::value)
+                                {
+                                    registerComps[destEntity].emplace_back(static_cast<IComponent *>(&comp));
+                                }
                             }
                         }
                     }
@@ -50,9 +55,9 @@ namespace ignite
         }
     
         template<typename... Component>
-        static void CopyComponent(ComponentGroup<Component...>, entt::registry *destRegistry, entt::registry *srcRegistry, EntityMap entityMap)
+        static void CopyComponent(ComponentGroup<Component...>, entt::registry *destRegistry, entt::registry *srcRegistry, const EntityMap &entityMap, EntityComponents &registerComps)
         {
-            CopyComponent<Component...>(destRegistry, srcRegistry, entityMap);
+            CopyComponent<Component...>(destRegistry, srcRegistry, entityMap, registerComps);
         }
     
         template <typename... Component>

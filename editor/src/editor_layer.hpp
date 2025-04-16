@@ -41,6 +41,7 @@ namespace ignite
         void NewScene();
         void OnScenePlay();
         void OnSceneStop();
+        void OnSceneSimulate();
         
         Ref<ScenePanel> m_ScenePanel;
         

@@ -334,7 +334,6 @@ namespace ignite
             // store src entity component to new entity (destination entity)
             newEntity = SceneManager::CreateEntity(newScene.get(), srcIdComp.name, srcIdComp.type, srcIdComp.uuid);
 
-            // TODO: store parent and child
             ID &newEntityIdComp = newEntity.GetComponent<ID>();
             newEntityIdComp.parent = srcIdComp.parent;
             newEntityIdComp.children = std::vector<UUID>(srcIdComp.children.begin(), srcIdComp.children.end());
@@ -342,7 +341,11 @@ namespace ignite
             entityMap[srcIdComp.uuid] = newEntity;
         }
 
-        SceneManager::CopyComponent(AllComponents{}, destRegistry, srcRegistry, entityMap);
+        SceneManager::CopyComponent(AllComponents{}, destRegistry, srcRegistry, entityMap, newScene->registeredComps);
+
+        // copy scene extra data
+        newScene->entityNames = other->entityNames;
+        newScene->entityNamesMapCounter = other->entityNamesMapCounter;
 
         return newScene;
     }

@@ -23,17 +23,11 @@ namespace ignite
         template<typename T, typename... Args>
         T &AddComponent(Args &&... args)
         {
-            if (HasComponent<T>())
-            {
-                return GetComponent<T>();
-            }
-
-            T &comp = m_Scene->registry->emplace_or_replace<T>(m_Handle, std::forward<Args>(args)...);
+            T &comp = m_Scene->registry->get_or_emplace<T>(m_Handle, std::forward<Args>(args)...);
             if constexpr (std::is_base_of<IComponent, T>::value)
             {
-                m_Scene->registeredComps[m_Handle].push_back(static_cast<IComponent*>(&comp));
+                m_Scene->registeredComps[m_Handle].emplace_back(static_cast<IComponent*>(&comp));
             }
-
             return comp;
         }
 
@@ -41,6 +35,10 @@ namespace ignite
         T &AddOrReplaceComponent(Args &&... args)
         {
             T &comp = m_Scene->registry->emplace_or_replace<T>(m_Handle, std::forward<Args>(args)...);
+            if constexpr (std::is_base_of<IComponent, T>::value)
+            {
+                m_Scene->registeredComps[m_Handle].emplace_back(static_cast<IComponent*>(&comp));
+            }
             return comp;
         }
 
@@ -64,18 +62,10 @@ namespace ignite
 
             std::vector<IComponent *> &regComps = m_Scene->registeredComps[m_Handle];
 
-            i32 count = 0;
-            for (IComponent *regComp : regComps)
+            regComps.erase(std::remove_if(regComps.begin(), regComps.end(), [&](IComponent *regComp)
             {
-                if (((IComponent *) &comp) == regComp)
-                    break;
-                count++;
-            }
-
-            if (count < regComps.size() && count > 0)
-            {
-                regComps.erase(regComps.begin() + count);
-            }
+                return ((IComponent *) &comp) == regComp;
+            }), regComps.end());
         }
 
         bool IsValid() const

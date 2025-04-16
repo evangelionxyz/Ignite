@@ -87,6 +87,21 @@ namespace ignite
 
         switch (event.GetKeyCode())
         {
+        case Key::F5:
+        {
+            (m_Data.sceneState == State_SceneEdit || m_Data.sceneState == State_SceneSimulate)
+                ? OnScenePlay()
+                : OnSceneStop();
+
+            break;
+        }
+        case Key::F6:
+        {
+            (m_Data.sceneState == State_SceneEdit || m_Data.sceneState == State_ScenePlay)
+                ? OnScenePlay()
+                : OnSceneStop();
+            break;
+        }
         case Key::D:
         {
             m_ScenePanel->DuplicateSelectedEntity();
@@ -190,6 +205,9 @@ namespace ignite
 
     void EditorLayer::OnScenePlay()
     {
+        if (m_Data.sceneState != State_SceneEdit)
+            OnSceneStop();
+
         m_Data.sceneState = State_ScenePlay;
 
         // copy initial components to new scene
@@ -205,7 +223,15 @@ namespace ignite
         
         m_ActiveScene->OnStop();
         m_ActiveScene = m_EditorScene;
-        
+
         m_ScenePanel->SetActiveScene(m_EditorScene.get());
+    }
+
+    void  EditorLayer::OnSceneSimulate()
+    {
+        if (m_Data.sceneState != State_SceneEdit)
+            OnSceneStop();
+
+        m_Data.sceneState = State_SceneSimulate;
     }
 }

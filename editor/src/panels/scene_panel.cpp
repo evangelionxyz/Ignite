@@ -316,7 +316,7 @@ namespace ignite
             }, false); // false: not allowed to remove the component
 
 
-            std::vector<IComponent *> comps = m_Scene->registeredComps[m_SelectedEntity];
+            auto &comps = m_Scene->registeredComps[m_SelectedEntity];
             for (IComponent *comp : comps)
             {
                 switch (comp->GetType())
