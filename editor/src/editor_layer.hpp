@@ -28,14 +28,14 @@ namespace ignite
 
         void OnAttach() override;
         void OnDetach() override;
-        void OnUpdate(float deltaTime) override;
+        void OnUpdate(f32 deltaTime) override;
         void OnEvent(Event& e) override;
         bool OnKeyPressedEvent(KeyPressedEvent &event);
         void OnRender(nvrhi::IFramebuffer *framebuffer) override;
         void OnGuiRender() override;
 
         Scene *GetActiveScene() { return m_ActiveScene.get(); }
-        EditorData GetState() { return m_Data; }
+        EditorData GetState() const { return m_Data; }
 
     private:
         void NewScene();

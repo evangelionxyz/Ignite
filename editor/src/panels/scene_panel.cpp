@@ -15,6 +15,7 @@ namespace ignite
     std::map<std::string, CompType> componentsName = 
     {
         { "Rigidbody2D", CompType_Rigidbody2D },
+        { "Sprite2D", CompType_Sprite2D},
         { "BoxCollider2D", CompType_BoxCollider2D }
     };
 
@@ -216,64 +217,62 @@ namespace ignite
         ImGui::Begin("Inspector");
 
 
-        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen
-            | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth
-            | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
 
         if (m_SelectedEntity != (entt::entity)-1)
         {
-            std::vector<IComponent *> comps = m_Scene->registeredComps[m_SelectedEntity];
+            // Main Component
+            
+            // ID Component
+            ID &idComp = m_SelectedEntity.GetComponent<ID>();
+            char buffer[255] = {};
+            strncpy(buffer, idComp.name.c_str(), sizeof(buffer) - 1);
+            if (ImGui::InputText("##label", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue))
+            {
+                idComp.name = std::string(buffer);
+            }
 
-            ImGui::PushID((i32)m_SelectedEntity);
+            ImGui::SameLine();
+            if (ImGui::Button("Add"))
+            {
+                ImGui::OpenPopupOnItemClick("add_component_context");
+            }
+
+
+            // transform component
+            RenderComponent<Transform>("Transform", m_SelectedEntity, [this]()
+            {
+                Transform &comp = m_SelectedEntity.GetComponent<Transform>();
+                ImGui::DragFloat3("Translation", &comp.translation.x, 0.025f);
+
+                glm::vec3 euler = eulerAngles(comp.rotation);
+                if (ImGui::DragFloat3("Rotation", &euler.x, 0.025f))
+                {
+                    comp.rotation = glm::quat(euler);
+                }
+                ImGui::DragFloat3("Scale", &comp.scale.x, 0.025f);
+            }, false); // not allowed to remove
+
+
+            std::vector<IComponent *> comps = m_Scene->registeredComps[m_SelectedEntity];
             for (IComponent *comp : comps)
             {
                 switch (comp->GetType())
                 {
-                case CompType_ID:
-                {
-                    ID *c = comp->As<ID>();
-                    char buffer[255] = { };
-                    strncpy(buffer, c->name.c_str(), sizeof(buffer) - 1);
-                    if (ImGui::InputText("##label", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue))
-                    {
-                        c->name = std::string(buffer);
-                    }
-                    
-                    break;
-                }
                 case CompType_Sprite2D:
                 {
-                    if (ImGui::TreeNodeEx("Sprite2D", flags))
+                    RenderComponent<Sprite2D>("Sprite 2D", m_SelectedEntity, [entity = m_SelectedEntity, comp]()
                     {
                         Sprite2D *c = comp->As<Sprite2D>();
                         ImGui::ColorEdit4("Color", &c->color.x);
                         ImGui::DragFloat2("Tiling", &c->tilingFactor.x, 0.025f);
+                    });
 
-                        ImGui::TreePop();
-                    }
-                    break;
-                }
-                case CompType_Transform:
-                {
-                    if (ImGui::TreeNodeEx("Transfrorm", flags))
-                    {
-                        Transform *c = comp->As<Transform>();
-                        ImGui::DragFloat3("Translation", &c->translation.x, 0.025f);
-
-                        glm::vec3 euler = eulerAngles(c->rotation);
-                        if (ImGui::DragFloat3("Rotation", &euler.x, 0.025f))
-                        {
-                            c->rotation = glm::quat(euler);
-                        }
-                        ImGui::DragFloat3("Scale", &c->scale.x, 0.025f);
-
-                        ImGui::TreePop();
-                    }
                     break;
                 }
                 case CompType_Rigidbody2D:
                 {
-                    if (ImGui::TreeNodeEx("Rigidbody 2D", flags))
+                    RenderComponent<Rigidbody2D>("Rigidbody 2D", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
                     {
                         Rigidbody2D *c = comp->As<Rigidbody2D>();
                         
@@ -299,7 +298,7 @@ namespace ignite
                             ImGui::EndCombo();
                         }
     
-                        if (m_Scene->IsPlaying())
+                        if (scene->IsPlaying())
                         {
                             if (ImGui::DragFloat2("Linear Vel", &c->linearVelocity.x, 0.025f))
                                 b2Body_SetLinearVelocity(c->bodyId, {c->linearVelocity.x, c->linearVelocity.y});
@@ -344,15 +343,13 @@ namespace ignite
                             ImGui::Checkbox("Enabled", &c->isEnabled);
                             ImGui::Checkbox("Sleep", &c->isEnableSleep);
                         }
-
-                        ImGui::TreePop();
-                    }
+                    });
 
                     break;
                 }
                 case CompType_BoxCollider2D:
                 {
-                    if (ImGui::TreeNodeEx("Box Collider 2D", flags))
+                    RenderComponent<BoxCollider2D>("Box Collider 2D", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
                     {
                         BoxCollider2D *c = comp->As<BoxCollider2D>();
                         ImGui::DragFloat2("Size", &c->size.x, 0.025f, 0.0f, FLT_MAX);
@@ -361,13 +358,12 @@ namespace ignite
                         ImGui::DragFloat("Friction", &c->friction, 0.025f, 0.0f, FLT_MAX);
                         ImGui::DragFloat("Density", &c->density, 0.025f);
                         ImGui::Checkbox("Is Sensor", &c->isSensor);
-                        ImGui::TreePop();
-                    }
+                    });
+
                     break;
                 }
                 }
             }
-            ImGui::PopID();
 
             if (ImGui::Button("Add Component", { ImGui::GetContentRegionAvail().x, 20.0f }))
             {
@@ -405,16 +401,21 @@ namespace ignite
                 {
                     switch (type)
                     {
-                    case CompType_Rigidbody2D:
-                    {
-                        entity.AddComponent<Rigidbody2D>();
-                        break;
-                    }
-                    case CompType_BoxCollider2D:
-                    {
-                        entity.AddComponent<BoxCollider2D>();
-                        break;
-                    }
+                        case CompType_Sprite2D:
+                        {
+                            entity.AddComponent<Sprite2D>();
+                            break;
+                        }
+                        case CompType_Rigidbody2D:
+                        {
+                            entity.AddComponent<Rigidbody2D>();
+                            break;
+                        }
+                        case CompType_BoxCollider2D:
+                        {
+                            entity.AddComponent<BoxCollider2D>();
+                            break;
+                        }
                     }
                 };
                 
@@ -535,38 +536,37 @@ namespace ignite
     }
 
     template<typename T, typename UIFunction>
-    void ScenePanel::RenderComponent(const std::string &name, Entity entity, UIFunction uiFunction)
+    void ScenePanel::RenderComponent(const std::string &name, Entity entity, UIFunction uiFunction, bool allowedToRemove)
     {
-        constexpr ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_DefaultOpen
-            | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth
+        constexpr ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth
             | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
 
         if (entity.HasComponent<T>())
         {
-            auto &component = entity.GetComponent<T>();
-
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2 { 0.5f, 2.0f });
             ImGui::Separator();
             const bool open = ImGui::TreeNodeEx(reinterpret_cast<void *>(typeid(T).hash_code()), tree_node_flags, name.c_str());
             ImGui::PopStyleVar();
 
             ImGui::SameLine(ImGui::GetContentRegionAvail().x - 24.0f);
-            const ImTextureID tex_id = reinterpret_cast<void *>(static_cast<uintptr_t>(EditorLayer::Get().m_UITextures.at("plus")->GetID()));
-            if (ImGui::ImageButton("component_more_button", tex_id, { 14.0f, 14.0f }))
-                ImGui::OpenPopup("Component Settings");
+            if (ImGui::Button("+", { 14.0f, 14.0f }))
+                ImGui::OpenPopup("comp_settings");
 
             bool componentRemoved = false;
-            if (ImGui::BeginPopup("Component Settings"))
+            if (allowedToRemove)
             {
-                if (ImGui::MenuItem("Remove component"))
-                    componentRemoved = true;
 
+            }
+            if (ImGui::BeginPopup("comp_settings"))
+            {
+                if (allowedToRemove && ImGui::MenuItem("Remove")) 
+                    componentRemoved = true;
                 ImGui::EndPopup();
             }
 
             if (open)
             {
-                uiFunction(component);
+                uiFunction();
                 ImGui::TreePop();
             }
 
@@ -657,7 +657,7 @@ namespace ignite
         glm::vec2 mouseDelta = { 0.0f, 0.0f };
 
         // Only update mouseDelta when a mouse button is pressed
-        bool mbPressed = Input::IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || Input::IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) | Input::IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE);
+        bool mbPressed = Input::IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || Input::IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) || Input::IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE);
         if (mbPressed)
         {
             mouseDelta = currentMousePos - lastMousePos;

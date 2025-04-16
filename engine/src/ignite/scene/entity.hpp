@@ -56,10 +56,20 @@ namespace ignite
             T &comp = m_Scene->registry->get<T>(m_Handle);
             m_Scene->registry->remove<T>(m_Handle);
 
-            m_Scene->registeredComps[m_Handle].erase(std::ranges::find_if(m_Scene->registeredComps[m_Handle], [comp](IComponent *component)
+            std::vector<IComponent *> &regComps = m_Scene->registeredComps[m_Handle];
+
+            i32 count = 0;
+            for (IComponent *regComp : regComps)
             {
-                return static_cast<IComponent *>(&comp) == component;
-            }));
+                if (((IComponent *) &comp) == regComp)
+                    break;
+                count++;
+            }
+
+            if (count < regComps.size() && count > 0)
+            {
+                regComps.erase(regComps.begin() + count);
+            }
         }
 
         bool IsValid() const

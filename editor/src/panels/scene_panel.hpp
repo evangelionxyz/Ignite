@@ -55,7 +55,7 @@ namespace ignite
         Entity GetSelectedEntity();
 
         template<typename T, typename UIFunction>
-        void RenderComponent(const std::string &name, Entity entity, UIFunction uiFunction);
+        void RenderComponent(const std::string &name, Entity entity, UIFunction uiFunction, bool allowedToRemove = true);
 
         CameraMode m_CameraMode = CAMERA_MODE_2D;
         Scope<Camera> m_ViewportCamera;

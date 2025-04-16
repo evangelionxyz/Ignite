@@ -31,7 +31,7 @@ namespace ignite
         LOG_ASSERT(texture, "Failed to create render target framebuffer");
     }
 
-    void Resize(f32 width, f32 height)
+    void RenderTarget::Resize(f32 width, f32 height)
     {
         // TODO: Implement resizing
     }

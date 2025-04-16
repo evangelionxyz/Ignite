@@ -1,5 +1,5 @@
 #include "editor_layer.hpp"
-#include "scene_panel.hpp"
+#include "panels/scene_panel.hpp"
 #include "ignite/graphics/renderer_2d.hpp"
 
 #include <glm/glm.hpp>
@@ -9,12 +9,9 @@
 #include "ignite/scene/camera.hpp"
 #include "ignite/graphics/texture.hpp"
 
-#include <queue>
-
 namespace ignite
 {
-    EditorLayer::EditorLayer(const std::string &name)
-        : Layer(name)
+    EditorLayer::EditorLayer(const std::string &name) : Layer(name), m_DeviceManager(nullptr)
     {
     }
 
