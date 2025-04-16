@@ -89,7 +89,7 @@ namespace ignite
                 if (idComp.parent != 0)
                 {
                     // current parent should be remove it
-                    Entity parent = EntityManager::GetEntity(m_Scene, idComp.parent);
+                    Entity parent = SceneManager::GetEntity(m_Scene, idComp.parent);
                     parent.GetComponent<ID>().RemoveChild(idComp.uuid);
 
                     // reset the parent to 0
@@ -143,14 +143,14 @@ namespace ignite
         Entity entity = {};
         if (ImGui::MenuItem("Empty"))
         {
-            entity = SetSelectedEntity(EntityManager::CreateEntity(m_Scene, "Empty", EntityType_Common));
+            entity = SetSelectedEntity(SceneManager::CreateEntity(m_Scene, "Empty", EntityType_Common));
         }
 
         if (ImGui::BeginMenu("2D"))
         {
             if (ImGui::MenuItem("Sprite"))
             {
-                entity = SetSelectedEntity(EntityManager::CreateSprite(m_Scene, "Sprite"));
+                entity = SetSelectedEntity(SceneManager::CreateSprite(m_Scene, "Sprite"));
             }
             ImGui::EndMenu();
         }
@@ -190,7 +190,7 @@ namespace ignite
                 {
                     if (const Entity e = ShowEntityContextMenu())
                     {
-                        EntityManager::AddChild(m_Scene, entity, e);
+                        SceneManager::AddChild(m_Scene, entity, e);
                         SetSelectedEntity(e);
                     }
 
@@ -232,7 +232,7 @@ namespace ignite
                     Entity src { *static_cast<entt::entity *>(payload->Data), m_Scene };
                     
                     // the current 'entity' is the target (new parent for src)
-                    EntityManager::AddChild(m_Scene, entity, src);
+                    SceneManager::AddChild(m_Scene, entity, src);
                 }
 
                 ImGui::EndDragDropTarget();
@@ -262,7 +262,7 @@ namespace ignite
             {
                 for (UUID uuid : entity.GetComponent<ID>().children)
                 {
-                    Entity childEntity = EntityManager::GetEntity(m_Scene, uuid);
+                    Entity childEntity = SceneManager::GetEntity(m_Scene, uuid);
                     RenderEntityNode(childEntity, uuid, index + 1);
                 }
             }
@@ -782,7 +782,7 @@ namespace ignite
 
     void ScenePanel::DestroyEntity(Entity entity)
     {
-        EntityManager::DestroyEntity(m_Scene, entity);
+        SceneManager::DestroyEntity(m_Scene, entity);
 
         m_SelectedEntity = {entt::null, nullptr};
     }
@@ -801,7 +801,7 @@ namespace ignite
     {
         if (m_SelectedEntity.IsValid())
         {
-            EntityManager::DuplicateEntity(m_Scene, m_SelectedEntity);
+            SceneManager::DuplicateEntity(m_Scene, m_SelectedEntity);
         }
     }
 

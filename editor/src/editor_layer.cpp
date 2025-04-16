@@ -37,7 +37,7 @@ namespace ignite
 
         NewScene();
 
-        Entity e = EntityManager::CreateEntity(m_ActiveScene.get(), "Box", EntityType_Common);
+        Entity e = SceneManager::CreateEntity(m_ActiveScene.get(), "Box", EntityType_Common);
         e.AddComponent<Sprite2D>();
         e.AddComponent<Rigidbody2D>().type = Body2DType_Dynamic;
         e.AddComponent<BoxCollider2D>();
@@ -193,7 +193,7 @@ namespace ignite
         m_Data.sceneState = State_ScenePlay;
 
         // copy initial components to new scene
-        m_ActiveScene = Scene::Copy(m_EditorScene);
+        m_ActiveScene = SceneManager::Copy(m_EditorScene);
         m_ActiveScene->OnStart();
 
         m_ScenePanel->SetActiveScene(m_ActiveScene.get());

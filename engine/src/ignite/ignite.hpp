@@ -41,6 +41,5 @@
 #include "scene/component.hpp"
 #include "scene/camera.hpp"
 #include "scene/entity.hpp"
-#include "scene/entity_manager.hpp"
 #include "scene/scene.hpp"
 #include "scene/scene_manager.hpp"

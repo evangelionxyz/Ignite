@@ -17,7 +17,6 @@ add_library(IgniteEngine
   src/ignite/scene/entity.cpp
   src/ignite/scene/scene.cpp
   src/ignite/scene/camera.cpp
-  src/ignite/scene/entity_manager.cpp
   src/ignite/scene/scene_manager.cpp
   src/ignite/graphics/renderer_2d.cpp
   src/ignite/graphics/renderer.cpp

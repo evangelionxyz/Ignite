@@ -35,8 +35,6 @@ namespace ignite
         void OnRenderRuntimeSimulate(Camera *camera, nvrhi::IFramebuffer *framebuffer);
         void OnRenderRuntime(nvrhi::IFramebuffer *framebuffer);
 
-        static Ref<Scene> Copy(const Ref<Scene> &other);
-
         std::string name;
         entt::registry *registry = nullptr;
 

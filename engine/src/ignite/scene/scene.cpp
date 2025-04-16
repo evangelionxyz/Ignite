@@ -9,8 +9,6 @@
 
 #include "entity.hpp"
 
-#include "entity_manager.hpp"
-
 namespace ignite
 {
     Scene::Scene(const std::string &_name)
@@ -77,38 +75,6 @@ namespace ignite
 
         Renderer2D::Flush();
         Renderer2D::End();
-    }
-
-    Ref<Scene> Scene::Copy(const Ref<Scene> &other)
-    {
-        // create new scene with other's name
-        Ref<Scene> newScene = CreateRef<Scene>(other->name);
-
-        // create source and destination registry
-        auto srcRegistry = other->registry;
-        auto destRegistry = newScene->registry;
-
-        EntityMap entityMap;
-        Entity newEntity = Entity{ };
-
-        // create entities for new new scene
-        auto view = srcRegistry->view<ID>();
-        for (auto e : view)
-        {
-            // get src entity component
-            Entity srcEntity = { e, other.get() };
-            const ID &srcIdComp = srcEntity.GetComponent<ID>();
-
-            // store src entity component to new entity (destination entity)
-            newEntity = EntityManager::CreateEntity(newScene.get(), srcIdComp.name, srcIdComp.type, srcIdComp.uuid);
-
-            // TODO: store parent and child
-            entityMap[srcIdComp.uuid] = newEntity;
-        }
-
-        EntityManager::CopyComponent(AllComponents{}, destRegistry, srcRegistry, entityMap);
-
-        return newScene;
     }
 }
 
