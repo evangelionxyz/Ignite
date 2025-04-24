@@ -1,6 +1,4 @@
 #include "iscript.hpp"
-#include <ignite/core/logger.hpp>
-
 #include <string>
 
 namespace ignite

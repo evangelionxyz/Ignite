@@ -6,7 +6,19 @@ add_executable(Game
 
 target_include_directories(Game PRIVATE
     ${IGNITE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/
+    ${THIRDPARTY}/GLFW/src
+    ${THIRDPARTY}/GLFW/include
+    ${THIRDPARTY}/BOX2D/include
+    ${THIRDPARTY}/NVRHI/include
+    ${THIRDPARTY}/SPDLOG/include
     ${THIRDPARTY}/GLM
+    ${THIRDPARTY}/IMGUI
+    ${THIRDPARTY}/IMGUIZMO
+    ${THIRDPARTY}/entt
+    ${THIRDPARTY}/STB/include
+    ${THIRDPARTY}/ShaderMake/include
+    ${VULKAN_INCLUDE_DIR}
 )
 
 target_link_libraries(Game PRIVATE
@@ -23,7 +35,20 @@ add_library(GameAssembly SHARED
 
 target_include_directories(GameAssembly PRIVATE
     ${IGNITE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/
+    ${THIRDPARTY}/GLFW/src
+    ${THIRDPARTY}/GLFW/include
+    ${THIRDPARTY}/BOX2D/include
+    ${THIRDPARTY}/NVRHI/include
+    ${THIRDPARTY}/SPDLOG/include
     ${THIRDPARTY}/GLM
+    ${THIRDPARTY}/IMGUI
+    ${THIRDPARTY}/IMGUIZMO
+    ${THIRDPARTY}/entt
+    ${THIRDPARTY}/STB/include
+    ${THIRDPARTY}/ShaderMake/include
+    ${VULKAN_SDK}/Include
+    ${VULKAN_INCLUDE_DIR}
 )
 
 target_link_libraries(GameAssembly PRIVATE

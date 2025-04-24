@@ -11,7 +11,8 @@ endif()
 
 target_include_directories(IgniteScriptCore PRIVATE
     ${IGNITE_DIR}/src/
-    ${THIRDPARTY}/GLM
+    ${THIRDPARTY}/SPDLOG/include/
+    ${THIRDPARTY}/GLM/
 )
 
 target_link_libraries(IgniteScriptCore PRIVATE

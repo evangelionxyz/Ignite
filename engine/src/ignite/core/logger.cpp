@@ -4,7 +4,7 @@
 
 struct LoggerImpl
 {
-    std::shared_ptr<spdlog::async_logger> logger;
+    std::shared_ptr<spdlog::logger> logger;
     std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> sink;
 };
 
@@ -20,11 +20,9 @@ namespace ignite
         impl->sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
         impl->sink->set_pattern("%^[%T] %n: %v%$");
 
-        impl->logger = std::make_shared<spdlog::async_logger>(
+        impl->logger = std::make_shared<spdlog::logger>(
             "[IGNITE]",
-            impl->sink,
-            spdlog::thread_pool(),
-            spdlog::async_overflow_policy::block
+            impl->sink
         );
     }
 
@@ -38,7 +36,7 @@ namespace ignite
         }
     }
 
-    spdlog::async_logger *Logger::GetLogger()
+    spdlog::logger *Logger::GetLogger()
     {
         return impl ? impl->logger.get() : nullptr;
     }

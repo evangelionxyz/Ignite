@@ -32,14 +32,14 @@ namespace ignite
         m_Input = Input(m_Window->GetWindowHandle());
 
         // create global shader factory
-        std::filesystem::path shaderPath = "resources/shaders/dxil";
+        std::filesystem::path shaderPath = ("resources" + GetShaderFolder(createInfo.graphicsApi));
         Ref<vfs::NativeFileSystem> nativeFS = CreateRef<vfs::NativeFileSystem>();
         m_ShaderFactory = CreateRef<ShaderFactory>(GetDeviceManager()->GetDevice(), nativeFS, shaderPath);
 
+        Renderer::Init(m_Window->GetDeviceManager(), createInfo.graphicsApi);
+
         m_ImGuiLayer = CreateScope<ImGuiLayer>(GetDeviceManager());
         m_ImGuiLayer->Init(GetShaderFactory());
-
-        Renderer::Init(m_Window->GetDeviceManager());
     }
 
     Application *Application::GetInstance()

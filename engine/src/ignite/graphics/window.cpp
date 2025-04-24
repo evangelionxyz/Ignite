@@ -103,7 +103,6 @@ namespace ignite
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); // ignored for full screen
         glfwWindowHint(GLFW_DECORATED, !m_DeviceManager->m_DeviceParams.startBorderless); // borderless window
 
-
         m_DeviceManager->m_Window = glfwCreateWindow(
             m_DeviceManager->m_DeviceParams.backBufferWidth,
             m_DeviceManager->m_DeviceParams.backBufferHeight,
@@ -213,19 +212,19 @@ namespace ignite
 
             if (win.m_DeviceManager->m_DeviceParams.enablePerMonitorDPI)
             {
-        #ifdef _WIN32
+#ifdef _WIN32
                 HWND hwnd = glfwGetWin32Window(window);
                 HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
                 u32 dpiX, dpiY;
                 GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
                 win.m_DeviceManager->m_DPIScaleFactorX = dpiX / 96.f;
                 win.m_DeviceManager->m_DPIScaleFactorY = dpiY / 96.f;
-        #else
+#else
             GLFWmonitor *monitor = glfwGetWindowMonitor(m_Window);
             if (!monitor)
                 monitor = glfwGetPrimaryMonitor();
             glfwGetMonitorContentScale(monitor, &m_DPIScaleFactorX, &m_DPIScaleFactorY);
-        #endif
+#endif
             }
 
             // render during window movement

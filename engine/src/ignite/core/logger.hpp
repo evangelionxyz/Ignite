@@ -19,7 +19,7 @@ namespace ignite
     public:
         static void Init();
         static void Shutdown();
-        static spdlog::async_logger* GetLogger();
+        static spdlog::logger* GetLogger();
     };
 }
 

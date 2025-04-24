@@ -11,6 +11,7 @@ add_library(IgniteEngine
   src/ignite/imgui/imgui_nvrhi.cpp
   src/ignite/imgui/imgui_layer.cpp
   src/ignite/graphics/shader_factory.cpp
+  src/ignite/graphics/shader.cpp
   src/ignite/graphics/texture.cpp
   src/ignite/graphics/window.cpp
   src/ignite/math/math.cpp
@@ -27,18 +28,12 @@ add_library(IgniteEngine
 
 target_precompile_headers(IgniteEngine PRIVATE src/ignite/pch.hpp)
 
-if (MSVC)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    target_compile_options(IgniteEngine PRIVATE -Winvalid-pch)
-endif()
-
 target_include_directories(IgniteEngine PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/
   ${THIRDPARTY}/GLFW/src
   ${THIRDPARTY}/GLFW/include
   ${THIRDPARTY}/BOX2D/include
   ${THIRDPARTY}/NVRHI/include
-  ${THIRDPARTY}/NVRHI/thirdparty/Vulkan-Headers/include
   ${THIRDPARTY}/SPDLOG/include
   ${THIRDPARTY}/GLM
   ${THIRDPARTY}/IMGUI
@@ -46,41 +41,87 @@ target_include_directories(IgniteEngine PRIVATE
   ${THIRDPARTY}/entt
   ${THIRDPARTY}/STB/include
   ${THIRDPARTY}/ShaderMake/include
-  ${VULKAN_SDK}/Include
+  ${THIRDPARTY}/NVRHI/thirdparty/Vulkan-Headers/include
 )
 
-target_link_libraries(IgniteEngine glfw spdlog ShaderMakeBlob imgui stblib box2d)
+target_link_libraries(IgniteEngine PUBLIC glfw spdlog ShaderMakeBlob imgui stblib box2d)
 
-set(IGNITE_WITH_DX12 ON)
-set(IGNITE_WITH_DX11 OFF)
+if (MSVC)
+    #target_compile_options(IgniteEngine PRIVATE "/utf-8")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    # GCC and Clang support -finput-charset=utf-8
+    #add_compile_options(-finput-charset=UTF-8 -fexec-charset=UTF-8)
+endif()
 
 if (WIN32)
-  add_definitions(-DPLATFORM_WINDOWS)
-  add_definitions(-DNOMINMAX)
+  target_compile_definitions(IgniteEngine PRIVATE 
+    PLATFORM_WINDOWS
+    NOMINMAX
+    WIN32_LEAN_AND_MEAN
+  )
 
+  # DirectX 12 Build
   if (IGNITE_WITH_DX12)
-    target_compile_definitions(IgniteEngine PRIVATE IGNITE_WITH_DX12)
+    message(">> Build with DirectX 12")
+
     target_sources(IgniteEngine PRIVATE src/ignite/core/device/device_manager_dx12.cpp)
-    if (NOT NVRHI_BUILD_SHARED)
-      target_link_libraries(IgniteEngine nvrhi_d3d12)
+    
+    target_compile_definitions(IgniteEngine PRIVATE IGNITE_WITH_DX12)
+    target_link_libraries(IgniteEngine PUBLIC nvrhi_d3d12 d3d12 dxgi d3dcompiler dxguid)
+  endif()
+
+  # Vulkan Build
+  if (IGNITE_WITH_VULKAN)
+    message(">> Build with Vulkan")
+    target_link_directories(IgniteEngine PUBLIC ${VULKAN_LIBRARY_DIR})
+    target_link_libraries(IgniteEngine PUBLIC nvrhi_vk)
+
+    target_compile_definitions(IgniteEngine PRIVATE IGNITE_WITH_VULKAN)
+
+    target_sources(IgniteEngine PRIVATE src/ignite/core/device/device_manager_vk.cpp)
+
+    # build type specific
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+      target_link_libraries(IgniteEngine PUBLIC
+        vulkan-1.lib
+        shaderc_sharedd.lib
+        spirv-cross-cored.lib
+        spirv-cross-glsld.lib
+        spirv-cross-reflect.lib
+        spirv-cross-util.lib
+      )
+    elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+      target_link_libraries(IgniteEngine PUBLIC
+        vulkan-1.lib
+        shaderc_shared.lib
+        spirv-cross-core.lib
+        spirv-cross-glsl.lib
+        spirv-cross-reflect.lib
+        spirv-cross-util.lib
+      )
     endif()
-    target_link_libraries(IgniteEngine d3d12 dxgi d3dcompiler dxguid)
   endif()
 
-endif()
-
-if (IGNITE_WITH_VULKAN)
-  if (NOT NVRHI_BUILD_SHARED)
-    target_link_libraries(IgniteEngine nvrhi_vk)
-  endif()
+elseif(UNIX AND NOT APPLE)
   target_sources(IgniteEngine PRIVATE core/device_manager_vulkan.cpp)
+
+  target_compile_definitions(IgniteEngine PRIVATE PLATFORM_LINUX)
+  target_include_directories(IgniteEngine /usr/include)
+  target_link_directories(IgniteEngine PRIVATE /usr/lib)
+  target_link_libraries(IgniteEngine PUBLIC nvrhi_vk)
+
+  target_link_libraries(IgniteEngine PUBLIC
+    vulkan shaderc_shared spriv-cross-core
+    spirv-cross-glsl pthread dl m rt
+  )
+
 endif()
-target_link_libraries(IgniteEngine nvrhi) # needs to come after nvrhi_d3d12 etc.
+
+target_link_libraries(IgniteEngine PUBLIC nvrhi)
 
 target_compile_definitions(IgniteEngine PRIVATE
     $<$<CONFIG:Debug>:DEBUG_BUILD>
     $<$<CONFIG:Release>:RELEASE_BUILD>
-    #IGNITE_WITH_DX12
 )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)

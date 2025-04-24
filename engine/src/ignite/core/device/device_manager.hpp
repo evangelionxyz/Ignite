@@ -1,25 +1,27 @@
 #pragma once
 
 #if PLATFORM_WINDOWS
-#include <dxgi.h>
-#endif
-
-#if IGNITE_WITH_DX11
-#include <d3d11.h>
+    #include <dxgi.h>
 #endif
 
 #if IGNITE_WITH_DX12
-#include <d3d12.h>
+    #include <d3d12.h>
+#endif
+
+#if IGNITE_WITH_VULKAN
+    #define VK_NO_PROTOTYPES
+    #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+    #include <vulkan/vulkan.hpp>
 #endif
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
 #if _WIN32
-#define GLFW_EXPOSE_NATIVE_WIN32
+    #define GLFW_EXPOSE_NATIVE_WIN32
 #endif
-#include <nvrhi/nvrhi.h>
 
+#include <nvrhi/nvrhi.h>
 #include <optional>
 #include <array>
 #include <functional>
@@ -45,13 +47,14 @@ namespace ignite
         bool enableHeapDirectlyIndexed = false;
         bool enablePerMonitorDPI = false;
 
-#ifdef IGNITE_WITH_VULKAN
+#if IGNITE_WITH_VULKAN
         std::string vulkanLibraryName;
         std::vector<std::string> requiredVulkanInstanceExtensions;
-        std::vector<std::string? requiredVulkanLayers;
+        std::vector<std::string> requiredVulkanLayers;
         std::vector<std::string> optionalVulaknInstanceExtensions;
         std::vector<std::string> optionalVulkanLayers;
 #endif
+
     };
 
     struct DeviceCreationParameters : public InstanceParameters
@@ -89,7 +92,11 @@ namespace ignite
         std::vector<std::string> requiredVulkanDeviceExtensions;
         std::vector<std::string> optionalVulkanDeviceExtensions;
         std::vector<size_t> ignoreVulkanValidationMessageLocations;
+        std::function<void(VkDeviceCreateInfo &)> deviceCreateInfoCallback;
+
+        void *physicalDeviceFeatures2Extensions = nullptr;
 #endif
+
     };
 
     struct AdapterInfo
@@ -100,16 +107,16 @@ namespace ignite
         uint64_t dedicatedVideoMemory = 0;
 
         std::optional<std::array<uint8_t, 16>> uuid;
-        std::optional<std::array<uint8_t, 8>> luuid;
+        std::optional<std::array<uint8_t, 8>> luid;
 
-#if PLATFORM_WINDOWS
+
+#if IGNITE_WITH_DX12
         nvrhi::RefCountPtr<IDXGIAdapter> dxgiAdapter;
 #endif
 
-#ifdef IGNITE_WITH_VULKAN
+#if IGNITE_WITH_VULKAN
         VkPhysicalDevice vkPhysicalDevice = nullptr;
 #endif
-
     };
 
     class DeviceManager

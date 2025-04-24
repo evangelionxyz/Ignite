@@ -2,7 +2,6 @@ add_executable(IgniteEditor
   src/editor_layer.cpp
   src/editor_app.cpp
   src/panels/scene_panel.cpp
-  
   src/render_target.cpp
 )
 
@@ -12,7 +11,6 @@ target_include_directories(IgniteEditor PRIVATE
   ${THIRDPARTY}/GLFW/src
   ${THIRDPARTY}/GLFW/include
   ${THIRDPARTY}/NVRHI/include
-  ${THIRDPARTY}/NVRHI/thirdparty/Vulkan-Headers/include
   ${THIRDPARTY}/BOX2D/include
   ${THIRDPARTY}/SPDLOG/include
   ${THIRDPARTY}/GLM
@@ -21,37 +19,33 @@ target_include_directories(IgniteEditor PRIVATE
   ${THIRDPARTY}/entt
   ${THIRDPARTY}/STB/include
   ${THIRDPARTY}/ShaderMake/include
-  ${VULKAN_SDK}/Include
+  ${THIRDPARTY}/NVRHI/thirdparty/Vulkan-Headers/include
 )
 
-target_link_libraries(IgniteEditor IgniteEngine)
-
-set(IGNITE_WITH_DX12 ON)
-set(IGNITE_WITH_DX11 OFF)
+target_link_libraries(IgniteEditor PRIVATE IgniteEngine)
 
 if (WIN32)
-  add_definitions(-DPLATFORM_WINDOWS)
-  add_definitions(-DNOMINMAX)
-  add_definitions(-DWIN32_LEAN_AND_MEAN)
+  target_compile_definitions(IgniteEditor PRIVATE 
+    PLATFORM_WINDOWS
+    NOMINMAX
+    WIN32_LEAN_AND_MEAN
+  )
 
   if (IGNITE_WITH_DX12)
     target_compile_definitions(IgniteEditor PRIVATE IGNITE_WITH_DX12)
+    endif()
+    
+  if (IGNITE_WITH_VULKAN)
+    target_compile_definitions(IgniteEditor PRIVATE IGNITE_WITH_VULKAN)
   endif()
 
-endif()
+elseif(UNIX AND NOT APPLE)
 
-if (IGNITE_WITH_VULKAN)
-  if (NOT NVRHI_BUILD_SHARED)
-    target_link_libraries(IgniteEditor nvrhi_vk)
-  endif()
-  target_sources(IgniteEditor PRIVATE core/device_manager_vulkan.cpp)
 endif()
-target_link_libraries(IgniteEditor nvrhi) # needs to come after nvrhi_d3d12 etc.
 
 target_compile_definitions(IgniteEditor PRIVATE
     $<$<CONFIG:Debug>:DEBUG_BUILD>
     $<$<CONFIG:Release>:RELEASE_BUILD>
-    #IGNITE_WITH_DX12
 )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)

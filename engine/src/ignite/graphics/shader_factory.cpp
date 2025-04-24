@@ -1,6 +1,8 @@
 #include "shader_factory.hpp"
 #include "ignite/core/logger.hpp"
 
+#include "renderer.hpp"
+
 #include <ShaderMake/ShaderBlob.h>
 
 namespace ignite
@@ -12,6 +14,7 @@ namespace ignite
 
     ShaderFactory::~ShaderFactory()
     {
+        ClearCache();
     }
 
     void ShaderFactory::ClearCache()
@@ -24,7 +27,7 @@ namespace ignite
         if (!m_FS)
             return nullptr;
 
-        if (!entryName)
+        if (entryName == nullptr)
             entryName = "main";
 
         std::string adjustedName = filename;
@@ -37,11 +40,13 @@ namespace ignite
                 adjustedName += "_" + std::string(entryName);
         }
 
-        std::filesystem::path shaderFilePath = m_BasePath / (adjustedName + ".dxil");
+        std::filesystem::path shaderFilePath = m_BasePath / (adjustedName + GetShaderExtension(Renderer::GetGraphicsAPI()));
         std::shared_ptr<vfs::IBlob>& data = m_ByteCodeCache[shaderFilePath.generic_string()];
 
         if (data)
+        {
             return data;
+        }
 
         data = m_FS->ReadFile(shaderFilePath);
 
@@ -103,13 +108,11 @@ namespace ignite
 
     }
 
-    nvrhi::ShaderHandle ShaderFactory::CreateStaticPlatformShader(StaticShader dxbc, StaticShader dxil, StaticShader spirv, const std::vector<ShaderMacro> *pDefines, const nvrhi::ShaderDesc &desc)
+    nvrhi::ShaderHandle ShaderFactory::CreateStaticPlatformShader(StaticShader dxil, StaticShader spirv, const std::vector<ShaderMacro> *pDefines, const nvrhi::ShaderDesc &desc)
     {
         StaticShader shader;
         switch(m_Device->getGraphicsAPI())
         {
-            case nvrhi::GraphicsAPI::D3D11:
-                shader = dxbc;
             break;
             case nvrhi::GraphicsAPI::D3D12:
                 shader = dxil;
@@ -164,14 +167,14 @@ namespace ignite
         return CreateStaticShaderLibrary(shader, pDefines);
     }
 
-    nvrhi::ShaderHandle ShaderFactory::CreateAutoShader(const char *filename, const char *entryName, StaticShader dxbc, StaticShader dxil, StaticShader spirv, const std::vector<ShaderMacro> *pDefines, const nvrhi::ShaderDesc &desc)
+    nvrhi::ShaderHandle ShaderFactory::CreateAutoShader(const char *filename, const char *entryName, StaticShader dxil, StaticShader spirv, const std::vector<ShaderMacro> *pDefines, const nvrhi::ShaderDesc &desc)
     {
         nvrhi::ShaderDesc descCopy = desc;
         descCopy.entryName = entryName;
         if (descCopy.debugName.empty())
             descCopy.debugName = filename;
 
-        nvrhi::ShaderHandle shader = CreateStaticPlatformShader(dxbc, dxil, spirv, pDefines, descCopy);
+        nvrhi::ShaderHandle shader = CreateStaticPlatformShader(dxil, spirv, pDefines, descCopy);
         if (shader)
             return shader;
 

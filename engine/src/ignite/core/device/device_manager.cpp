@@ -4,11 +4,11 @@
 #include <sstream>
 #include <nvrhi/utils.h>
 
-#ifdef _WIN32
-#include <ShellScalingApi.h>
-#include <dwmapi.h>
-#pragma comment(lib, "Dwmapi.lib") // Link to DWM API
-#pragma comment(lib, "shcore.lib")
+#ifdef PLATFORM_WINDOWS
+    #include <ShellScalingApi.h>
+    #include <dwmapi.h>
+    #pragma comment(lib, "Dwmapi.lib") // Link to DWM API
+    #pragma comment(lib, "shcore.lib")
 #endif
 #include "device_manager.hpp"
 #include "ignite/core/logger.hpp"
@@ -134,18 +134,13 @@ namespace ignite
     {
         switch (api)
         {
-#if IGNITE_WITH_DX11
-            case nvrhi::GraphicsAPI::D3D11:
-                return CreateD3D11();
-#elif IGNITE_WITH_DX12
-            case nvrhi::GraphicsAPI::D3D12:
-                return CreateD3D12();
-#elif IGNITE_WITH_VULKAN
-            case nvrhi::GraphicsAPI::VULKAN:
-                return CreateVK();
+#if IGNITE_WITH_DX12
+            case nvrhi::GraphicsAPI::D3D12: return CreateD3D12();
 #endif
-            default:
-                LOG_ASSERT(false, "Unsupported Graphics API {}", (u32)api);
+#if IGNITE_WITH_VULKAN
+            case nvrhi::GraphicsAPI::VULKAN: return CreateVK();
+#endif
+            default: LOG_ASSERT(false, "Unsupported Graphics API {}", (u32)api);
             return nullptr;
         }
     }

@@ -20,6 +20,7 @@ namespace ignite
         createInfo.cmdLineArgs = args;
         createInfo.width = 1280;
         createInfo.height = 720;
+        //createInfo.graphicsApi = nvrhi::GraphicsAPI::VULKAN;
         return new EditorApp(createInfo);
     }
 }

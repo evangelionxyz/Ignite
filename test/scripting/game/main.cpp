@@ -1,7 +1,6 @@
 #include <iostream>
 #include <Windows.h>
 
-#include <ignite/core/logger.hpp>
 #include <scripting/iscript.hpp>
 #include <scripting/script_component.hpp>
 
@@ -37,9 +36,6 @@ HMODULE LoadScriptDLL(const std::string &dllPath)
 
 int main()
 {
-    Logger::Init();
-    LOG_INFO("Test");
-
     HMODULE hdll = LoadScriptDLL("GameAssembly.dll");
     if (!hdll)
     {
@@ -70,8 +66,6 @@ int main()
 
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
     }
-
-    Logger::Shutdown();
 
     return 0;
 }

@@ -6,11 +6,6 @@
 #include "device_manager_dx12.hpp"
 #include "ignite/core/logger.hpp"
 
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-
-#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <GLFW/glfw3native.h>
 #include <array>
@@ -29,6 +24,8 @@ static bool IsNvDevice(const UINT ID) { return ID == 0x10DE; }
 
 namespace ignite
 {
+    static DeviceManager_DX12 *s_Instance = nullptr;
+
     void DescriptorHeapAllocator::Create(ID3D12Device *device, ID3D12DescriptorHeap *descriptorHeap)
     {
         heap = descriptorHeap;
@@ -105,8 +102,6 @@ namespace ignite
         return false;
     }
 
-    static DeviceManager_DX12 *s_Instance = nullptr;
-
     void DeviceManager_DX12::ReportLiveObjects()
     {
         RefCountPtr<IDXGIDebug> pDebug;
@@ -164,7 +159,7 @@ namespace ignite
             std::array<uint8_t, 8> luid;
             static_assert(luid.size() == sizeof(desc.AdapterLuid));
             memcpy(luid.data(), &desc.AdapterLuid, luid.size());
-            adapterInfo.luuid = luid;
+            adapterInfo.luid = luid;
             outAdapters.push_back(std::move(adapterInfo));
         }
     }
