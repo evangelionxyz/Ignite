@@ -253,15 +253,8 @@ namespace ignite {
             }
         }
 
-        m_NvrhiDevice = nullptr;
-        m_ValidationLayer = nullptr;
+        
         m_RendererString.clear();
-
-        if (m_VulkanDevice)
-        {
-            m_VulkanDevice.destroy();
-            m_VulkanDevice = nullptr;
-        }
 
         if (m_WindowSurface)
         {
@@ -273,6 +266,17 @@ namespace ignite {
         if (m_DebugReportCallback)
         {
             m_VulkanInstance.destroyDebugReportCallbackEXT(m_DebugReportCallback);
+        }
+
+        m_ValidationLayer = nullptr;
+        m_NvrhiDevice->runGarbageCollection();
+
+        m_NvrhiDevice.Detach();
+
+        if (m_VulkanDevice)
+        {
+            m_VulkanDevice.destroy();
+            m_VulkanDevice = nullptr;
         }
 
         if (m_VulkanInstance)
@@ -1000,15 +1004,15 @@ namespace ignite {
 
         pNext = nullptr;
         APPEND_EXTENSION(accelStructSupported, accelStructFeatures)
-            APPEND_EXTENSION(rayPipelineSupported, rayPipelineFeatures)
-            APPEND_EXTENSION(rayQuerySupported, rayQueryFeatures)
-            APPEND_EXTENSION(meshletsSupported, meshletFeatures)
-            APPEND_EXTENSION(vrsSupported, vrsFeatures)
-            APPEND_EXTENSION(interlockSupported, interlockFeatures)
-            APPEND_EXTENSION(barycentricSupported, barycentricFeatures)
-            APPEND_EXTENSION(storage16BitSupported, storage16BitFeatures)
-            APPEND_EXTENSION(physicalDeviceProperties.apiVersion >= VK_API_VERSION_1_3, vulkan13features)
-            APPEND_EXTENSION(physicalDeviceProperties.apiVersion < VK_API_VERSION_1_3 &&maintenance4Supported, maintenance4Features);
+        APPEND_EXTENSION(rayPipelineSupported, rayPipelineFeatures)
+        APPEND_EXTENSION(rayQuerySupported, rayQueryFeatures)
+        APPEND_EXTENSION(meshletsSupported, meshletFeatures)
+        APPEND_EXTENSION(vrsSupported, vrsFeatures)
+        APPEND_EXTENSION(interlockSupported, interlockFeatures)
+        APPEND_EXTENSION(barycentricSupported, barycentricFeatures)
+        APPEND_EXTENSION(storage16BitSupported, storage16BitFeatures)
+        APPEND_EXTENSION(physicalDeviceProperties.apiVersion >= VK_API_VERSION_1_3, vulkan13features)
+        APPEND_EXTENSION(physicalDeviceProperties.apiVersion < VK_API_VERSION_1_3 &&maintenance4Supported, maintenance4Features);
 
 #undef APPEND_EXTENSION
 
@@ -1214,7 +1218,7 @@ namespace ignite {
         info.poolSizeCount = std::size(poolSizes);
         info.pPoolSizes = poolSizes;
 
-        m_DescriptorPool = m_VulkanDevice.createDescriptorPool(info);
+        //m_DescriptorPool = m_VulkanDevice.createDescriptorPool(info);
     }
     void DeviceManager_VK::WaitForIdle()
     {

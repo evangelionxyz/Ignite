@@ -93,7 +93,8 @@ namespace ignite
     
     
 
-    EditorLayer::EditorLayer(const std::string &name) : Layer(name), m_DeviceManager(nullptr)
+    EditorLayer::EditorLayer(const std::string &name)
+        : Layer(name), m_DeviceManager(nullptr)
     {
     }
 

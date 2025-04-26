@@ -6,20 +6,25 @@
 #include "ignite/core/input/key_event.hpp"
 #include "ignite/core/input/mouse_event.hpp"
 #include "ignite/graphics/texture.hpp"
+#include "ignite/scene/icomponent.hpp"
 #include "editor_layer.hpp"
 #include "entt/entt.hpp"
+
 #include <set>
+#include <unordered_map>
+#include <string>
+#include <algorithm>
 
 namespace ignite
 {
-    std::map<std::string, CompType> componentsName = 
+    static std::unordered_map<std::string, CompType> componentsName = 
     {
         { "Rigidbody2D", CompType_Rigidbody2D },
         { "Sprite2D", CompType_Sprite2D},
         { "BoxCollider2D", CompType_BoxCollider2D }
     };
 
-    std::string ToLower(const std::string &str)
+    static std::string ToLower(const std::string &str)
     {
         std::string result = str;
         std::transform(result.begin(), result.end(), result.begin(), ::tolower);
@@ -335,7 +340,7 @@ namespace ignite
                 }
                 case CompType_Rigidbody2D:
                 {
-                    RenderComponent<Rigidbody2D>("Rigidbody 2D", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
+                    RenderComponent<Rigidbody2D>("Rigid Body 2D", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
                     {
                         Rigidbody2D *c = comp->As<Rigidbody2D>();
                         
@@ -720,17 +725,13 @@ namespace ignite
 
         // Only update mouseDelta when a mouse button is pressed
         bool mbPressed = Input::IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || Input::IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) || Input::IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE);
+
         if (mbPressed)
-        {
             mouseDelta = currentMousePos - lastMousePos;
-        }
         else
-        {
             mouseDelta = { 0.0f, 0.0f };
-        }
 
         lastMousePos = currentMousePos;
-
 
         const f32 x = std::min(m_ViewportData.width * 0.01f, 1.8f);
         const f32 y = std::min(m_ViewportData.height * 0.01f, 1.8f);

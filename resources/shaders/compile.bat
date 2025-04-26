@@ -1,8 +1,10 @@
 @echo off
-ShaderMake.exe -p DXIL --binary -O3 -c "Shader.cfg" -o "dxil" --compiler "C:\SDKs\VulkanSDK\1.3.296.0\Bin\dxc.exe" --force --colorize 
-ShaderMake.exe -p SPIRV --binary -O3 -c "Shader.cfg" -o "spirv" --compiler "C:\SDKs\VulkanSDK\1.3.296.0\Bin\dxc.exe" --force --colorize
+ShaderMake.exe -p DXIL --binary -O3 -c "Shader.cfg" -o "dxil" --compiler "%VULKAN_SDK%\Bin\dxc.exe" --colorize 
 
-glslc default_2d_vertex.vert -o spirv/default_2d_vertex.spirv
-glslc default_2d_pixel.frag -o spirv/default_2d_pixel.spirv
+glslc spirv-src/default_2d.vert -o spirv/default_2d_vert.spirv
+glslc spirv-src/default_2d.frag -o spirv/default_2d_frag.spirv
+
+glslc spirv-src/test_2d.vert -o spirv/test_2d_vert.spirv
+glslc spirv-src/test_2d.frag -o spirv/test_2d_frag.spirv
 
 PAUSE

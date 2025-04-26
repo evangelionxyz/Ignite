@@ -27,7 +27,7 @@ namespace ignite
         commandList->close();
         deviceManager->GetDevice()->executeCommandList(commandList);
 
-        Renderer2D::Init(deviceManager);
+        //Renderer2D::Init(deviceManager);
     }
 
     void Renderer::Shutdown()

@@ -30,18 +30,34 @@ namespace ignite
         if (entryName == nullptr)
             entryName = "main";
 
+        static auto graphicsApi = Renderer::GetGraphicsAPI();
+        static std::string shaderExtension = GetShaderExtension(Renderer::GetGraphicsAPI());
+
         std::string adjustedName = filename;
         {
-            size_t pos = adjustedName.find(".hlsl");
+            // remove extension name
+            size_t pos = adjustedName.find(shaderExtension);
             if (pos != std::string::npos)
-                adjustedName.erase(pos, 5);
+                adjustedName.erase(pos, shaderExtension.size());
 
+            if (graphicsApi == nvrhi::GraphicsAPI::VULKAN)
+            {
+                size_t pixel_str_pos = adjustedName.find("_pixel");
+                if (pixel_str_pos != std::string::npos)
+                {
+                    adjustedName.erase(pixel_str_pos, 6);
+                    adjustedName.insert(pixel_str_pos, "_frag");
+                }
+            }
+                 
             if (entryName && strcmp(entryName, "main"))
+            {
                 adjustedName += "_" + std::string(entryName);
+            }
         }
 
         std::filesystem::path shaderFilePath = m_BasePath / (adjustedName + GetShaderExtension(Renderer::GetGraphicsAPI()));
-        std::shared_ptr<vfs::IBlob>& data = m_ByteCodeCache[shaderFilePath.generic_string()];
+        std::shared_ptr<vfs::IBlob> &data = m_ByteCodeCache[shaderFilePath.generic_string()];
 
         if (data)
         {

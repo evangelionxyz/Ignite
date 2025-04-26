@@ -1,4 +1,4 @@
-cbuffer PushConstants : register(b1)
+cbuffer PushConstants : register(b0)
 {
     float4x4 mvp;
 };

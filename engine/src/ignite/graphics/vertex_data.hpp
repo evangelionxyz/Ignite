@@ -100,7 +100,7 @@ namespace ignite
 
             nvrhi::BindingLayoutDesc bindingDesc;
             bindingDesc.setVisibility(nvrhi::ShaderType::All);
-            bindingDesc.addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1));
+            bindingDesc.addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0));
             bindingDesc.addItem(nvrhi::BindingLayoutItem::Sampler(0));
             for (i32 i = 0; i < maxTextureCount; ++i)
             {

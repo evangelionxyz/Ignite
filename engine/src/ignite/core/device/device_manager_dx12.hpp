@@ -4,6 +4,8 @@
 
 #include "device_manager.hpp"
 
+#include "ignite/core/types.hpp"
+
 #include <Windows.h>
 #include <dxgi1_5.h>
 #include <dxgidebug.h>
@@ -45,7 +47,7 @@ namespace ignite
         nvrhi::RefCountPtr<IDXGIAdapter> m_DxgiAdapter;
         HWND m_Hwnd = nullptr;
         bool m_TearingSupported = false;
-        const int SRV_HEAP_SIZE = 64;
+        const i32 SRV_HEAP_SIZE = 64;
 
         std::vector<nvrhi::RefCountPtr<ID3D12Resource>> m_SwapChainBuffers;
         std::vector<nvrhi::TextureHandle> m_RhiSwapChainBuffers;
@@ -94,9 +96,9 @@ namespace ignite
         void DestroyDeviceAndSwapChain() override;
         void ResizeSwapChain() override;
         nvrhi::ITexture *GetCurrentBackBuffer() override;
-        nvrhi::ITexture *GetBackBuffer(uint32_t index) override;
-        uint32_t GetCurrentBackBufferIndex() override;
-        uint32_t GetBackBufferCount() override;
+        nvrhi::ITexture *GetBackBuffer(u32 index) override;
+        u32 GetCurrentBackBufferIndex() override;
+        u32 GetBackBufferCount() override;
         bool BeginFrame() override;
         bool Present() override;
         void Destroy() override;

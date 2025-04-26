@@ -11,7 +11,7 @@
 
 namespace ignite
 {    
-    std::string GenerateUniqueName(const std::string &name, const std::vector<std::string> &names, StringCounterMap &strMap)
+    static std::string GenerateUniqueName(const std::string &name, const std::vector<std::string> &names, StringCounterMap &strMap)
     {
         // iterate names for the first time
         // check if the name already exists
@@ -27,7 +27,7 @@ namespace ignite
         if (!found)
             return name;
 
-        // generate a unieuq key if the name already exists
+        // generate a unique key if the name already exists
         i32 counter = 1;
         std::string uniqueKey;
 
@@ -50,7 +50,7 @@ namespace ignite
             counter++; // increment the counter if names are not unique
         }
 
-        // update the counter to reflect the highes number used
+        // update the counter to reflect the highest number used
         strMap[name] = counter - 1;
 
         // cleanup counters for names that no longer exist

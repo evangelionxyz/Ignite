@@ -38,8 +38,11 @@ namespace ignite
 
         Renderer::Init(m_Window->GetDeviceManager(), createInfo.graphicsApi);
 
-        m_ImGuiLayer = CreateScope<ImGuiLayer>(GetDeviceManager());
-        m_ImGuiLayer->Init(GetShaderFactory());
+        if (createInfo.useGui)
+        {
+            m_ImGuiLayer = CreateScope<ImGuiLayer>(GetDeviceManager());
+            m_ImGuiLayer->Init(GetShaderFactory());
+        }
     }
 
     Application *Application::GetInstance()
@@ -139,27 +142,40 @@ namespace ignite
                         {
                             Layer *layer = *it;
                             layer->OnRender(framebuffer);
+
                             // ImGui rendering
-                            m_ImGuiLayer->BeginFrame();
-                            layer->OnGuiRender();
-                            m_ImGuiLayer->EndFrame(framebuffer);
+                            if (m_CreateInfo.useGui)
+                            {
+                                m_ImGuiLayer->BeginFrame();
+                                layer->OnGuiRender();
+                                m_ImGuiLayer->EndFrame(framebuffer);
+                            }
                         }
                         if (!deviceManager->Present())
                             continue;
+
+                        // call this at lease once per frame!
+                        deviceManager->GetDevice()->runGarbageCollection();
                     }
                 }
             }
+
             UpdateAverageTimeTime(deltaTime);
             // set previous time
             m_PreviousTime = currTime;
             ++m_FrameIndex;
         }
 
+        deviceManager->GetDevice()->waitForIdle();
+
         for (auto layer = m_LayerStack.rbegin(); layer != m_LayerStack.rend(); ++layer)
             (*layer)->OnDetach();
 
         if (m_ImGuiLayer)
             m_ImGuiLayer->OnDetach();
+
+        m_LayerStack.Destroy();
+        deviceManager->GetDevice()->runGarbageCollection();
 
         Renderer::Shutdown();
         m_Window->Destroy();

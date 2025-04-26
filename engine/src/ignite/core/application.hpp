@@ -41,6 +41,7 @@ namespace ignite
         u32 width = 1280;
         u32 height = 640;
         bool maximized = false;
+        bool useGui = true;
     };
 
     class Application

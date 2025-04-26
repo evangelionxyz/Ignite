@@ -88,7 +88,7 @@ namespace ignite
         // create binding set
         nvrhi::BindingSetDesc bindingSetDesc;
         // add constant buffer
-        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, s_Data.constantBuffer));
+        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, s_Data.constantBuffer));
 
         // then add textures
         const auto samplerDesc = nvrhi::SamplerDesc()
@@ -106,7 +106,7 @@ namespace ignite
         s_Data.quadBatch.bindingSet = device->createBindingSet(bindingSetDesc, s_Data.quadBatch.bindingLayout);
         LOG_ASSERT(s_Data.quadBatch.bindingSet, "Failed to create binding");
 
-        // create graphics pipline
+        // create graphics pipeline
         nvrhi::BlendState blendState;
         blendState.targets[0].setBlendEnable(true);
 

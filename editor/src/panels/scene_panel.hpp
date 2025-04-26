@@ -4,6 +4,11 @@
 #include "render_target.hpp"
 #include "ignite/scene/entity.hpp"
 #include "ignite/core/uuid.hpp"
+#include <string>
+#include <ignite/core/base.hpp>
+#include <ignite/core/types.hpp>
+#include <glm/fwd.hpp>
+#include <nvrhi/nvrhi.h>
 
 namespace ignite
 {
@@ -33,13 +38,13 @@ namespace ignite
         void OnGuiRender() override;
         void RenderViewport();
 
-        Ref<RenderTarget> GetRT() { return m_RenderTarget; }
+        Ref<RenderTarget> GetRT() const { return m_RenderTarget; }
 
         void OnEvent(Event &event);
         bool OnMouseScrolledEvent(MouseScrolledEvent &event);
         bool OnMouseMovedEvent(MouseMovedEvent &event);
 
-        Camera *GetViewportCamera() { return m_ViewportCamera.get(); }
+        Camera *GetViewportCamera() const { return m_ViewportCamera.get(); }
 
         void RenderHierarchy();
         Entity ShowEntityContextMenu();
@@ -58,6 +63,11 @@ namespace ignite
         template<typename T, typename UIFunction>
         void RenderComponent(const std::string &name, Entity entity, UIFunction uiFunction, bool allowedToRemove = true);
 
+        struct Data
+        {
+            bool settingsWindow = true;
+        } m_Data;
+
         CameraMode m_CameraMode = CAMERA_MODE_2D;
         Scope<Camera> m_ViewportCamera;
         Ref<RenderTarget> m_RenderTarget;
@@ -66,11 +76,6 @@ namespace ignite
 
         Entity m_SelectedEntity = { };
         static UUID m_TrackingSelectedEntity;
-
-        struct Data
-        {
-            bool settingsWindow = true;
-        } m_Data;
 
         struct CameraData
         {
