@@ -6,32 +6,43 @@
 
 namespace ignite
 {
-    Ref<Texture> Renderer::whiteTexture;
-    nvrhi::GraphicsAPI Renderer::m_GraphicsAPI;
+    Renderer *s_instance = nullptr;
 
-    nvrhi::GraphicsAPI Renderer::GetGraphicsAPI()
+    Renderer::Renderer(DeviceManager *deviceManager, nvrhi::GraphicsAPI api)
     {
-        return m_GraphicsAPI;
-    }
+        s_instance = this;
 
-    void Renderer::Init(DeviceManager *deviceManager, nvrhi::GraphicsAPI api)
-    {
         m_GraphicsAPI = api;
-
-        nvrhi::CommandListHandle commandList = deviceManager->GetDevice()->createCommandList();
-        u32 white = 0xFFFFFFFF;
-        whiteTexture = Texture::Create(Buffer(&white, sizeof(white)));
         
-        commandList->open();
-        whiteTexture->Write(commandList);
-        commandList->close();
+#if 0
+        nvrhi::CommandListHandle commandList = deviceManager->GetDevice()->createCommandList();
+        {
+            u32 white = 0xFFFFFFFF;
+            m_WhiteTexture = Texture::Create(Buffer(&white, sizeof(white)));
+            
+            commandList->open();
+            m_WhiteTexture->Write(commandList);
+            commandList->close();
+        }
+        
         deviceManager->GetDevice()->executeCommandList(commandList);
-
+        
+#endif
         //Renderer2D::Init(deviceManager);
     }
 
-    void Renderer::Shutdown()
+    void Renderer::Destroy()
     {
-        Renderer2D::Shutdown();
+        // Renderer2D::Shutdown();
+    }
+
+    nvrhi::GraphicsAPI Renderer::GetGraphicsAPI()
+    {
+        return s_instance->m_GraphicsAPI;
+    }
+
+    Ref<Texture> Renderer::GetWhiteTexture()
+    {
+        return s_instance->m_WhiteTexture;
     }
 }

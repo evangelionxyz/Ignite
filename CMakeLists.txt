@@ -18,8 +18,8 @@ if (WIN32)
         message(fatal_error ">> VULKAN_SDK environment variable not defined. Please install Vulkan SDK and set the environment variable.")
     endif()
 
-    set(VULKAN_INCLUDE_DIR $ENV{VULKAN_SDK}\\Include)
-    set(VULKAN_LIBRARY_DIR $ENV{VULKAN_SDK}\\Lib)
+    set(VULKAN_INCLUDE_DIR $ENV{VULKAN_SDK}/Include)
+    set(VULKAN_LIBRARY_DIR $ENV{VULKAN_SDK}/Lib)
 
     message(">> Vulkan include dir: ${VULKAN_INCLUDE_DIR}")
     message(">> Vulkan lib dir: ${VULKAN_LIBRARY_DIR}")

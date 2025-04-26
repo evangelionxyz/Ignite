@@ -187,16 +187,19 @@ namespace ignite {
         deviceDesc.device = m_VulkanDevice;
         deviceDesc.graphicsQueue = m_GraphicsQueue;
         deviceDesc.graphicsQueueIndex = m_GraphicsQueueFamily;
+
         if (m_DeviceParams.enableComputeQueue)
         {
             deviceDesc.computeQueue = m_ComputeQueue;
             deviceDesc.computeQueueIndex = m_ComputeQueueFamily;
         }
+
         if (m_DeviceParams.enableCopyQueue)
         {
             deviceDesc.transferQueue = m_TransferQueue;
             deviceDesc.transferQueueIndex = m_TransferQueueFamily;
         }
+
         deviceDesc.instanceExtensions = vecInstanceExt.data();
         deviceDesc.numInstanceExtensions = vecInstanceExt.size();
         deviceDesc.deviceExtensions = vecDeviceExt.data();
@@ -210,8 +213,6 @@ namespace ignite {
         {
             m_ValidationLayer = nvrhi::validation::createValidationLayer(m_NvrhiDevice);
         }
-
-        CreateDescriptorPool();
 
         return true;
     }
@@ -240,7 +241,7 @@ namespace ignite {
             if (semaphore)
             {
                 m_VulkanDevice.destroySemaphore(semaphore);
-                semaphore = vk::Semaphore();
+                semaphore = nullptr;
             }
         }
 
@@ -249,10 +250,9 @@ namespace ignite {
             if (semaphore)
             {
                 m_VulkanDevice.destroySemaphore(semaphore);
-                semaphore = vk::Semaphore();
+                semaphore = nullptr;
             }
         }
-
         
         m_RendererString.clear();
 
@@ -269,9 +269,9 @@ namespace ignite {
         }
 
         m_ValidationLayer = nullptr;
+        
+        m_NvrhiDevice->waitForIdle();
         m_NvrhiDevice->runGarbageCollection();
-
-        m_NvrhiDevice.Detach();
 
         if (m_VulkanDevice)
         {
@@ -1194,32 +1194,6 @@ namespace ignite {
         m_SwapChainImages.clear();
     }
 
-    void DeviceManager_VK::CreateDescriptorPool()
-    {
-        const VkDescriptorPoolSize poolSizes[] =
-        {
-            { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-            { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
-        };
-
-        VkDescriptorPoolCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        info.maxSets = 1000 * std::size(poolSizes);
-        info.poolSizeCount = std::size(poolSizes);
-        info.pPoolSizes = poolSizes;
-
-        //m_DescriptorPool = m_VulkanDevice.createDescriptorPool(info);
-    }
     void DeviceManager_VK::WaitForIdle()
     {
         if (m_VulkanDevice)

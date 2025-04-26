@@ -83,7 +83,7 @@ namespace ignite
 
         // create texture
         s_Data.quadBatch.textureSlots.resize(s_Data.quadBatch.maxTextureCount);
-        s_Data.quadBatch.textureSlots[0] = Renderer::whiteTexture;
+        s_Data.quadBatch.textureSlots[0] = Renderer::GetWhiteTexture();
 
         // create binding set
         nvrhi::BindingSetDesc bindingSetDesc;
@@ -100,7 +100,7 @@ namespace ignite
 
         for (u32 i = 0; i < s_Data.quadBatch.maxTextureCount; ++i)
         {
-            bindingSetDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(i, Renderer::whiteTexture->GetHandle()));
+            bindingSetDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(i, Renderer::GetWhiteTexture()->GetHandle()));
         }
 
         s_Data.quadBatch.bindingSet = device->createBindingSet(bindingSetDesc, s_Data.quadBatch.bindingLayout);
@@ -158,7 +158,6 @@ namespace ignite
         device->executeCommandList(commandList);
         
         delete[] indices;
-
         
         s_Data.quadPositions[0] = {-0.5f, -0.5f, 0.0f, 1.0f }; // bottom-left
         s_Data.quadPositions[1] = { 0.5f,  0.5f, 0.0f, 1.0f }; // top-right
@@ -290,7 +289,7 @@ namespace ignite
     void Renderer2D::UpdateTextureBindings()
     {
         nvrhi::BindingSetDesc bindingSetDesc;
-        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, s_Data.constantBuffer));
+        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, s_Data.constantBuffer));
         bindingSetDesc.addItem(nvrhi::BindingSetItem::Sampler(0, s_Data.quadBatch.sampler));
 
         for (u32 i = 0; i < s_Data.quadBatch.maxTextureCount; ++i)
@@ -298,7 +297,7 @@ namespace ignite
             Ref<Texture> tex = s_Data.quadBatch.textureSlots[i];
             if (!tex)
             {
-                tex = Renderer::whiteTexture;
+                tex = Renderer::GetWhiteTexture();
             }
             bindingSetDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(i, tex->GetHandle()));
         }

@@ -26,6 +26,7 @@
 #include "imgui/imgui_layer.hpp"
 
 #include "graphics/renderer.hpp"
+#include "graphics/shader.hpp"
 #include "graphics/renderer_2d.hpp"
 #include "graphics/shader_factory.hpp"
 #include "graphics/window.hpp"

@@ -70,7 +70,6 @@ namespace ignite
         bool CreateVkDevice();
         bool CreateVkSwapChain();
         void DestroySwapChain();
-        void CreateDescriptorPool();
 
         void WaitForIdle() override;
 
@@ -141,8 +140,6 @@ namespace ignite
         vk::SurfaceKHR m_WindowSurface;
         vk::SurfaceFormatKHR m_SwapChainFormat;
         vk::SwapchainKHR m_SwapChain;
-        vk::CommandPool m_CommandPool;
-        vk::DescriptorPool m_DescriptorPool;
         vk::RenderPass m_RenderPass;
         vk::PipelineCache m_PipelineCache;
 

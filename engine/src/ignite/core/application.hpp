@@ -17,6 +17,7 @@
 namespace ignite
 {
     class ShaderFactory;
+    class Renderer;
 
     struct ApplicationCommandLineArgs
     {
@@ -84,6 +85,8 @@ namespace ignite
         LayerStack m_LayerStack;
         Ref<ImGuiLayer> m_ImGuiLayer;
         Input m_Input;
+
+        Ref<Renderer> m_Renderer;
 
         f64 m_PreviousTime = 0.0;
         f64 m_FrameTimeSum = 0.0;

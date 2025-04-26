@@ -11,12 +11,16 @@ namespace ignite
     class Renderer
     {
     public:
+        Renderer() = default;
+        Renderer(DeviceManager *deviceManager, nvrhi::GraphicsAPI api);
+
+        void Destroy();
+
+        static Ref<Texture> GetWhiteTexture();
         static nvrhi::GraphicsAPI GetGraphicsAPI();
-        static void Init(DeviceManager *deviceManager, nvrhi::GraphicsAPI api);
-        static void Shutdown();
-        static Ref<Texture> whiteTexture;
 
     private:
-        static nvrhi::GraphicsAPI m_GraphicsAPI;
+        nvrhi::GraphicsAPI m_GraphicsAPI;
+        Ref<Texture> m_WhiteTexture;
     };
 }

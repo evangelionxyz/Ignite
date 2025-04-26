@@ -36,7 +36,7 @@ namespace ignite
         Ref<vfs::NativeFileSystem> nativeFS = CreateRef<vfs::NativeFileSystem>();
         m_ShaderFactory = CreateRef<ShaderFactory>(GetDeviceManager()->GetDevice(), nativeFS, shaderPath);
 
-        Renderer::Init(m_Window->GetDeviceManager(), createInfo.graphicsApi);
+        m_Renderer = CreateRef<Renderer>(m_Window->GetDeviceManager(), createInfo.graphicsApi);
 
         if (createInfo.useGui)
         {
@@ -166,18 +166,17 @@ namespace ignite
             ++m_FrameIndex;
         }
 
+        // run garbage collection first
         deviceManager->GetDevice()->waitForIdle();
-
-        for (auto layer = m_LayerStack.rbegin(); layer != m_LayerStack.rend(); ++layer)
-            (*layer)->OnDetach();
+        deviceManager->GetDevice()->runGarbageCollection();
 
         if (m_ImGuiLayer)
             m_ImGuiLayer->OnDetach();
 
         m_LayerStack.Destroy();
-        deviceManager->GetDevice()->runGarbageCollection();
+        m_Renderer->Destroy();
 
-        Renderer::Shutdown();
+        // device manager will destroy in window's destroy function
         m_Window->Destroy();
     }
 

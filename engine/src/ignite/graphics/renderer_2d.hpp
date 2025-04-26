@@ -43,15 +43,6 @@ namespace ignite
             if (vertexBufferBase)
                 delete[] vertexBufferBase;
 
-            vertexBuffer = nullptr;
-            indexBuffer = nullptr;
-            vertexShader = nullptr;
-            pixelShader = nullptr;
-            inputLayout = nullptr;
-            bindingLayout = nullptr;
-            bindingSet = nullptr;
-            pipeline = nullptr;
-
             indexCount = 0;
             count = 0;
         }

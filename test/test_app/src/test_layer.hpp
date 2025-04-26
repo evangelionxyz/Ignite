@@ -1,11 +1,29 @@
 #include "ignite/core/layer.hpp"
 #include "ignite/graphics/shader_factory.hpp"
+#include "ignite/core/logger.hpp"
 
-#include "nvrhi/nvrhi.h"
+#include "ignite/graphics/shader.hpp"
 
 namespace ignite
 {
     class DeviceManager;
+
+    struct TestData
+    {
+        Ref<Shader> vertexShader;
+        Ref<Shader> pixelShader;
+
+        nvrhi::InputLayoutHandle inputLayout;
+        nvrhi::BindingLayoutHandle bindingLayout;
+
+        nvrhi::BufferHandle vertexBuffer;
+        nvrhi::BufferHandle indexBuffer;
+
+        nvrhi::GraphicsPipelineDesc pipelineDesc;
+        nvrhi::GraphicsPipelineHandle pipeline;
+
+        nvrhi::CommandListHandle commandList;
+    };
 
     class TestLayer : public Layer
     {
@@ -22,7 +40,9 @@ namespace ignite
     private:
         DeviceManager *m_DeviceManager;
         nvrhi::IDevice *m_Device;
-        nvrhi::CommandListHandle m_CommandList;
+
         Ref<ShaderFactory> m_ShaderFactory;
+
+        TestData s_data;
     };
 }

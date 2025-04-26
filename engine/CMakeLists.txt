@@ -14,19 +14,19 @@ add_library(IgniteEngine
   src/ignite/graphics/shader.cpp
   src/ignite/graphics/texture.cpp
   src/ignite/graphics/window.cpp
+  src/ignite/graphics/renderer_2d.cpp
+  src/ignite/graphics/renderer.cpp
   src/ignite/math/math.cpp
   src/ignite/scene/entity.cpp
   src/ignite/scene/scene.cpp
   src/ignite/scene/camera.cpp
   src/ignite/scene/scene_manager.cpp
-  src/ignite/graphics/renderer_2d.cpp
-  src/ignite/graphics/renderer.cpp
   src/ignite/physics/2d/physics_2d.cpp
   src/ignite/physics/2d/physics_2d_component.hpp
   src/ignite/project/project.cpp
 )
 
-target_precompile_headers(IgniteEngine PRIVATE src/ignite/pch.hpp)
+#target_precompile_headers(IgniteEngine PRIVATE src/ignite/pch.hpp)
 
 target_include_directories(IgniteEngine PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/
@@ -42,6 +42,7 @@ target_include_directories(IgniteEngine PRIVATE
   ${THIRDPARTY}/STB/include
   ${THIRDPARTY}/ShaderMake/include
   ${THIRDPARTY}/NVRHI/thirdparty/Vulkan-Headers/include
+  ${VULKAN_INCLUDE_DIR}
 )
 
 target_link_libraries(IgniteEngine PUBLIC glfw spdlog ShaderMakeBlob imgui stblib box2d)
@@ -62,7 +63,7 @@ if (WIN32)
 
   # DirectX 12 Build
   if (IGNITE_WITH_DX12)
-    message(">> Build with DirectX 12")
+    message(">> Ignite Engine: Build with DX12")
 
     target_sources(IgniteEngine PRIVATE src/ignite/core/device/device_manager_dx12.cpp)
     
@@ -72,8 +73,8 @@ if (WIN32)
 
   # Vulkan Build
   if (IGNITE_WITH_VULKAN)
-    message(">> Build with Vulkan")
-    target_link_directories(IgniteEngine PUBLIC ${VULKAN_LIBRARY_DIR})
+    message(">> Ignite Engine: Build with Vulkan")
+    target_link_directories(IgniteEngine PRIVATE ${VULKAN_LIBRARY_DIR})
     target_link_libraries(IgniteEngine PUBLIC nvrhi_vk)
 
     target_compile_definitions(IgniteEngine PRIVATE IGNITE_WITH_VULKAN)
@@ -83,21 +84,27 @@ if (WIN32)
     # build type specific
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
       target_link_libraries(IgniteEngine PUBLIC
-        vulkan-1.lib
-        shaderc_sharedd.lib
-        spirv-cross-cored.lib
-        spirv-cross-glsld.lib
-        spirv-cross-reflect.lib
-        spirv-cross-util.lib
+        ${VULKAN_LIBRARY_DIR}/vulkan-1.lib
+        ${VULKAN_LIBRARY_DIR}/shaderc_sharedd.lib
+        ${VULKAN_LIBRARY_DIR}/SPIRVd.lib
+        ${VULKAN_LIBRARY_DIR}/spirv-cross-cored.lib
+        ${VULKAN_LIBRARY_DIR}/spirv-cross-glsld.lib
+        ${VULKAN_LIBRARY_DIR}/spirv-cross-hlsld.lib
+        ${VULKAN_LIBRARY_DIR}/spirv-cross-reflectd.lib
+        ${VULKAN_LIBRARY_DIR}/spirv-cross-utild.lib
+        ${VULKAN_LIBRARY_DIR}/SPIRV-Toolsd.lib
       )
     elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
       target_link_libraries(IgniteEngine PUBLIC
-        vulkan-1.lib
-        shaderc_shared.lib
-        spirv-cross-core.lib
-        spirv-cross-glsl.lib
-        spirv-cross-reflect.lib
-        spirv-cross-util.lib
+        ${VULKAN_LIBRARY_DIR}/vulkan-1.lib
+        ${VULKAN_LIBRARY_DIR}/shaderc_shared.lib
+        ${VULKAN_LIBRARY_DIR}/SPIRV.lib
+        ${VULKAN_LIBRARY_DIR}/spirv-cross-core.lib
+        ${VULKAN_LIBRARY_DIR}/spirv-cross-glsl.lib
+        ${VULKAN_LIBRARY_DIR}/spirv-cross-hlsl.lib
+        ${VULKAN_LIBRARY_DIR}/spirv-cross-reflect.lib
+        ${VULKAN_LIBRARY_DIR}/spirv-cross-util.lib
+        ${VULKAN_LIBRARY_DIR}/SPIRV-Tools.lib
       )
     endif()
   endif()

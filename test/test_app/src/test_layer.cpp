@@ -1,30 +1,12 @@
 #include "test_layer.hpp"
 
 #include "ignite/core/application.hpp"
-#include "ignite/core/logger.hpp"
 #include "ignite/core/device/device_manager.hpp"
 
 #include <nvrhi/utils.h>
 
 namespace ignite
 {
-    struct RenderData
-    {
-        nvrhi::ShaderHandle vertexShader;
-        nvrhi::ShaderHandle pixelShader;
-
-        nvrhi::InputLayoutHandle inputLayout;
-        nvrhi::BindingLayoutHandle bindingLayout;
-
-        nvrhi::BufferHandle vertexBuffer;
-        nvrhi::BufferHandle indexBuffer;
-
-        nvrhi::GraphicsPipelineDesc pipelineDesc;
-        nvrhi::GraphicsPipelineHandle pipeline;
-    };
-
-    static RenderData s_data;
-
     struct TestVertex
     {
         glm::vec3 position;
@@ -79,15 +61,14 @@ namespace ignite
         m_ShaderFactory = CreateRef<ShaderFactory>(m_Device, nativeFS, shaderPath);
 
         // create shader
-        s_data.vertexShader = m_ShaderFactory->CreateShader("test_2d_vert", "main", nullptr, nvrhi::ShaderType::Vertex);
-        s_data.pixelShader = m_ShaderFactory->CreateShader("test_2d_pixel", "main", nullptr, nvrhi::ShaderType::Pixel);
-        LOG_ASSERT(s_data.vertexShader && s_data.pixelShader, "Failed to create shader");
+        s_data.vertexShader = Shader::Create(m_Device, "resources/shaders/glsl/test_2d.vert", ShaderStage_Vertex);
+        s_data.pixelShader = Shader::Create(m_Device, "resources/shaders/glsl/test_2d.frag", ShaderStage_Fragment);
 
         // create binding layout
 
         // create input layout
         auto attributes = TestVertex::GetAttributes();
-        s_data.inputLayout = m_Device->createInputLayout(attributes.data(), attributes.size(), s_data.vertexShader);
+        s_data.inputLayout = m_Device->createInputLayout(attributes.data(), attributes.size(), s_data.vertexShader->GetHandle());
         LOG_ASSERT(s_data.inputLayout, "Failed to create input layout");
 
         // create buffers
@@ -130,35 +111,27 @@ namespace ignite
         auto pipelineDesc = nvrhi::GraphicsPipelineDesc()
             .setInputLayout(s_data.inputLayout)
             .setPrimType(nvrhi::PrimitiveType::TriangleList)
-            .setVertexShader(s_data.vertexShader)
-            .setPixelShader(s_data.pixelShader)
+            .setVertexShader(s_data.vertexShader->GetHandle())
+            .setPixelShader(s_data.pixelShader->GetHandle())
             .setRenderState(renderState);
 
         nvrhi::IFramebuffer *framebuffer = m_DeviceManager->GetCurrentFramebuffer();
         s_data.pipeline = m_Device->createGraphicsPipeline(pipelineDesc, framebuffer);
 
         // write buffer
-        m_CommandList = m_Device->createCommandList();
+        s_data.commandList = m_Device->createCommandList();
 
-        m_CommandList->open();
+        s_data.commandList->open();
 
-        m_CommandList->writeBuffer(s_data.vertexBuffer, vertices.data(), sizeof(vertices));
-        m_CommandList->writeBuffer(s_data.indexBuffer, indices.data(), sizeof(indices));
+        s_data.commandList->writeBuffer(s_data.vertexBuffer, vertices.data(), sizeof(vertices));
+        s_data.commandList->writeBuffer(s_data.indexBuffer, indices.data(), sizeof(indices));
 
-        m_CommandList->close();
-        m_Device->executeCommandList(m_CommandList);
+        s_data.commandList->close();
+        m_Device->executeCommandList(s_data.commandList);
     }
 
     void TestLayer::OnDetach()
     {
-        s_data.vertexBuffer.Reset();
-        s_data.indexBuffer.Reset();
-        s_data.pixelShader.Reset();
-        s_data.vertexShader.Reset();
-        s_data.pipeline.Reset();
-        s_data.inputLayout.Reset();
-        s_data.bindingLayout.Reset();
-        m_CommandList.Reset();
     }
 
     void TestLayer::OnUpdate(f32 deltaTime)
@@ -173,8 +146,8 @@ namespace ignite
     {
         Layer::OnRender(framebuffer);
 
-        m_CommandList->open();
-        nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(0.1f, 0.1f, 0.1f, 1.0f));
+        s_data.commandList->open();
+        nvrhi::utils::ClearColorAttachment(s_data.commandList, framebuffer, 0, nvrhi::Color(0.1f, 0.1f, 0.1f, 1.0f));
 
         nvrhi::GraphicsState graphicsState = nvrhi::GraphicsState()
             .setViewport(nvrhi::ViewportState().addViewportAndScissorRect(framebuffer->getFramebufferInfo().getViewport()))
@@ -183,16 +156,16 @@ namespace ignite
             .addVertexBuffer({ s_data.vertexBuffer, 0, 0 })
             .setIndexBuffer({ s_data.indexBuffer, nvrhi::Format::R32_UINT });
 
-       m_CommandList->setGraphicsState(graphicsState);
+       s_data.commandList->setGraphicsState(graphicsState);
 
         nvrhi::DrawArguments args;
         args.vertexCount = u32(indices.size());
         args.instanceCount = 1;
 
-        m_CommandList->drawIndexed(args);
+        s_data.commandList->drawIndexed(args);
 
-        m_CommandList->close();
-        m_Device->executeCommandList(m_CommandList);
+        s_data.commandList->close();
+        m_Device->executeCommandList(s_data.commandList);
     }
 
     void TestLayer::OnGuiRender()
