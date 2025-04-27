@@ -2,6 +2,7 @@
 
 #include <nvrhi/nvrhi.h>
 #include <ignite/core/types.hpp>
+#include <ignite/graphics/shader.hpp>
 
 #include <glm/glm.hpp>
 
@@ -14,6 +15,7 @@ namespace ignite
         glm::vec3 clearColor = {0.025f, 0.025f, 0.025f};
         nvrhi::IDevice *device;
         f32 width, height;
+        Ref<Shader> testShader;
 
         RenderTarget() = default;
         RenderTarget(nvrhi::IDevice *_device, f32 _width, f32 _height);

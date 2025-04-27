@@ -1,18 +1,30 @@
-workspace "nvrhi"
-    architecture "x64"
-    configurations {
-        "Debug",
-        "Release"
-    }
+workspace "IGN"
+architecture "x64"
+configurations {
+    "Debug",
+    "Release"
+}
 
-    flags { "MultiProcessorCompile "}
+flags { 
+    "MultiProcessorCompile"
+}
 
-    startproject "IgniteEditor"
+--startproject "IgniteEditor"
 
-    BUILD_DIR = "%{wks.location}/bin"
-    THIRDPARTY_DIR = "%{wks.location}/thirdparty"
+BUILD_DIR = "%{wks.location}/bin"
+THIRDPARTY_DIR = "%{wks.location}/thirdparty"
 
-    OUTPUT_DIR = "%{BUILD_DIR}/%{cfg.buildcfg}"
-    INTOUTPUT_DIR = "%{wks.location}/bin-int/%{prj.name}"
+OUTPUT_DIR = "%{BUILD_DIR}/%{cfg.buildcfg}"
+THIRDPARTY_OUTPUT_DIR = "%{BUILD_DIR}/%{cfg.buildcfg}/thirdparty/%{prj.name}"
+INTOUTPUT_DIR = "%{wks.location}/bin-int/%{prj.name}"
 
+include "thirdparty/thirdparty.lua"
 
+group "Engine"
+    include "editor/ignite-editor.lua"
+    include "engine/ignite/ignite-engine.lua"
+group ""
+
+group "Test"
+    include "test/test_app/test_app.lua"
+group ""

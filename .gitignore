@@ -3,4 +3,10 @@
 /bin
 /build
 /build-release
+/bin-int
 /out
+
+*.vcxproj
+*.vcxproj.filters
+IGN.sln
+*.vcxproj.user

@@ -62,10 +62,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Re
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ReleaseDebInfo")
 
 set(THIRDPARTY ${CMAKE_SOURCE_DIR}/thirdparty)
-set(IGNITE_DIR ${CMAKE_SOURCE_DIR}/engine)
+
+set(IGNITE_DIR ${CMAKE_SOURCE_DIR}/engine/ignite)
+set(SCRIPTING_DIR ${CMAKE_SOURCE_DIR}/engine/scripting)
 
 add_subdirectory(thirdparty)
-add_subdirectory(engine)
+add_subdirectory(engine/ignite)
+add_subdirectory(engine/scripting)
 add_subdirectory(editor)
 add_subdirectory(test/test_app)
 #add_subdirectory(test/scripting)
