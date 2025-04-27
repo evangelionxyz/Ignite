@@ -10,3 +10,4 @@
 *.vcxproj.filters
 IGN.sln
 *.vcxproj.user
+bin-cmake

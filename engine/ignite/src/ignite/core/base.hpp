@@ -18,6 +18,7 @@
         #define DEBUGBREAK() __builtin_trap();
     #endif
 #else
+#define RELEASE_BUILD
 #define DEBUGBREAK()
 #endif
 

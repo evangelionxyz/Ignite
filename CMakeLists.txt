@@ -18,8 +18,8 @@ if (WIN32)
         message(fatal_error ">> VULKAN_SDK environment variable not defined. Please install Vulkan SDK and set the environment variable.")
     endif()
 
-    set(VULKAN_INCLUDE_DIR $ENV{VULKAN_SDK}/Include)
-    set(VULKAN_LIBRARY_DIR $ENV{VULKAN_SDK}/Lib)
+    set(VULKAN_INCLUDE_DIR $ENV{VULKAN_SDK}\\Include)
+    set(VULKAN_LIBRARY_DIR $ENV{VULKAN_SDK}\\Lib)
 
     message(">> Vulkan include dir: ${VULKAN_INCLUDE_DIR}")
     message(">> Vulkan lib dir: ${VULKAN_LIBRARY_DIR}")
@@ -55,7 +55,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "C
     add_compile_options(-finput-charset=UTF-8 -fexec-charset=UTF-8)
 endif()
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin-cmake")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Debug")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/MinSizeRel")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Release")

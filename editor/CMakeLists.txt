@@ -32,6 +32,8 @@ if (WIN32)
     WIN32_LEAN_AND_MEAN
   )
 
+  target_compile_definitions(IgniteEditor PRIVATE GLFW_EXPOSE_NATIVE_WIN32)
+
   if (IGNITE_WITH_DX12)
     target_compile_definitions(IgniteEditor PRIVATE IGNITE_WITH_DX12)
     message(">> Ignite Editor: Build with DX12")

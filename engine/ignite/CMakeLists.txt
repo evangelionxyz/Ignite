@@ -61,6 +61,8 @@ if (WIN32)
     WIN32_LEAN_AND_MEAN
   )
 
+    target_compile_definitions(IgniteEngine PRIVATE GLFW_EXPOSE_NATIVE_WIN32)
+
   # DirectX 12 Build
   if (IGNITE_WITH_DX12)
     message(">> Ignite Engine: Build with DX12")
