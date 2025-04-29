@@ -208,9 +208,9 @@ namespace ignite
         ID &newEntityIDComp = newEntity.GetComponent<ID>();
 
         // create its children
-        for (UUID childId : idComp.children)
+        for (UUID cid : idComp.children)
         {
-            Entity newChildEntity = DuplicateEntity(scene, GetEntity(scene, childId), false); // add to parent false
+            Entity newChildEntity = DuplicateEntity(scene, GetEntity(scene, cid), false); // add to parent false
 
             ID &childId = newChildEntity.GetComponent<ID>();
             

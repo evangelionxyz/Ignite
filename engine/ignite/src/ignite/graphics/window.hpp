@@ -1,7 +1,7 @@
 #pragma once
 
-#include <glfw/glfw3.h>
-#include <glfw/glfw3native.h>
+#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 
 #include "ignite/core/device/device_manager.hpp"
 #include "ignite/core/input/event.hpp"

@@ -4,6 +4,7 @@
 
 #include <spirv_cross/spirv_cross.hpp>
 #include <spirv_cross/spirv_glsl.hpp>
+
 #include <spirv_cross/spirv_hlsl.hpp>
 
 #include <shaderc/shaderc.hpp>
@@ -19,7 +20,9 @@ namespace ignite
             case ShaderStage_Vertex: return shaderc_glsl_vertex_shader;
             case ShaderStage_Fragment: return shaderc_glsl_fragment_shader;
         }
+        
         LOG_ASSERT(false, "Invalid shader stage");
+        return shaderc_shader_kind(0);
     }
 
     static const char *GetShaderExtension(nvrhi::GraphicsAPI api)
@@ -29,7 +32,9 @@ namespace ignite
             case nvrhi::GraphicsAPI::D3D12: return ".dxil";
             case nvrhi::GraphicsAPI::VULKAN: return ".spirv";
         }
-        LOG_ASSERT(false, "Invalid api");
+
+        LOG_ASSERT(false, "Invalid Graphics API");
+        return "Invalid Graphics API";
     }
 
 

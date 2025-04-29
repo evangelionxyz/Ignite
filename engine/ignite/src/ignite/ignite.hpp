@@ -1,10 +1,14 @@
 #pragma once
+
+#ifdef PLATFORM_WINDOWS
+#   include "core/device/device_manager_dx12.hpp"
+#endif
+
 #include "core/uuid.hpp"
 #include "core/vfs/vfs.hpp"
 #include "core/application.hpp"
 #include "core/base.hpp"
 #include "core/device/device_manager.hpp"
-#include "core/device/device_manager_dx12.hpp"
 #include "core/device/device_manager_vk.hpp"
 #include "core/input/event.hpp"
 #include "core/input/app_event.hpp"

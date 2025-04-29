@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 
 // Define the Vulkan dynamic dispatcher - this needs to occur in exactly one cpp file in the program.
 

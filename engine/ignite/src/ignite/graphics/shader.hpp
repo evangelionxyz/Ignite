@@ -73,7 +73,9 @@ namespace ignite
             case ShaderStage_Vertex: return nvrhi::ShaderType::Vertex;
             case ShaderStage_Fragment: return nvrhi::ShaderType::Pixel;
         }
+        
         LOG_ASSERT(false, "Invalid shader stage");
+        return nvrhi::ShaderType::None;
     }
 
     class  Shader

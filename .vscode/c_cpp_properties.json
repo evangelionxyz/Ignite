@@ -4,15 +4,10 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${VULKAN_SDK}/Include"
             ],
             "defines": [
-                "_DEBUG",
                 "UNICODE",
                 "_UNICODE",
-                "IGNITE_WITH_VULKAN",
-                "IGNITE_WITH_DX12",
-                "PLATFORM_WINDOWS"
             ],
             "windowsSdkVersion": "10.0.26100.0",
             "compilerPath": "cl.exe",

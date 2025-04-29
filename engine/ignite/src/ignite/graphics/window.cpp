@@ -220,10 +220,10 @@ namespace ignite
                 win.m_DeviceManager->m_DPIScaleFactorX = dpiX / 96.f;
                 win.m_DeviceManager->m_DPIScaleFactorY = dpiY / 96.f;
 #else
-            GLFWmonitor *monitor = glfwGetWindowMonitor(m_Window);
+            GLFWmonitor *monitor = glfwGetWindowMonitor(window);
             if (!monitor)
                 monitor = glfwGetPrimaryMonitor();
-            glfwGetMonitorContentScale(monitor, &m_DPIScaleFactorX, &m_DPIScaleFactorY);
+            glfwGetMonitorContentScale(monitor, &win.m_DeviceManager->m_DPIScaleFactorX, &win.m_DeviceManager->m_DPIScaleFactorY);
 #endif
             }
 

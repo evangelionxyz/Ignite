@@ -9,8 +9,14 @@
 #include <utility>
 #include <sstream>
 
-#ifdef PLATFORM_WINDOWS
-#include <Shlwapi.h>
+#include <stdint.h>
+
+#ifdef _WIN32
+#   include <Shlwapi.h>
+#endif
+
+#ifdef __linux__ || __GNU__
+#   include <glob.h>
 #endif
 
 namespace ignite::vfs
@@ -19,7 +25,6 @@ namespace ignite::vfs
     : m_Data(data)
     , m_Size(size)
     {
-
     }
 
     const void* Blob::Data() const
@@ -112,7 +117,7 @@ namespace ignite::vfs
 
     static int EnumerateNativeFiles(const char *pattern, bool directories, enumerate_callback_t callback)
     {
-#ifdef PLATFORM_WINDOWS
+#ifdef _WIN32
         WIN32_FIND_DATAA findData;
         HANDLE hFind = FindFirstFileA(pattern, &findData);
         if (hFind == INVALID_HANDLE_VALUE)

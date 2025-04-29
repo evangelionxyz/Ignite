@@ -167,6 +167,7 @@ namespace ignite
         {
             case nvrhi::GraphicsAPI::D3D12:
             {
+#ifdef PLATFORM_WINDOWS
                 //ImGui_ImplWin32_Init(glfwGetWin32Window(m_DeviceManager->GetWindow()));
 
                 DeviceManager_DX12 &d3d12 = DeviceManager_DX12::GetInstance();
@@ -187,6 +188,7 @@ namespace ignite
                 };
 
                 ImGui_ImplDX12_Init(&initInfo);
+#endif
                 break;
             }
 
@@ -213,8 +215,9 @@ namespace ignite
                 init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
                 init_info.Allocator = nullptr;
                 init_info.CheckVkResultFn = VK_NULL_HANDLE;
-                ImGui_ImplVulkan_Init(&init_info);
-                break;*/
+                ImGui_ImplVulkan_Init(&init_info);*/
+                
+                break;
             }
         }
 
@@ -360,7 +363,9 @@ namespace ignite
         {
             case nvrhi::GraphicsAPI::D3D12:
             {
+#ifdef PLATFORM_WINDOWS
                 ImGui_ImplDX12_Shutdown();
+#endif
                 break;
             }
             case nvrhi::GraphicsAPI::VULKAN:

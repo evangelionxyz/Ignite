@@ -2,6 +2,8 @@
 
 #include "types.hpp"
 
+#include <string.h>
+
 namespace ignite
 {
     struct Buffer

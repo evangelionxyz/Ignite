@@ -112,16 +112,24 @@ if (WIN32)
   endif()
 
 elseif(UNIX AND NOT APPLE)
-  target_sources(IgniteEngine PRIVATE core/device_manager_vulkan.cpp)
+  target_sources(IgniteEngine PRIVATE src/ignite/core/device/device_manager_vk.cpp)
+
+  target_compile_definitions(IgniteEngine PRIVATE IGNITE_WITH_VULKAN)
 
   target_compile_definitions(IgniteEngine PRIVATE PLATFORM_LINUX)
-  target_include_directories(IgniteEngine /usr/include)
+  target_include_directories(IgniteEngine PRIVATE /usr/include)
   target_link_directories(IgniteEngine PRIVATE /usr/lib)
   target_link_libraries(IgniteEngine PUBLIC nvrhi_vk)
 
   target_link_libraries(IgniteEngine PUBLIC
-    vulkan shaderc_shared spriv-cross-core
-    spirv-cross-glsl pthread dl m rt
+    vulkan
+    shaderc_shared
+    spirv-cross-core
+    spirv-cross-glsl 
+    spirv-cross-hlsl 
+    spirv-cross-reflect 
+    spirv-cross-util 
+    pthread dl m rt
   )
 
 endif()

@@ -45,7 +45,7 @@ namespace ignite
         static glm::quat PhysXToGlmQuat(const physx::PxQuat quat);
         static physx::PxTransform GlmToPhysXMatrix(const glm::mat4 &transform);
         static glm::vec3 PhysXQuatToGlmVec3(const physx::PxQuat &quat);
-#endif`
+#endif
         static glm::mat4 RemoveScale(const glm::mat4 &matrix);
 
         static float CascadeSplit(i32 index, i32 cascade_count, f32 near_plane, f32 far_plane, f32 lambda);

@@ -89,5 +89,6 @@
         "unordered_set": "cpp",
         "ranges": "cpp",
         "stack": "cpp"
-    }
+    },
+    "FSharp.suggestGitignore": false
 }
