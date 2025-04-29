@@ -1,10 +1,12 @@
 #pragma once
 
-#if PLATFORM_WINDOWS
+#include "ignite/core/base.hpp"
+
+#ifdef PLATFORM_WINDOWS
     #include <dxgi.h>
 #endif
 
-#if IGNITE_WITH_DX12
+#ifdef IGNITE_WITH_DX12
     #include <d3d12.h>
 #endif
 
@@ -43,7 +45,7 @@ namespace ignite
         bool enableHeapDirectlyIndexed = false;
         bool enablePerMonitorDPI = false;
 
-#if IGNITE_WITH_VULKAN
+#ifdef IGNITE_WITH_VULKAN
         std::string vulkanLibraryName;
         std::vector<std::string> requiredVulkanInstanceExtensions;
         std::vector<std::string> requiredVulkanLayers;
@@ -79,20 +81,18 @@ namespace ignite
         bool resizeWindowWithDisplayScale = false;
         nvrhi::IMessageCallback *messageCallback = nullptr;
 
-#if PLATFORM_WINDOWS
+#ifdef PLATFORM_WINDOWS
         DXGI_USAGE swapChainUsage = DXGI_USAGE_SHADER_INPUT | DXGI_USAGE_RENDER_TARGET_OUTPUT;
         D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_1;
 #endif
 
-#if IGNITE_WITH_VULKAN
+#ifdef IGNITE_WITH_VULKAN
         std::vector<std::string> requiredVulkanDeviceExtensions;
         std::vector<std::string> optionalVulkanDeviceExtensions;
         std::vector<size_t> ignoreVulkanValidationMessageLocations;
         std::function<void(VkDeviceCreateInfo &)> deviceCreateInfoCallback;
-
         void *physicalDeviceFeatures2Extensions = nullptr;
 #endif
-
     };
 
     struct AdapterInfo
@@ -106,11 +106,11 @@ namespace ignite
         std::optional<std::array<uint8_t, 8>> luid;
 
 
-#if IGNITE_WITH_DX12
+#ifdef IGNITE_WITH_DX12
         nvrhi::RefCountPtr<IDXGIAdapter> dxgiAdapter;
 #endif
 
-#if IGNITE_WITH_VULKAN
+#ifdef IGNITE_WITH_VULKAN
         VkPhysicalDevice vkPhysicalDevice = nullptr;
 #endif
     };

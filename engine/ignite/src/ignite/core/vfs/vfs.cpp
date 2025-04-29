@@ -15,7 +15,7 @@
 #   include <Shlwapi.h>
 #endif
 
-#ifdef __linux__ || __GNU__
+#ifdef __linux__ || __GNUG__
 #   include <glob.h>
 #endif
 

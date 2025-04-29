@@ -227,7 +227,7 @@ namespace ignite
                 ImGui::SetDragDropPayload("ENTITY_SOURCE_ITEM", &entity, sizeof(Entity));
 
                 ImGui::BeginTooltip();
-                ImGui::Text("%s %llu", idComp.name.c_str(), idComp.uuid);
+                ImGui::Text("%s %llu", idComp.name.c_str(), u64(idComp.uuid));
                 ImGui::EndTooltip();
 
                 ImGui::EndDragDropSource();
