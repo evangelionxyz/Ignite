@@ -56,7 +56,6 @@ namespace ignite
 
         void Run();
         void OnEvent(Event &e);
-        bool OnWindowResizeCallback(WindowResizeEvent &event);
 
         std::string GetAppName() { return m_CreateInfo.name; }
         const ApplicationCreateInfo &GetCreateInfo() { return m_CreateInfo; }
@@ -65,7 +64,6 @@ namespace ignite
 
         static Application *GetInstance();
         static DeviceManager *GetDeviceManager();
-        static Ref<ShaderFactory> GetShaderFactory();
         static CommandManager *GetCommandManager();
 
         static void SetWindowTitle(const std::string &title);
@@ -81,7 +79,6 @@ namespace ignite
         ApplicationCreateInfo m_CreateInfo;
         Scope<Window> m_Window;
         Scope<CommandManager> m_CommandManager;
-        Ref<ShaderFactory> m_ShaderFactory;
         LayerStack m_LayerStack;
         Ref<ImGuiLayer> m_ImGuiLayer;
         Input m_Input;

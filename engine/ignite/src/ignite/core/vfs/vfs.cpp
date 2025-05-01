@@ -11,11 +11,9 @@
 
 #include <stdint.h>
 
-#ifdef _WIN32
+#if PLATFORM_WINDOWS
 #   include <Shlwapi.h>
-#endif
-
-#ifdef __linux__ || __GNUG__
+#elif __linux__ || __GNUG__
 #   include <glob.h>
 #endif
 

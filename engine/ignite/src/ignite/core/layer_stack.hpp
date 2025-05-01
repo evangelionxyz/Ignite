@@ -12,26 +12,13 @@ namespace ignite
 
         void PushLayer(Layer *layer)
         {
-            layer->OnAttach();
             m_Layers.emplace(m_Layers.end(), layer);
         }
 
         void PopLayer(Layer *layer)
         {
-            layer->OnDetach();
             m_Layers.remove(layer);
-
             delete layer;
-        }
-
-        void Destroy()
-        {
-            for (Layer *layer : m_Layers)
-            {
-                layer->OnDetach();
-                delete layer;
-            }
-            m_Layers.clear();
         }
 
         std::list<Layer*>::const_iterator begin() { return m_Layers.begin(); }

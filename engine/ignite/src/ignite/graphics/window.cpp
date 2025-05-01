@@ -172,8 +172,6 @@ namespace ignite
 
     void Window::Destroy()
     {
-        m_DeviceManager->Destroy();
-
         if (m_DeviceManager->m_Window)
         {
             glfwDestroyWindow(m_DeviceManager->m_Window);

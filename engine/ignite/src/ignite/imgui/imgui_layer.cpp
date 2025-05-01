@@ -12,7 +12,7 @@
     #include "ignite/core/device/device_manager_dx12.hpp"
 #endif
 
-#if IGNITE_WITH_VULKAN
+#ifdef IGNITE_WITH_VULKAN
     #include <backends/imgui_impl_vulkan.h>
     #include "ignite/core/device/device_manager_vk.hpp"
 #endif
@@ -194,28 +194,28 @@ namespace ignite
 
             case nvrhi::GraphicsAPI::VULKAN:
             {
-                /*constexpr bool install_callbacks = true;
-                ImGui_ImplGlfw_InitForVulkan(m_DeviceManager->GetWindow(), install_callbacks);
+                //constexpr bool installCallbacks = true;
+                //ImGui_ImplGlfw_InitForVulkan(m_DeviceManager->GetWindow(), installCallbacks);
 
-                DeviceManager_VK *vk = DeviceManager_VK::GetInstance();
+                //DeviceManager_VK *vk = DeviceManager_VK::GetInstance();
 
-                ImGui_ImplVulkan_InitInfo init_info = {};
-                init_info.UseDynamicRendering = true;
-                init_info.Instance = vk->m_VulkanInstance;
-                init_info.PhysicalDevice = vk->m_VulkanPhysicalDevice;
-                init_info.Device = vk->m_VulkanDevice;
-                init_info.QueueFamily = vk->m_GraphicsQueueFamily;
-                init_info.Queue = vk->m_GraphicsQueue;
-                init_info.PipelineCache = vk->m_PipelineCache;
-                init_info.DescriptorPool = vk->m_DescriptorPool;
-                init_info.RenderPass = vk->m_RenderPass;
-                init_info.Subpass = 0;
-                init_info.MinImageCount = m_DeviceManager->GetDeviceParams().maxFramesInFlight;
-                init_info.ImageCount = m_DeviceManager->GetDeviceParams().swapChainBufferCount;
-                init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-                init_info.Allocator = nullptr;
-                init_info.CheckVkResultFn = VK_NULL_HANDLE;
-                ImGui_ImplVulkan_Init(&init_info);*/
+                //ImGui_ImplVulkan_InitInfo init_info = {};
+                //init_info.UseDynamicRendering = true;
+                //init_info.Instance = vk->m_VulkanInstance;
+                //init_info.PhysicalDevice = vk->m_VulkanPhysicalDevice;
+                //init_info.Device = vk->m_VulkanDevice;
+                //init_info.QueueFamily = vk->m_GraphicsQueueFamily;
+                //init_info.Queue = vk->m_GraphicsQueue;
+                //init_info.PipelineCache = vk->m_PipelineCache;
+                //init_info.DescriptorPool = vk->m_DescriptorPool;
+                //init_info.RenderPass = vk->m_RenderPass;
+                //init_info.Subpass = 0;
+                //init_info.MinImageCount = m_DeviceManager->GetDeviceParams().maxFramesInFlight;
+                //init_info.ImageCount = m_DeviceManager->GetDeviceParams().swapChainBufferCount;
+                //init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+                //init_info.Allocator = nullptr;
+                //init_info.CheckVkResultFn = VK_NULL_HANDLE;
+                //ImGui_ImplVulkan_Init(&init_info);
                 
                 break;
             }
@@ -224,10 +224,10 @@ namespace ignite
         
     }
 
-    bool ImGuiLayer::Init(Ref<ShaderFactory> shaderFactory)
+    bool ImGuiLayer::Init()
     {
         imgui_nvrhi = CreateScope<ImGui_NVRHI>();
-        return imgui_nvrhi->Init(m_DeviceManager->GetDevice(), shaderFactory);
+        return imgui_nvrhi->Init(m_DeviceManager->GetDevice());
     }
 
     Ref<RegisteredFont> ImGuiLayer::CreateFontFromFile(vfs::IFileSystem &fs, const std::filesystem::path &fontFile, f32 fontSize)

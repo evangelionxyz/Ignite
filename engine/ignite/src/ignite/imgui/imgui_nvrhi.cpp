@@ -2,11 +2,6 @@
 #include "ignite/core/logger.hpp"
 #include "ignite/graphics/shader_factory.hpp"
 
-struct VERTEX_CONSTANT_BUFFER
-{
-    float MVP[4][4];
-};
-
 namespace ignite
 {
     bool ImGui_NVRHI::UpdateFontTexture()
@@ -31,7 +26,7 @@ namespace ignite
         textureDesc.format = nvrhi::Format::RGBA8_UNORM;
         textureDesc.debugName = "ImGui font texture";
 
-        fontTexture = device->createTexture(textureDesc);
+        fontTexture = m_Device->createTexture(textureDesc);
         LOG_ASSERT(fontTexture, "Failed to create imgui font texture");
 
         commandList->open();
@@ -42,20 +37,20 @@ namespace ignite
         commandList->commitBarriers();
 
         commandList->close();
-        device->executeCommandList(commandList);
+        m_Device->executeCommandList(commandList);
 
         io.Fonts->TexID = (ImTextureID)fontTexture.Get();
 
         return true;
     }
 
-    bool ImGui_NVRHI::Init(nvrhi::IDevice *device, Ref<ShaderFactory> shaderFactory)
+    bool ImGui_NVRHI::Init(nvrhi::IDevice *device)
     {
-        this->device = device;
+        m_Device = device;
         commandList = device->createCommandList();
 
-        vertexShader = shaderFactory->CreateAutoShader("imgui_vertex", "main", IGNITE_MAKE_PLATFORM_SHADER(g_imgui_vertex), nullptr, nvrhi::ShaderType::Vertex);
-        pixelShader = shaderFactory->CreateAutoShader("imgui_pixel", "main", IGNITE_MAKE_PLATFORM_SHADER(g_imgui_vertex), nullptr, nvrhi::ShaderType::Pixel);
+        vertexShader = Shader::Create(device, "resources/shaders/glsl/imgui.vertex", ShaderStage_Vertex, false);
+        pixelShader = Shader::Create(device, "resources/shaders/glsl/imgui.pixel", ShaderStage_Fragment, false);
 
         if (!vertexShader || !pixelShader)
         {
@@ -70,63 +65,59 @@ namespace ignite
             {"COLOR", nvrhi::Format::RGBA8_UNORM, 1, 0, offsetof(ImDrawVert, col), sizeof(ImDrawVert), false}
         };
 
-        attributeLayout = device->createInputLayout(vertexAttribLayout, std::size(vertexAttribLayout), vertexShader);
+        attributeLayout = device->createInputLayout(vertexAttribLayout, std::size(vertexAttribLayout), vertexShader->GetHandle());
 
         // Create PSO (Pipeline State Object)
+        nvrhi::BlendState blendState;
+        blendState.targets[0].setBlendEnable(true)
+            .setSrcBlend(nvrhi::BlendFactor::SrcAlpha)
+            .setDestBlend(nvrhi::BlendFactor::InvSrcAlpha)
+            .setSrcBlendAlpha(nvrhi::BlendFactor::InvSrcAlpha)
+            .setDestBlendAlpha(nvrhi::BlendFactor::Zero);
+
+        auto rasterState = nvrhi::RasterState()
+            .setFillSolid()
+            .setCullNone()
+            .setScissorEnable(true)
+            .setDepthClipEnable(true);
+
+        auto depthStencilState = nvrhi::DepthStencilState()
+            .disableDepthTest()
+            .enableDepthWrite()
+            .disableStencil()
+            .setDepthFunc(nvrhi::ComparisonFunc::Always);
+
+        nvrhi::RenderState renderState;
+        renderState.blendState = blendState;
+        renderState.depthStencilState = depthStencilState;
+        renderState.rasterState = rasterState;
+
+        nvrhi::BindingLayoutDesc layoutDesc;
+        layoutDesc.visibility = nvrhi::ShaderType::All;
+        layoutDesc.bindings =
         {
-            nvrhi::BlendState blendState;
-            blendState.targets[0].setBlendEnable(true)
-                .setSrcBlend(nvrhi::BlendFactor::SrcAlpha)
-                .setDestBlend(nvrhi::BlendFactor::InvSrcAlpha)
-                .setSrcBlendAlpha(nvrhi::BlendFactor::InvSrcAlpha)
-                .setDestBlendAlpha(nvrhi::BlendFactor::Zero);
+            nvrhi::BindingLayoutItem::PushConstants(0, sizeof(f32) * 2),
+            nvrhi::BindingLayoutItem::Texture_SRV(0),
+            nvrhi::BindingLayoutItem::Sampler(0)
+        };
 
-            auto rasterState = nvrhi::RasterState()
-                .setFillSolid()
-                .setCullNone()
-                .setScissorEnable(true)
-                .setDepthClipEnable(true);
+        bindingLayout = device->createBindingLayout(layoutDesc);
+        graphicsPipelineDesc.primType = nvrhi::PrimitiveType::TriangleList;
+        graphicsPipelineDesc.inputLayout = attributeLayout;
+        graphicsPipelineDesc.VS = vertexShader->GetHandle();
+        graphicsPipelineDesc.PS = pixelShader->GetHandle();
+        graphicsPipelineDesc.renderState = renderState;
+        graphicsPipelineDesc.bindingLayouts = { bindingLayout };
 
-            auto depthStencilState = nvrhi::DepthStencilState()
-                .disableDepthTest()
-                .enableDepthWrite()
-                .disableStencil()
-                .setDepthFunc(nvrhi::ComparisonFunc::Always);
+        const auto desc = nvrhi::SamplerDesc()
+            .setAllAddressModes(nvrhi::SamplerAddressMode::Wrap)
+            .setAllFilters(true);
 
-            nvrhi::RenderState renderState;
-            renderState.blendState = blendState;
-            renderState.depthStencilState = depthStencilState;
-            renderState.rasterState = rasterState;
+        fontSampler = device->createSampler(desc);
 
-            nvrhi::BindingLayoutDesc layoutDesc;
-            layoutDesc.visibility = nvrhi::ShaderType::All;
-            layoutDesc.bindings =
-            {
-                nvrhi::BindingLayoutItem::PushConstants(0, sizeof(float) * 2),
-                nvrhi::BindingLayoutItem::Texture_SRV(0),
-                nvrhi::BindingLayoutItem::Sampler(0)
-            };
-
-            bindingLayout = device->createBindingLayout(layoutDesc);
-            graphicsPipelineDesc.primType = nvrhi::PrimitiveType::TriangleList;
-            graphicsPipelineDesc.inputLayout = attributeLayout;
-            graphicsPipelineDesc.VS = vertexShader;
-            graphicsPipelineDesc.PS = pixelShader;
-            graphicsPipelineDesc.renderState = renderState;
-            graphicsPipelineDesc.bindingLayouts = { bindingLayout };
-        }
-
-        {
-            const auto desc = nvrhi::SamplerDesc()
-                .setAllAddressModes(nvrhi::SamplerAddressMode::Wrap)
-                .setAllFilters(true);
-
-            fontSampler = device->createSampler(desc);
-
-            LOG_ASSERT(fontSampler, "Failed to create ImGui font sampler");
-            if (!fontSampler)
-                return false;
-        }
+        LOG_ASSERT(fontSampler, "Failed to create ImGui font sampler");
+        if (!fontSampler)
+            return false;
 
         return true;
     }
@@ -217,7 +208,7 @@ namespace ignite
 
         commandList->endMarker();
         commandList->close();
-        device->executeCommandList(commandList);
+        m_Device->executeCommandList(commandList);
 
         return true;
     }
@@ -242,7 +233,7 @@ namespace ignite
             desc.initialState = isIndexBuffer ? nvrhi::ResourceStates::IndexBuffer : nvrhi::ResourceStates::VertexBuffer;
             desc.keepInitialState = true;
 
-            buffer = device->createBuffer(desc);
+            buffer = m_Device->createBuffer(desc);
 
             if (!buffer)
                 return false;
@@ -256,9 +247,8 @@ namespace ignite
         if (graphicsPipeline)
             return graphicsPipeline;
 
-        graphicsPipeline = device->createGraphicsPipeline(graphicsPipelineDesc, framebuffer);
+        graphicsPipeline = m_Device->createGraphicsPipeline(graphicsPipelineDesc, framebuffer);
         LOG_ASSERT(graphicsPipeline, "Failed to create ImGui PSO");
-
 
         return graphicsPipeline;
     }
@@ -278,7 +268,7 @@ namespace ignite
         };
 
         nvrhi::BindingSetHandle binding;
-        binding = device->createBindingSet(desc, bindingLayout);
+        binding = m_Device->createBindingSet(desc, bindingLayout);
         LOG_ASSERT(binding, "Failed to create ImGui binding set");
 
         bindingsCache[texture] = binding;

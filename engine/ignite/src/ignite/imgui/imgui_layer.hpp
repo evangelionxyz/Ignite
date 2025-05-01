@@ -60,7 +60,7 @@ namespace ignite
         virtual ~ImGuiLayer() = default;
 
         ImGuiLayer(DeviceManager *deviceManager);
-        bool Init(Ref<ShaderFactory> shaderFactory);
+        bool Init();
         void OnDetach();
 
         void BeginFrame();

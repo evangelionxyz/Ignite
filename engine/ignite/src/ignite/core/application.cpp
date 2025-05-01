@@ -31,17 +31,12 @@ namespace ignite
         m_Window->SetEventCallback(BIND_CLASS_EVENT_FN(Application::OnEvent));
         m_Input = Input(m_Window->GetWindowHandle());
 
-        // create global shader factory
-        std::filesystem::path shaderPath = ("resources" + GetShaderFolder(createInfo.graphicsApi));
-        Ref<vfs::NativeFileSystem> nativeFS = CreateRef<vfs::NativeFileSystem>();
-        m_ShaderFactory = CreateRef<ShaderFactory>(GetDeviceManager()->GetDevice(), nativeFS, shaderPath);
-
         m_Renderer = CreateRef<Renderer>(m_Window->GetDeviceManager(), createInfo.graphicsApi);
 
         if (createInfo.useGui)
         {
             m_ImGuiLayer = CreateScope<ImGuiLayer>(GetDeviceManager());
-            m_ImGuiLayer->Init(GetShaderFactory());
+            m_ImGuiLayer->Init();
         }
     }
 
@@ -54,11 +49,6 @@ namespace ignite
     DeviceManager * Application::GetDeviceManager()
     {
         return GetInstance()->m_Window->GetDeviceManager();
-    }
-
-    Ref<ShaderFactory> Application::GetShaderFactory()
-    {
-        return GetInstance()->m_ShaderFactory;
     }
 
     void Application::SetWindowTitle(const std::string &title)
@@ -81,11 +71,13 @@ namespace ignite
 
     void Application::PushLayer(Layer *layer)
     {
+        layer->OnAttach();
         m_LayerStack.PushLayer(layer);
     }
 
     void Application::PopLayer(Layer *layer)
     {
+        layer->OnDetach();
         m_LayerStack.PopLayer(layer);
     }
 
@@ -154,11 +146,12 @@ namespace ignite
                         if (!deviceManager->Present())
                             continue;
 
-                        // call this at lease once per frame!
-                        deviceManager->GetDevice()->runGarbageCollection();
                     }
                 }
             }
+
+            // call this at lease once per frame!
+            deviceManager->GetDevice()->runGarbageCollection();
 
             UpdateAverageTimeTime(deltaTime);
             // set previous time
@@ -166,17 +159,24 @@ namespace ignite
             ++m_FrameIndex;
         }
 
-        // run garbage collection first
         deviceManager->GetDevice()->waitForIdle();
-        deviceManager->GetDevice()->runGarbageCollection();
 
         if (m_ImGuiLayer)
+        {
             m_ImGuiLayer->OnDetach();
+            m_ImGuiLayer.reset();
+        }
 
-        m_LayerStack.Destroy();
+        for (auto it = m_LayerStack.rbegin(); it != m_LayerStack.rend(); ++it)
+        {
+            (*it)->OnDetach();
+            delete *it;
+        }
+
         m_Renderer->Destroy();
 
-        // device manager will destroy in window's destroy function
+        // destroy device
+        deviceManager->Destroy();
         m_Window->Destroy();
     }
 

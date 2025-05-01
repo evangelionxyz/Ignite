@@ -9,7 +9,8 @@
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-namespace ignite {
+namespace ignite
+{
     static constexpr u32 kComputeQueueIndex = 0;
     static constexpr u32 kGraphicsQueueIndex = 0;
     static constexpr u32 kPresentQueueIndex = 0;
@@ -175,6 +176,8 @@ namespace ignite {
         CHECK(PickPhysicalDevice())
         CHECK(FindQueueFamilies(m_VulkanPhysicalDevice))
         CHECK(CreateVkDevice())
+        
+        CreateDescriptorPool();
 
         auto vecInstanceExt = StringSetToVector(enabledExtensions.instance);
         auto vecLayers = StringSetToVector(enabledExtensions.layers);
@@ -236,6 +239,7 @@ namespace ignite {
     {
         DestroySwapChain();
 
+
         for (auto &semaphore : m_PresentSemaphores)
         {
             if (semaphore)
@@ -254,7 +258,21 @@ namespace ignite {
             }
         }
         
+        m_VulkanDevice.destroyDescriptorPool(m_DescriptorPool);
+
         m_RendererString.clear();
+        
+        m_NvrhiDevice = nullptr;
+        m_ValidationLayer = nullptr;
+        m_RendererString.clear();
+
+        if (m_VulkanDevice)
+        {
+            m_VulkanDevice.destroy();
+            m_VulkanDevice = nullptr;
+        }
+
+        // destroy instance
 
         if (m_WindowSurface)
         {
@@ -268,17 +286,6 @@ namespace ignite {
             m_VulkanInstance.destroyDebugReportCallbackEXT(m_DebugReportCallback);
         }
 
-        m_ValidationLayer = nullptr;
-        
-        m_NvrhiDevice->waitForIdle();
-        m_NvrhiDevice->runGarbageCollection();
-
-        if (m_VulkanDevice)
-        {
-            m_VulkanDevice.destroy();
-            m_VulkanDevice = nullptr;
-        }
-
         if (m_VulkanInstance)
         {
             m_VulkanInstance.destroy();
@@ -290,7 +297,7 @@ namespace ignite {
     {
         if (m_VulkanDevice)
         {
-            DestroySwapChain();
+            //DestroySwapChain();
             CreateSwapChain();
         }
     }
@@ -335,11 +342,6 @@ namespace ignite {
 
             if (res == vk::Result::eErrorOutOfDateKHR && attempt < maxAttempts)
             {
-                auto surfaceCaps = m_VulkanPhysicalDevice.getSurfaceCapabilitiesKHR(m_WindowSurface);
-
-                m_DeviceParams.backBufferWidth = surfaceCaps.currentExtent.width;
-                m_DeviceParams.backBufferHeight = surfaceCaps.currentExtent.height;
-
                 ResizeSwapChain();
                 CreateBackBuffers();
             }
@@ -1105,6 +1107,8 @@ namespace ignite {
 
         const bool enableSwapChainSharing = queues.size() > 1;
 
+        vk::SurfaceCapabilitiesKHR capabilities = m_VulkanPhysicalDevice.getSurfaceCapabilitiesKHR(m_WindowSurface);
+
         auto desc = vk::SwapchainCreateInfoKHR()
             .setSurface(m_WindowSurface)
             .setMinImageCount(m_DeviceParams.swapChainBufferCount)
@@ -1117,11 +1121,11 @@ namespace ignite {
             .setFlags(m_SwapChainMutableFormatSupported ? vk::SwapchainCreateFlagBitsKHR::eMutableFormat : vk::SwapchainCreateFlagBitsKHR(0))
             .setQueueFamilyIndexCount(enableSwapChainSharing ? uint32_t(queues.size()) : 0)
             .setPQueueFamilyIndices(enableSwapChainSharing ? queues.data() : nullptr)
-            .setPreTransform(vk::SurfaceTransformFlagBitsKHR::eIdentity)
+            .setPreTransform(capabilities.currentTransform)
             .setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque)
             .setPresentMode(m_DeviceParams.vsyncEnable ? vk::PresentModeKHR::eFifo : vk::PresentModeKHR::eImmediate)
-            .setClipped(true)
-            .setOldSwapchain(nullptr);
+            .setClipped(VK_TRUE)
+            .setOldSwapchain(VK_NULL_HANDLE);
 
         std::vector<vk::Format> imageFormats = { m_SwapChainFormat.format };
         switch (m_SwapChainFormat.format)
@@ -1192,6 +1196,26 @@ namespace ignite {
         }
 
         m_SwapChainImages.clear();
+    }
+
+    void DeviceManager_VK::CreateDescriptorPool()
+    {
+        vk::DescriptorPoolSize poolSizes[] =
+        {
+            { vk::DescriptorType::eCombinedImageSampler, 100 },
+            { vk::DescriptorType::eSampledImage, 100 }
+        };
+
+        vk::DescriptorPoolCreateInfo createInfo = {};
+        createInfo.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+        createInfo.maxSets = 0;
+        for (auto poolSize : poolSizes)
+            createInfo.maxSets += poolSize.descriptorCount;
+        createInfo.poolSizeCount = std::size(poolSizes);
+        createInfo.pPoolSizes = poolSizes;
+
+        m_DescriptorPool = m_VulkanDevice.createDescriptorPool(createInfo);
+        LOG_ASSERT(m_DescriptorPool, "[Vulkan] Failed to create descriptor pool");
     }
 
     void DeviceManager_VK::WaitForIdle()

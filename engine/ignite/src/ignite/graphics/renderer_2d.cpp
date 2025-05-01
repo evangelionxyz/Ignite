@@ -48,9 +48,9 @@ namespace ignite
         s_Data.quadBatch.vertexBufferBase = new VertexQuad[vertAllocSize];
 
         // create shaders
-        s_Data.quadBatch.vertexShader = Application::GetShaderFactory()->CreateShader("default_2d_vertex", "main", nullptr, nvrhi::ShaderType::Vertex);
-        s_Data.quadBatch.pixelShader = Application::GetShaderFactory()->CreateShader("default_2d_pixel", "main", nullptr, nvrhi::ShaderType::Pixel);
-        LOG_ASSERT(s_Data.quadBatch.vertexShader && s_Data.quadBatch.pixelShader, "Failed to create shaders");
+        //s_Data.quadBatch.vertexShader = Application::GetShaderFactory()->CreateShader("default_2d_vertex", "main", nullptr, nvrhi::ShaderType::Vertex);
+        //s_Data.quadBatch.pixelShader = Application::GetShaderFactory()->CreateShader("default_2d_pixel", "main", nullptr, nvrhi::ShaderType::Pixel);
+        //LOG_ASSERT(s_Data.quadBatch.vertexShader && s_Data.quadBatch.pixelShader, "Failed to create shaders");
 
         const auto attributes = VertexQuad::GetAttributes();
         s_Data.quadBatch.inputLayout = device->createInputLayout(attributes.data(), u32(attributes.size()), s_Data.quadBatch.vertexShader);

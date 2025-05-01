@@ -20,7 +20,7 @@ namespace ignite
         createInfo.cmdLineArgs = args;
         createInfo.width = 1280;
         createInfo.height = 720;
-        createInfo.useGui = false;
+        createInfo.useGui = true;
         createInfo.graphicsApi = nvrhi::GraphicsAPI::VULKAN;
         return new TestApp(createInfo);
     }

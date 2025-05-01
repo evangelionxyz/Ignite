@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ignite/core/types.hpp"
+#include "ignite/graphics/shader.hpp"
 
 #include <memory>
 #include <vector>
@@ -18,10 +19,10 @@ namespace ignite
 
     struct ImGui_NVRHI
     {
-        nvrhi::DeviceHandle device;
+        nvrhi::DeviceHandle m_Device;
         nvrhi::CommandListHandle commandList;
-        nvrhi::ShaderHandle vertexShader;
-        nvrhi::ShaderHandle pixelShader;
+        Ref<Shader> vertexShader;
+        Ref<Shader> pixelShader;
         nvrhi::InputLayoutHandle attributeLayout;
 
         nvrhi::TextureHandle fontTexture;
@@ -39,7 +40,7 @@ namespace ignite
         std::vector<ImDrawVert> imguiVertexBuffer;
         std::vector<ImDrawIdx> imguiIndexBuffer;
 
-        bool Init(nvrhi::IDevice *device, Ref<ShaderFactory> shaderFactory);
+        bool Init(nvrhi::IDevice *device);
         void Shutdown();
         bool UpdateFontTexture();
         bool Render(nvrhi::IFramebuffer *framebuffer);

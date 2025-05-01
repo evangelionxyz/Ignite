@@ -8,23 +8,6 @@ namespace ignite
 {
     class DeviceManager;
 
-    struct TestData
-    {
-        Ref<Shader> vertexShader;
-        Ref<Shader> pixelShader;
-
-        nvrhi::InputLayoutHandle inputLayout;
-        nvrhi::BindingLayoutHandle bindingLayout;
-
-        nvrhi::BufferHandle vertexBuffer;
-        nvrhi::BufferHandle indexBuffer;
-
-        nvrhi::GraphicsPipelineDesc pipelineDesc;
-        nvrhi::GraphicsPipelineHandle pipeline;
-
-        nvrhi::CommandListHandle commandList;
-    };
-
     class TestLayer : public Layer
     {
     public:
@@ -43,6 +26,18 @@ namespace ignite
 
         Ref<ShaderFactory> m_ShaderFactory;
 
-        TestData s_data;
+        Ref<Shader> vertexShader;
+        Ref<Shader> pixelShader;
+
+        nvrhi::InputLayoutHandle inputLayout;
+        nvrhi::BindingLayoutHandle bindingLayout;
+
+        nvrhi::BufferHandle vertexBuffer;
+        nvrhi::BufferHandle indexBuffer;
+
+        nvrhi::GraphicsPipelineDesc pipelineDesc;
+        nvrhi::GraphicsPipelineHandle pipeline;
+
+        nvrhi::CommandListHandle commandList;
     };
 }
