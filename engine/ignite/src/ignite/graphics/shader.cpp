@@ -24,6 +24,59 @@ using Microsoft::WRL::ComPtr;
 
 namespace ignite
 {
+    const char *GetShaderCacheDirectory()
+    {
+        return "resources/shaders/cache/";
+    }
+
+    const char *GetHLSLDirectory()
+    {
+        return "resources/shaders/hlsl/";
+    }
+
+    const char *GetGLSLDirectory()
+    {
+        return "resources/shaders/glsl/";
+    }
+
+    void CreateShaderCachedDirectoryIfNeeded()
+    {
+        static std::string cachedDirectory = GetShaderCacheDirectory();
+        static std::string hlslDirectory = GetHLSLDirectory();
+        static std::string glslDirectory = GetGLSLDirectory();
+
+        if (!std::filesystem::exists(cachedDirectory))
+            std::filesystem::create_directories(cachedDirectory);
+        if (!std::filesystem::exists(hlslDirectory))
+            std::filesystem::create_directories(hlslDirectory);
+        if (!std::filesystem::exists(glslDirectory))
+            std::filesystem::create_directories(glslDirectory);
+    }
+
+    const char *ShaderStageToString(ShaderStage stage)
+    {
+        switch(stage)
+        {
+            case ShaderStage_Vertex: return "Vertex";
+            case ShaderStage_Fragment: return "Fragment";
+        }
+
+        LOG_ASSERT(false, "Invalid shader stage");
+        return "Invalid shader stage";
+    }
+
+    nvrhi::ShaderType ShaderStageToNVRHIShaderType(ShaderStage stage)
+    {
+        switch (stage)
+        {
+            case ShaderStage_Vertex: return nvrhi::ShaderType::Vertex;
+            case ShaderStage_Fragment: return nvrhi::ShaderType::Pixel;
+        }
+        
+        LOG_ASSERT(false, "Invalid shader stage");
+        return nvrhi::ShaderType::None;
+    }
+
     static shaderc_shader_kind ShaderStageToShaderC(ShaderStage stage)
     {
         switch(stage)

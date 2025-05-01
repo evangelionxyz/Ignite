@@ -45,7 +45,7 @@ target_include_directories(IgniteEngine PRIVATE
   ${VULKAN_INCLUDE_DIR}
 )
 
-target_link_libraries(IgniteEngine PUBLIC glfw spdlog ShaderMakeBlob imgui stblib box2d)
+target_link_libraries(IgniteEngine PUBLIC glfw spdlog imgui stblib box2d ShaderMake)
 
 if (MSVC)
     #target_compile_options(IgniteEngine PRIVATE "/utf-8")
@@ -76,9 +76,7 @@ if (WIN32)
   # Vulkan Build
   if (IGNITE_WITH_VULKAN)
     message(">> Ignite Engine: Build with Vulkan")
-    target_link_directories(IgniteEngine PRIVATE ${VULKAN_LIBRARY_DIR})
     target_link_libraries(IgniteEngine PUBLIC nvrhi_vk)
-
     target_compile_definitions(IgniteEngine PRIVATE IGNITE_WITH_VULKAN)
 
     target_sources(IgniteEngine PRIVATE src/ignite/core/device/device_manager_vk.cpp)

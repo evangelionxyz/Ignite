@@ -117,8 +117,8 @@ namespace ignite
         LOG_ASSERT(meshData.constantBuffer, "Failed to create constant buffer");
 
         // create shaders
-        meshData.vertexShader = Application::GetShaderFactory()->CreateShader("default_vertex", "main", nullptr, nvrhi::ShaderType::Vertex);
-        meshData.pixelShader = Application::GetShaderFactory()->CreateShader("default_pixel", "main", nullptr, nvrhi::ShaderType::Pixel);
+        meshData.vertexShader; //Application::GetShaderFactory()->CreateShader("default_vertex", "main", nullptr, nvrhi::ShaderType::Vertex);
+        meshData.pixelShader; //Application::GetShaderFactory()->CreateShader("default_pixel", "main", nullptr, nvrhi::ShaderType::Pixel);
         LOG_ASSERT(meshData.vertexShader && meshData.pixelShader, "Failed to create shaders");
 
         const auto attributes = VertexMesh::GetAttributes();

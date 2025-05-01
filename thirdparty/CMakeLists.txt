@@ -29,5 +29,4 @@ set_target_properties(box2d PROPERTIES FOLDER "Third party")
 set_target_properties(spdlog PROPERTIES FOLDER "Third party")
 set_target_properties(stblib PROPERTIES FOLDER "Third party")
 set_target_properties(ShaderMake PROPERTIES FOLDER "Third party")
-set_target_properties(ShaderMakeBlob PROPERTIES FOLDER "Third party")
 
