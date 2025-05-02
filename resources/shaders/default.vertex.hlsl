@@ -35,6 +35,7 @@ PSInput main(VSInput input)
     output.position     = mul(mvp, worldPos);
     output.normal       = worldNormal;
     output.worldPos     = worldPos.xyz;
+    output.texCoord     = input.texCoord;
     output.tilingFactor = input.tilingFactor;
     output.color        = input.color;
     return output;

@@ -21,7 +21,16 @@ namespace ignite
         createInfo.width = 1280;
         createInfo.height = 720;
         createInfo.useGui = true;
-        createInfo.graphicsApi = nvrhi::GraphicsAPI::D3D12;
+
+        // vulkan by default
+        createInfo.graphicsApi = nvrhi::GraphicsAPI::VULKAN;
+
+        if (args.count > 1)
+        {
+            if (strcmp(args.args[1], "-dx12") == 0)
+                createInfo.graphicsApi = nvrhi::GraphicsAPI::D3D12;
+        }
+
         return new EditorApp(createInfo);
     }
 }

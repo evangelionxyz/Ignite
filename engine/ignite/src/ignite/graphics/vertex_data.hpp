@@ -96,16 +96,19 @@ namespace ignite
 
         static nvrhi::BindingLayoutDesc GetBindingLayoutDesc()
         {
-            const i32 maxTextureCount = 16;
+            const uint16_t maxTextureCount = 16;
 
             nvrhi::BindingLayoutDesc bindingDesc;
             bindingDesc.setVisibility(nvrhi::ShaderType::All);
             bindingDesc.addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0));
             bindingDesc.addItem(nvrhi::BindingLayoutItem::Sampler(0));
+
+            // Add each texture binding individually
             for (i32 i = 0; i < maxTextureCount; ++i)
             {
                 bindingDesc.addItem(nvrhi::BindingLayoutItem::Texture_SRV(i));
             }
+
             return bindingDesc;
         }
     };

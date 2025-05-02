@@ -113,7 +113,6 @@ filter "system:windows"
             "%{Library.SPIRV_Cross}",
             "%{Library.SPIRV_Cross_GLSL}",
             "%{Library.SPIRV_Cross_HLSL}",
-            "%{Library.SPIRV_Cross_Tools}",
             "%{Library.SPIRV_Cross_Reflect}",
             "%{Library.SPIRV_Cross_Util}",
             "%{Library.SPIRV_Tools}",

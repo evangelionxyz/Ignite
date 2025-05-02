@@ -4,9 +4,7 @@
 
 #include <spirv_cross/spirv_cross.hpp>
 #include <spirv_cross/spirv_glsl.hpp>
-
 #include <spirv_cross/spirv_hlsl.hpp>
-
 #include <shaderc/shaderc.hpp>
 
 #include <fstream>
@@ -16,11 +14,8 @@
 #ifdef PLATFORM_WINDOWS
 #   include <dxcapi.h>
 #   include <wrl/client.h>
-
 using Microsoft::WRL::ComPtr;
-
 #endif
-
 
 namespace ignite
 {
@@ -29,20 +24,11 @@ namespace ignite
         return "resources/shaders/bin/";
     }
 
-    const char *GetHLSLDirectory()
-    {
-        return "resources/shaders/hlsl/";
-    }
-
     void CreateShaderCachedDirectoryIfNeeded()
     {
         static std::string cachedDirectory = GetShaderCacheDirectory();
-        static std::string hlslDirectory = GetHLSLDirectory();
-
         if (!std::filesystem::exists(cachedDirectory))
             std::filesystem::create_directories(cachedDirectory);
-        if (!std::filesystem::exists(hlslDirectory))
-            std::filesystem::create_directories(hlslDirectory);
     }
 
     const char *ShaderStageToString(ShaderStage stage)
@@ -191,10 +177,6 @@ namespace ignite
             out.flush();
             out.close();
 
-            // create HLSL shader
-            std::filesystem::path hlslPath = GetHLSLDirectory() + filepath.filename().generic_string();
-            ConvertSpirvToHLSL(data, hlslPath.generic_string());
-
             LOG_INFO("Shader compiled to binary!");
         }
 
@@ -224,7 +206,7 @@ namespace ignite
             u32 set = compiler.get_decoration(ubo.id, spv::DecorationDescriptorSet);
             size_t memberCount = type.member_types.size();
 
-            LOG_WARN("  [UBO] Name: {}, Set: {}, Binding: {}, Size: {}, Members: {}", ubo.name, set, binding, size, memberCount);
+            LOG_INFO("  [UBO] Name: {}, Set: {}, Binding: {}, Size: {}, Members: {}", ubo.name, set, binding, size, memberCount);
         }
 
         // --- Sampled Images (combined or separate textures) ---
@@ -234,7 +216,7 @@ namespace ignite
             u32 binding = compiler.get_decoration(image.id, spv::DecorationBinding);
             u32 set = compiler.get_decoration(image.id, spv::DecorationDescriptorSet);
 
-            LOG_WARN("  [Texture] Name: {}, Set: {}, Binding: {}", image.name, set, binding);
+            LOG_INFO("  [Texture] Name: {}, Set: {}, Binding: {}", image.name, set, binding);
         }
 
         // --- Separate Samplers ---
@@ -244,7 +226,7 @@ namespace ignite
             u32 binding = compiler.get_decoration(sampler.id, spv::DecorationBinding);
             u32 set = compiler.get_decoration(sampler.id, spv::DecorationDescriptorSet);
 
-            LOG_WARN("  [Sampler] Name: {}, Set: {}, Binding: {}", sampler.name, set, binding);
+            LOG_INFO("  [Sampler] Name: {}, Set: {}, Binding: {}", sampler.name, set, binding);
         }
 
         // --- Separate Images (non-combined, i.e., texture2D) ---
@@ -254,7 +236,7 @@ namespace ignite
             u32 binding = compiler.get_decoration(image.id, spv::DecorationBinding);
             u32 set = compiler.get_decoration(image.id, spv::DecorationDescriptorSet);
 
-            LOG_WARN("  [Separate Image] Name: {}, Set: {}, Binding: {}", image.name, set, binding);
+            LOG_INFO("  [Separate Image] Name: {}, Set: {}, Binding: {}", image.name, set, binding);
         }
 
         // --- Push Constants ---
@@ -264,27 +246,12 @@ namespace ignite
             const auto &type = compiler.get_type(pcb.base_type_id);
             u32 size = static_cast<u32>(compiler.get_declared_struct_size(type));
 
-            LOG_WARN("  [PushConstant] Name: {}, Size: {}", pcb.name, size);
+            LOG_INFO("  [PushConstant] Name: {}, Size: {}", pcb.name, size);
         }
 
         // - storage_buffers
         // - storage_images
         // - subpass_inputs
-    }
-
-
-    std::string Shader::ConvertSpirvToHLSL(const std::vector<u32> &data, const std::string &filepath)
-    {
-        spirv_cross::CompilerHLSL compiler(data);
-        spirv_cross::CompilerHLSL::Options options;
-        options.shader_model = 60; // shader model 6.0
-        compiler.set_hlsl_options(options);
-
-        std::string shaderSource = compiler.compile();
-        std::ofstream outfile(filepath + ".hlsl");
-        outfile << shaderSource;
-
-        return shaderSource;
     }
 
     Ref<Shader> Shader::Create(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderStage stage, bool recompile)

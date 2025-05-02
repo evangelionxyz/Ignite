@@ -91,8 +91,6 @@ namespace ignite
         // Bottom face
        20,21,22, 22,23,20
     };
-    
-    
 
     EditorLayer::EditorLayer(const std::string &name)
         : Layer(name), m_DeviceManager(nullptr)
@@ -322,7 +320,6 @@ namespace ignite
         m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
         m_CommandLists[0]->close();
         m_DeviceManager->GetDevice()->executeCommandList(m_CommandLists[0]);
-        
         
         // mesh command list m_CommandLists index 1
         m_CommandLists[1]->open();

@@ -37,7 +37,7 @@ namespace ignite
         std::string name = "Ignite";
         std::string iconPath = " ";
         std::string workingDirectory;
-        nvrhi::GraphicsAPI graphicsApi = nvrhi::GraphicsAPI::D3D12;
+        nvrhi::GraphicsAPI graphicsApi = nvrhi::GraphicsAPI::VULKAN;
 
         u32 width = 1280;
         u32 height = 640;

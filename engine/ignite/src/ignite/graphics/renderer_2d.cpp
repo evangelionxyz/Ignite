@@ -101,11 +101,12 @@ namespace ignite
             .setAllFilters(true);
 
         s_Data->quadBatch.sampler = device->createSampler(samplerDesc);
+
         bindingSetDesc.addItem(nvrhi::BindingSetItem::Sampler(0, s_Data->quadBatch.sampler));
 
         for (u32 i = 0; i < u32(s_Data->quadBatch.maxTextureCount); ++i)
         {
-            bindingSetDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(i, Renderer::GetWhiteTexture()->GetHandle()));
+            bindingSetDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(i, Renderer::GetWhiteTexture()->GetHandle(), nvrhi::Format::UNKNOWN, nvrhi::AllSubresources, nvrhi::TextureDimension::Texture2D));
         }
 
         s_Data->quadBatch.bindingSet = device->createBindingSet(bindingSetDesc, s_Data->quadBatch.bindingLayout);
