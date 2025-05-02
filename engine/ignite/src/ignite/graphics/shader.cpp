@@ -26,7 +26,7 @@ namespace ignite
 {
     const char *GetShaderCacheDirectory()
     {
-        return "resources/shaders/cache/";
+        return "resources/shaders/bin/";
     }
 
     const char *GetHLSLDirectory()
@@ -34,23 +34,15 @@ namespace ignite
         return "resources/shaders/hlsl/";
     }
 
-    const char *GetGLSLDirectory()
-    {
-        return "resources/shaders/glsl/";
-    }
-
     void CreateShaderCachedDirectoryIfNeeded()
     {
         static std::string cachedDirectory = GetShaderCacheDirectory();
         static std::string hlslDirectory = GetHLSLDirectory();
-        static std::string glslDirectory = GetGLSLDirectory();
 
         if (!std::filesystem::exists(cachedDirectory))
             std::filesystem::create_directories(cachedDirectory);
         if (!std::filesystem::exists(hlslDirectory))
             std::filesystem::create_directories(hlslDirectory);
-        if (!std::filesystem::exists(glslDirectory))
-            std::filesystem::create_directories(glslDirectory);
     }
 
     const char *ShaderStageToString(ShaderStage stage)
@@ -104,8 +96,6 @@ namespace ignite
 
     Shader::Shader(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderStage stage, bool recompile)
     {
-        LOG_ASSERT(std::filesystem::exists(filepath), "{} shader file does not exits!: {}", ShaderStageToString(stage), filepath.generic_string());
-
         CreateShaderCachedDirectoryIfNeeded();
 
         ShaderData shaderData = CompileOrGetVulkanShader(filepath, stage, recompile);
@@ -122,6 +112,13 @@ namespace ignite
 
     ShaderData Shader::CompileOrGetVulkanShader(const std::filesystem::path &filepath, ShaderStage stage, bool recompile)
     {
+        std::filesystem::path filepathCopy = filepath;
+
+        if (filepathCopy.extension() == ".hlsl" || filepathCopy.extension() == ".glsl")
+        {
+            filepathCopy.replace_extension(""); // remove extension
+        }
+
         auto api = Application::GetInstance()->GetCreateInfo().graphicsApi;
 
         ShaderData shaderData;
@@ -134,15 +131,16 @@ namespace ignite
         options.AddMacroDefinition("VULKAN"); // if needed in the shader
 
         std::filesystem::path cacheDirectory = GetShaderCacheDirectory();
-        std::filesystem::path cachedPath = cacheDirectory / (filepath.filename().generic_string() + GetShaderExtension(api));
+        std::filesystem::path cachedPath = cacheDirectory / (filepathCopy.filename().generic_string() + GetShaderExtension(api));
 
         std::ifstream in(cachedPath, std::ios::in | std::ios::binary);
         if (in.is_open() && !recompile)
         {
-            LOG_INFO("Get {} shader from binary: {}", ShaderStageToString(stage), filepath.generic_string());
+            LOG_ASSERT(std::filesystem::exists(filepath), "[Shader] File does not exists! {}", cachedPath.generic_string().c_str());
+
+            LOG_INFO("Get {} shader from binary: {}", ShaderStageToString(stage), cachedPath.generic_string());
 
             // get
-
             in.seekg(0, std::ios::end);
             auto size = in.tellg(); // get data size in bytes
 
@@ -153,9 +151,13 @@ namespace ignite
             in.read(reinterpret_cast<char *>(data.data()), size);
 
             in.close();
+
+            LOG_INFO("Shader binary loaded!");
         }
         else
         {
+            LOG_ASSERT(std::filesystem::exists(filepath), "[Shader] File does not exists! {}", filepath.generic_string().c_str());
+
             LOG_INFO("Compiling {} shader to binary: {}", ShaderStageToString(stage), filepath.generic_string());
 
             // compile
@@ -192,10 +194,15 @@ namespace ignite
             // create HLSL shader
             std::filesystem::path hlslPath = GetHLSLDirectory() + filepath.filename().generic_string();
             ConvertSpirvToHLSL(data, hlslPath.generic_string());
+
+            LOG_INFO("Shader compiled to binary!");
         }
 
-        // print reflect info
-        Reflect(stage, shaderData.data);
+        // print reflect info (only SPIRV file)
+        if (api == nvrhi::GraphicsAPI::VULKAN)
+        {
+            Reflect(stage, shaderData.data);
+        }
 
         return shaderData;
     }

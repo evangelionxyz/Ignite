@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
+option(SHADERMAKE_BUILD_TEST "Disabling ShaderMake Test program" OFF)
+
 message(STATUS "Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
 
 if (WIN32)

@@ -9,8 +9,8 @@ namespace ignite
 {
     struct TestVertex
     {
-        glm::vec3 position;
-        glm::vec3 color;
+        glm::vec2 position;
+        glm::vec4 color;
 
         static std::array<nvrhi::VertexAttributeDesc, 2> GetAttributes()
         {
@@ -19,12 +19,12 @@ namespace ignite
                 nvrhi::VertexAttributeDesc()
                     .setName("POSITION")
                     .setBufferIndex(0)
-                    .setFormat(nvrhi::Format::RGB32_FLOAT)
+                    .setFormat(nvrhi::Format::RG32_FLOAT)
                     .setOffset(offsetof(TestVertex, position))
                     .setElementStride(sizeof(TestVertex)),
                 nvrhi::VertexAttributeDesc()
                     .setName("COLOR")
-                    .setFormat(nvrhi::Format::RGB32_FLOAT)
+                    .setFormat(nvrhi::Format::RGBA32_FLOAT)
                     .setOffset(offsetof(TestVertex, color))
                     .setElementStride(sizeof(TestVertex))
             };
@@ -33,9 +33,9 @@ namespace ignite
 
     static std::array<TestVertex, 3> vertices
     {
-        TestVertex{{ -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
-        TestVertex{{  0.0f,  0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
-        TestVertex{{  0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 1.0f } }
+        TestVertex{{ -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
+        TestVertex{{  0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
+        TestVertex{{  0.5f, -0.5f }, { 0.0f, 1.0f, 1.0f, 1.0f } }
     };
 
     static std::array<u32, 3> indices
@@ -61,8 +61,8 @@ namespace ignite
         m_ShaderFactory = CreateRef<ShaderFactory>(m_Device, nativeFS, shaderPath);
 
         // create shader
-        vertexShader = Shader::Create(m_Device, "resources/shaders/glsl/test_2d.vertex", ShaderStage_Vertex);
-        pixelShader = Shader::Create(m_Device, "resources/shaders/glsl/test_2d.pixel", ShaderStage_Fragment);
+        vertexShader = Shader::Create(m_Device, "resources/shaders/hlsl/test.vertex.hlsl", ShaderStage_Vertex);
+        pixelShader = Shader::Create(m_Device, "resources/shaders/hlsl/test.pixel.hlsl", ShaderStage_Fragment);
 
         // create binding layout
 
