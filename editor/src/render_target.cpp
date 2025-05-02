@@ -29,8 +29,6 @@ namespace ignite
         .addColorAttachment(texture);
         framebuffer = device->createFramebuffer(fbDesc);
         LOG_ASSERT(texture, "Failed to create render target framebuffer");
-
-        testShader = CreateRef<Shader>(device, "", ShaderStage_Vertex);
     }
 
     void RenderTarget::Resize(f32 width, f32 height)

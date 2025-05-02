@@ -27,7 +27,6 @@ namespace ignite
 
     static const char *GetShaderCacheDirectory();
     static const char *GetHLSLDirectory();
-    static const char *GetGLSLDirectory();
     static void CreateShaderCachedDirectoryIfNeeded();
     static const char *ShaderStageToString(ShaderStage stage);
     static nvrhi::ShaderType ShaderStageToNVRHIShaderType(ShaderStage stage);
@@ -48,6 +47,6 @@ namespace ignite
         static Ref<Shader> Create(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderStage stage, bool recompile = false);
 
     private:
-        nvrhi::ShaderHandle m_Handle;
+        nvrhi::ShaderHandle m_Handle = nullptr;
     };
 }

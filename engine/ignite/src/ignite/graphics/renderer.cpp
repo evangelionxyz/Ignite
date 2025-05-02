@@ -14,7 +14,6 @@ namespace ignite
 
         m_GraphicsAPI = api;
         
-#if 0
         nvrhi::CommandListHandle commandList = deviceManager->GetDevice()->createCommandList();
         {
             u32 white = 0xFFFFFFFF;
@@ -27,13 +26,13 @@ namespace ignite
         
         deviceManager->GetDevice()->executeCommandList(commandList);
         
-#endif
-        //Renderer2D::Init(deviceManager);
+        Renderer2D::Init(deviceManager);
     }
 
-    void Renderer::Destroy()
+    Renderer::~Renderer()
     {
-        // Renderer2D::Shutdown();
+        m_WhiteTexture.reset();
+        Renderer2D::Shutdown();
     }
 
     nvrhi::GraphicsAPI Renderer::GetGraphicsAPI()

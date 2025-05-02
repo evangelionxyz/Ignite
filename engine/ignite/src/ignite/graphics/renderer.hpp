@@ -14,11 +14,11 @@ namespace ignite
         Renderer() = default;
         Renderer(DeviceManager *deviceManager, nvrhi::GraphicsAPI api);
 
-        void Destroy();
+        ~Renderer();
 
         static Ref<Texture> GetWhiteTexture();
         static nvrhi::GraphicsAPI GetGraphicsAPI();
-
+        
     private:
         nvrhi::GraphicsAPI m_GraphicsAPI;
         Ref<Texture> m_WhiteTexture;

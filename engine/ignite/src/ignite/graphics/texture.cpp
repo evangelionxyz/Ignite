@@ -63,6 +63,11 @@ namespace ignite
         LOG_ASSERT(m_Sampler, "Failed to create texture sampler");
     }
 
+    Texture::~Texture()
+    {
+
+    }
+
     void Texture::Write(nvrhi::ICommandList *commandList)
     {
         commandList->writeTexture(m_Handle, 0, 0, m_Buffer.Data, m_Width * 4);

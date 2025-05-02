@@ -114,7 +114,7 @@ namespace ignite
     {
         std::filesystem::path filepathCopy = filepath;
 
-        if (filepathCopy.extension() == ".hlsl" || filepathCopy.extension() == ".glsl")
+        if (filepathCopy.extension() == ".hlsl")
         {
             filepathCopy.replace_extension(""); // remove extension
         }
@@ -289,6 +289,10 @@ namespace ignite
 
     Ref<Shader> Shader::Create(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderStage stage, bool recompile)
     {
-        return CreateRef<Shader>(device, filepath, stage, recompile);
+        Ref<Shader> returnShader = CreateRef<Shader>(device, filepath, stage, recompile);
+        if (returnShader->GetHandle() == nullptr)
+            return nullptr;
+
+        return returnShader;
     }
 }

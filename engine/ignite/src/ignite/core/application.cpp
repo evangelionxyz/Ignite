@@ -173,7 +173,8 @@ namespace ignite
             delete *it;
         }
 
-        m_Renderer->Destroy();
+        // destroy renderer first
+        m_Renderer.reset();
 
         // destroy device
         deviceManager->Destroy();
