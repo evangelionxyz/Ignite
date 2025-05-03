@@ -10,6 +10,8 @@
 #include "editor_layer.hpp"
 #include "entt/entt.hpp"
 
+#include <ImGuizmo.h>
+
 #include <set>
 #include <unordered_map>
 #include <string>
@@ -533,6 +535,26 @@ namespace ignite
 
         const ImTextureID imguiTex = reinterpret_cast<ImTextureID>(m_RenderTarget->texture.Get());
         ImGui::Image(imguiTex, window->Size);
+
+        static glm::mat4 testMatrix(1.0f);
+
+        // ImGuizmo render
+        ImGuizmo::SetDrawlist();
+        ImGuizmo::SetRect(window->Pos.x, window->Pos.y, window->Size.x, window->Size.y);
+        ImGuizmo::SetOrthographic(m_ViewportCamera->projectionType == Camera::Type::Orthographic);
+
+        static f32 snapValue = 0.5f;
+        f32 snapValues[] = { snapValue, snapValue, snapValue };
+
+        bool snapping = true;
+
+        const glm::mat4 &cameraProjection = m_ViewportCamera->projectionMatrix;
+        const glm::mat4 &cameraView = m_ViewportCamera->viewMatrix;
+
+        ImGuizmo::Manipulate(glm::value_ptr(cameraView), glm::value_ptr(cameraProjection)
+            , ImGuizmo::OPERATION::UNIVERSAL, IMGUIZMO_NAMESPACE::LOCAL
+            , glm::value_ptr(testMatrix), nullptr, snapping ? snapValues : nullptr
+            , nullptr, nullptr);
 
         ImGui::End();
     }
