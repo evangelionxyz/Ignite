@@ -31,8 +31,16 @@ struct PS_INPUT
 sampler sampler0 : register(s0);
 Texture2D texture0 : register(t0);
 
+float3 SRGBToLinear(float3 srgb)
+{
+    float3 lt = step(float3(0.04045, 0.04045, 0.04045), srgb);
+    return lerp(srgb / 12.92, pow((srgb + 0.055) / 1.055, 2.4), lt);
+}
+
 float4 main(PS_INPUT input) : SV_Target
 {
-    float4 out_col = input.col * texture0.Sample(sampler0, input.uv);
+    float4 texColor = texture0.Sample(sampler0, input.uv);
+    float4 color = float4(SRGBToLinear(input.col.rgb), input.col.a);
+    float4 out_col = color * texColor;
     return out_col;
 }
