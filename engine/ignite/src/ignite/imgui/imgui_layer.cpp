@@ -168,8 +168,6 @@ namespace ignite
             case nvrhi::GraphicsAPI::D3D12:
             {
 #ifdef PLATFORM_WINDOWS
-                //ImGui_ImplWin32_Init(glfwGetWin32Window(m_DeviceManager->GetWindow()));
-
                 DeviceManager_DX12 &d3d12 = DeviceManager_DX12::GetInstance();
                 ImGui_ImplDX12_InitInfo initInfo = {};
                 initInfo.Device = d3d12.m_Device12;
@@ -186,42 +184,11 @@ namespace ignite
                 {
                     return DeviceManager_DX12::GetInstance().m_SrvDescHeapAlloc.Free(cpu_handle, gpu_handle);
                 };
-
                 ImGui_ImplDX12_Init(&initInfo);
+                break;
 #endif
-                break;
-            }
-
-            case nvrhi::GraphicsAPI::VULKAN:
-            {
-                //constexpr bool installCallbacks = true;
-                //ImGui_ImplGlfw_InitForVulkan(m_DeviceManager->GetWindow(), installCallbacks);
-
-                //DeviceManager_VK *vk = DeviceManager_VK::GetInstance();
-
-                //ImGui_ImplVulkan_InitInfo init_info = {};
-                //init_info.UseDynamicRendering = true;
-                //init_info.Instance = vk->m_VulkanInstance;
-                //init_info.PhysicalDevice = vk->m_VulkanPhysicalDevice;
-                //init_info.Device = vk->m_VulkanDevice;
-                //init_info.QueueFamily = vk->m_GraphicsQueueFamily;
-                //init_info.Queue = vk->m_GraphicsQueue;
-                //init_info.PipelineCache = vk->m_PipelineCache;
-                //init_info.DescriptorPool = vk->m_DescriptorPool;
-                //init_info.RenderPass = vk->m_RenderPass;
-                //init_info.Subpass = 0;
-                //init_info.MinImageCount = m_DeviceManager->GetDeviceParams().maxFramesInFlight;
-                //init_info.ImageCount = m_DeviceManager->GetDeviceParams().swapChainBufferCount;
-                //init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-                //init_info.Allocator = nullptr;
-                //init_info.CheckVkResultFn = VK_NULL_HANDLE;
-                //ImGui_ImplVulkan_Init(&init_info);
-                
-                break;
             }
         }
-
-        
     }
 
     bool ImGuiLayer::Init()
@@ -308,9 +275,6 @@ namespace ignite
 
         imgui_nvrhi->UpdateFontTexture();
 
-        /*if (m_DeviceManager->GetGraphicsAPI() == nvrhi::GraphicsAPI::VULKAN)
-            ImGui_ImplVulkan_NewFrame();*/
-
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         ImGuizmo::BeginFrame();
@@ -365,16 +329,11 @@ namespace ignite
             {
 #ifdef PLATFORM_WINDOWS
                 ImGui_ImplDX12_Shutdown();
+                break;
 #endif
-                break;
-            }
-            case nvrhi::GraphicsAPI::VULKAN:
-            {
-                //ImGui_ImplVulkan_Shutdown();
-                break;
             }
         }
-        
+
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
 
