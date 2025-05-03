@@ -21,8 +21,6 @@ namespace ignite
     {
         nvrhi::DeviceHandle m_Device;
         nvrhi::CommandListHandle commandList;
-        Ref<Shader> vertexShader;
-        Ref<Shader> pixelShader;
         nvrhi::InputLayoutHandle attributeLayout;
 
         nvrhi::TextureHandle fontTexture;

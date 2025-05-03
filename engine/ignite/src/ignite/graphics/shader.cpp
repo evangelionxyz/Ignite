@@ -44,7 +44,7 @@ namespace ignite
         return "Invalid shader type";
     }
 
-    nvrhi::ShaderType ShaderStageToNVRHIShaderType(ShaderMake::ShaderType type)
+    nvrhi::ShaderType ShaderTypeToNVRHIShaderType(ShaderMake::ShaderType type)
     {
         switch (type)
         {
@@ -78,7 +78,7 @@ namespace ignite
         LOG_ASSERT(blob.data.data(), "[Shader] Blob data is not valid");
 
         nvrhi::ShaderDesc shaderDesc;
-        shaderDesc.shaderType = ShaderStageToNVRHIShaderType(type);
+        shaderDesc.shaderType = ShaderTypeToNVRHIShaderType(type);
 
         m_Handle = device->createShader(shaderDesc, blob.data.data(), blob.dataSize());
 
@@ -104,7 +104,7 @@ namespace ignite
             std::shared_ptr<ShaderMake::ShaderContext> shaderContext = std::make_shared<ShaderMake::ShaderContext>(filepathCopy.generic_string(), type, shaderDesc, recompile);
             ShaderMake::CompileStatus status = Renderer::GetShaderContext()->CompileShader({ shaderContext });
 
-            bool success = status == ShaderMake::CompileStatus::Success || status == ShaderMake::CompileStatus::SkipCompile;
+            bool success = status == ShaderMake::CompileStatus::Success;
             LOG_ASSERT(success, "[Shader] failed to get or compile shader");
 
             // copy blob
@@ -186,10 +186,6 @@ namespace ignite
 
             LOG_INFO("  [PushConstant] Name: {}, Size: {}", pcb.name, size);
         }
-
-        // - storage_buffers
-        // - storage_images
-        // - subpass_inputs
     }
 
     Ref<Shader> Shader::Create(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile)

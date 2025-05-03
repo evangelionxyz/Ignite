@@ -26,6 +26,7 @@ includedirs {
     "%{IncludeDir.NVRHI_VULKAN_HPP}",
     "%{IncludeDir.VULKAN_SDK}",
     "%{IncludeDir.SHADERMAKE}",
+    "%{IncludeDir.ASSIMP}",
 }
 
 links {
@@ -35,7 +36,7 @@ links {
     "STB",
     "SPDLOG",
     "ShaderMake",
-
+    "ASSIMP",
     "NVRHI",
     "NVRHI_VULKAN",
 }

@@ -52,13 +52,12 @@ namespace ignite
         size_t vertAllocSize = s_Data->quadBatch.maxVertices * sizeof(VertexQuad);
         s_Data->quadBatch.vertexBufferBase = new VertexQuad[vertAllocSize];
 
-        // create shaders
-        s_Data->quadBatch.vertexShader = Shader::Create(device, "resources/shaders/default_2d.vertex.hlsl", ShaderMake::ShaderType::Vertex);
-        s_Data->quadBatch.pixelShader = Shader::Create(device, "resources/shaders/default_2d.pixel.hlsl", ShaderMake::ShaderType::Pixel);
-        LOG_ASSERT(s_Data->quadBatch.vertexShader && s_Data->quadBatch.pixelShader, "Failed to create shaders");
+        VPShader *vpShader = Renderer::GetDefaultShader("quadBatch2D");
+        s_Data->quadBatch.vertexShader = vpShader->vertex;
+        s_Data->quadBatch.pixelShader = vpShader->pixel;
 
         const auto attributes = VertexQuad::GetAttributes();
-        s_Data->quadBatch.inputLayout = device->createInputLayout(attributes.data(), u32(attributes.size()), s_Data->quadBatch.vertexShader->GetHandle());
+        s_Data->quadBatch.inputLayout = device->createInputLayout(attributes.data(), u32(attributes.size()), s_Data->quadBatch.vertexShader);
         LOG_ASSERT(s_Data->quadBatch.inputLayout, "Failed to create input layout");
 
         const auto layoutDesc = VertexQuad::GetBindingLayoutDesc();
@@ -210,8 +209,8 @@ namespace ignite
 
             auto pipelineDesc = nvrhi::GraphicsPipelineDesc()
                 .setInputLayout(s_Data->quadBatch.inputLayout)
-                .setVertexShader(s_Data->quadBatch.vertexShader->GetHandle())
-                .setPixelShader(s_Data->quadBatch.pixelShader->GetHandle())
+                .setVertexShader(s_Data->quadBatch.vertexShader)
+                .setPixelShader(s_Data->quadBatch.pixelShader)
                 .addBindingLayout(s_Data->quadBatch.bindingLayout)
                 .setRenderState(renderState)
                 .setPrimType(nvrhi::PrimitiveType::TriangleList);

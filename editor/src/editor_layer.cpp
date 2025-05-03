@@ -14,8 +14,8 @@ namespace ignite
 {
     struct MeshRenderData
     {
-        Ref<Shader> vertexShader;
-        Ref<Shader> pixelShader;
+        nvrhi::ShaderHandle vertexShader;
+        nvrhi::ShaderHandle pixelShader;
         nvrhi::BufferHandle vertexBuffer;
         nvrhi::BufferHandle indexBuffer;
         nvrhi::BufferHandle constantBuffer;
@@ -66,12 +66,13 @@ namespace ignite
         LOG_ASSERT(meshData->constantBuffer, "Failed to create constant buffer");
 
         // create shaders
-        meshData->vertexShader = Shader::Create(device, "resources/shaders/default.vertex.hlsl", ShaderMake::ShaderType::Vertex);
-        meshData->pixelShader = Shader::Create(device, "resources/shaders/default.pixel.hlsl", ShaderMake::ShaderType::Pixel);
+        VPShader *shaders = Renderer::GetDefaultShader("default_mesh");
+        meshData->vertexShader = shaders->vertex;// Shader::Create(device, "resources/shaders/default.vertex.hlsl", ShaderMake::ShaderType::Vertex);
+        meshData->pixelShader = shaders->pixel; // Shader::Create(device, "resources/shaders/default.pixel.hlsl", ShaderMake::ShaderType::Pixel);
         LOG_ASSERT(meshData->vertexShader && meshData->pixelShader, "Failed to create shaders");
 
         const auto attributes = VertexMesh::GetAttributes();
-        meshData->inputLayout = device->createInputLayout(attributes.data(), attributes.size(), meshData->vertexShader->GetHandle());
+        meshData->inputLayout = device->createInputLayout(attributes.data(), attributes.size(), meshData->vertexShader);
         LOG_ASSERT(meshData->inputLayout, "Failed to create input layout");
 
         const auto layoutDesc = VertexMesh::GetBindingLayoutDesc();
@@ -111,7 +112,7 @@ namespace ignite
         m_CommandLists[1] = device->createCommandList();
         Renderer2D::InitQuadData(m_DeviceManager->GetDevice(), m_CommandLists[0]);
 
-        m_Texture = Texture::Create("Resources/textures/test.png");
+        m_Texture = Texture::Create(device, "Resources/textures/test.png");
         m_CommandLists[0]->open();
         m_Texture->Write(m_CommandLists[0]);
 
@@ -241,8 +242,8 @@ namespace ignite
                 .setBlendState(blendState);
 
             auto pipelineDesc = nvrhi::GraphicsPipelineDesc()
-                .setVertexShader(meshData->vertexShader->GetHandle())
-                .setPixelShader(meshData->pixelShader->GetHandle())
+                .setVertexShader(meshData->vertexShader)
+                .setPixelShader(meshData->pixelShader)
                 .setInputLayout(meshData->inputLayout)
                 .addBindingLayout(meshData->bindingLayout)
                 .setRenderState(renderState)

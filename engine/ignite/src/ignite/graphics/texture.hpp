@@ -14,15 +14,15 @@ namespace ignite
     {
     public:
         Texture() = default;
-        Texture(Buffer buffer, i32 width, i32 height);
-        Texture(const std::filesystem::path &filepath);
+        Texture(nvrhi::IDevice *device, Buffer buffer, i32 width, i32 height);
+        Texture(nvrhi::IDevice *device, const std::filesystem::path &filepath);
 
         ~Texture();
 
         void Write(nvrhi::ICommandList *commandList);
 
-        static Ref<Texture> Create(Buffer buffer, i32 width = 1, i32 height = 1);
-        static Ref<Texture> Create(const std::filesystem::path &filepath);
+        static Ref<Texture> Create(nvrhi::IDevice *device, Buffer buffer, i32 width = 1, i32 height = 1);
+        static Ref<Texture> Create(nvrhi::IDevice *device, const std::filesystem::path &filepath);
 
         nvrhi::TextureHandle GetHandle() { return m_Handle; }
         nvrhi::SamplerHandle GetSampler() { return m_Sampler; }

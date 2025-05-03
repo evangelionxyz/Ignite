@@ -1,13 +1,11 @@
 #include "texture.hpp"
-
 #include "ignite/core/logger.hpp"
-#include "ignite/core/application.hpp"
 
 #include <stb_image.h>
 
 namespace ignite
 {
-    Texture::Texture(Buffer buffer, i32 width, i32 height)
+    Texture::Texture(nvrhi::IDevice *device, Buffer buffer, i32 width, i32 height)
         : m_Buffer(buffer), m_Width(width), m_Height(height)
     {
         const auto textureDesc = nvrhi::TextureDesc()
@@ -18,8 +16,6 @@ namespace ignite
             .setInitialState(nvrhi::ResourceStates::ShaderResource)
             .setKeepInitialState(true)
             .setDebugName("Texture");
-        
-        nvrhi::IDevice *device = Application::GetDeviceManager()->GetDevice();
         
         m_Handle = device->createTexture(textureDesc);
         LOG_ASSERT(m_Handle, "Failed to create texture");
@@ -32,7 +28,7 @@ namespace ignite
         LOG_ASSERT(m_Sampler, "Failed to create texture sampler");
     }
 
-    Texture::Texture(const std::filesystem::path &filepath)
+    Texture::Texture(nvrhi::IDevice *device, const std::filesystem::path &filepath)
     {
         LOG_ASSERT(exists(filepath), "File does not found!");
 
@@ -40,8 +36,6 @@ namespace ignite
         LOG_ASSERT(m_Buffer.Data, "Failed to load texture data");
 
         m_Buffer.Size = m_Width * m_Height * 4;
-
-        nvrhi::IDevice *device = Application::GetDeviceManager()->GetDevice();
 
         const auto textureDesc = nvrhi::TextureDesc()
             .setDimension(nvrhi::TextureDimension::Texture2D)
@@ -65,7 +59,6 @@ namespace ignite
 
     Texture::~Texture()
     {
-
     }
 
     void Texture::Write(nvrhi::ICommandList *commandList)
@@ -73,13 +66,13 @@ namespace ignite
         commandList->writeTexture(m_Handle, 0, 0, m_Buffer.Data, m_Width * 4);
     }
 
-    Ref<Texture> Texture::Create(Buffer buffer, i32 width, i32 height)
+    Ref<Texture> Texture::Create(nvrhi::IDevice *device, Buffer buffer, i32 width, i32 height)
     {
-        return CreateRef<Texture>(buffer, width, height);
+        return CreateRef<Texture>(device, buffer, width, height);
     }
 
-    Ref<Texture> Texture::Create(const std::filesystem::path &filepath)
+    Ref<Texture> Texture::Create(nvrhi::IDevice *device, const std::filesystem::path &filepath)
     {
-        return CreateRef<Texture>(filepath);
+        return CreateRef<Texture>(device, filepath);
     }
 }

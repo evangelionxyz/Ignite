@@ -33,6 +33,7 @@ includedirs {
     "%{IncludeDir.NVRHI_VULKAN_HPP}",
     "%{IncludeDir.VULKAN_SDK}",
     "%{IncludeDir.SHADERMAKE}",
+    "%{IncludeDir.ASSIMP}",
 }
 
 defines {

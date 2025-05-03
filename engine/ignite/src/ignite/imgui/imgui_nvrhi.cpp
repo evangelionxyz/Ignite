@@ -1,6 +1,7 @@
 #include "imgui_nvrhi.hpp"
 #include "ignite/core/logger.hpp"
-#include "ignite/graphics/shader_factory.hpp"
+
+#include "ignite/graphics/renderer.hpp"
 
 namespace ignite
 {
@@ -49,14 +50,7 @@ namespace ignite
         m_Device = device;
         commandList = device->createCommandList();
 
-        vertexShader = Shader::Create(device, "resources/shaders/imgui.vertex.hlsl", ShaderMake::ShaderType::Vertex, false);
-        pixelShader = Shader::Create(device, "resources/shaders/imgui.pixel.hlsl", ShaderMake::ShaderType::Pixel, false);
-
-        if (!vertexShader || !pixelShader)
-        {
-            LOG_ERROR("Failed to create ImGui Shader");
-            return false;
-        }
+        VPShader *imguiShader = Renderer::GetDefaultShader("imgui");
 
         nvrhi::VertexAttributeDesc vertexAttribLayout[] =
         {
@@ -65,7 +59,7 @@ namespace ignite
             {"COLOR", nvrhi::Format::RGBA8_UNORM, 1, 0, offsetof(ImDrawVert, col), sizeof(ImDrawVert), false}
         };
 
-        attributeLayout = device->createInputLayout(vertexAttribLayout, std::size(vertexAttribLayout), vertexShader->GetHandle());
+        attributeLayout = device->createInputLayout(vertexAttribLayout, std::size(vertexAttribLayout), imguiShader->vertex);
 
         // Create PSO (Pipeline State Object)
         nvrhi::BlendState blendState;
@@ -104,8 +98,8 @@ namespace ignite
         bindingLayout = device->createBindingLayout(layoutDesc);
         graphicsPipelineDesc.primType = nvrhi::PrimitiveType::TriangleList;
         graphicsPipelineDesc.inputLayout = attributeLayout;
-        graphicsPipelineDesc.VS = vertexShader->GetHandle();
-        graphicsPipelineDesc.PS = pixelShader->GetHandle();
+        graphicsPipelineDesc.VS = imguiShader->vertex;
+        graphicsPipelineDesc.PS = imguiShader->pixel;
         graphicsPipelineDesc.renderState = renderState;
         graphicsPipelineDesc.bindingLayouts = { bindingLayout };
 
@@ -322,9 +316,6 @@ namespace ignite
 
         vertexBuffer = nullptr;
         indexBuffer = nullptr;
-
-        vertexShader = nullptr;
-        pixelShader = nullptr;
 
         commandList = nullptr;
     }

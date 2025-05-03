@@ -6,12 +6,11 @@
 #include <filesystem>
 #include <string>
 #include <vector>
-
 #include <ShaderMake/ShaderMake.h>
-
 #include <fstream>
-
 #include <nvrhi/nvrhi.h>
+
+#include <initializer_list>
 
 namespace ignite
 {
@@ -26,11 +25,10 @@ namespace ignite
         Shader(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile = false);
 
         static ShaderMake::ShaderBlob CompileOrGetShader(const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile);
-        static void SPIRVReflect(ShaderMake::ShaderType type, const ShaderMake::ShaderBlob &blob);
         static Ref<Shader> Create(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile = false);
-
         nvrhi::ShaderHandle GetHandle() { return m_Handle; }
 
+        static void SPIRVReflect(ShaderMake::ShaderType type, const ShaderMake::ShaderBlob &blob);
     private:
         nvrhi::ShaderHandle m_Handle = nullptr;
     };

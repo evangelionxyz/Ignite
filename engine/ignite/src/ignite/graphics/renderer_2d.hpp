@@ -27,8 +27,8 @@ namespace ignite
         VertexQuad *vertexBufferPtr = nullptr;
         nvrhi::BufferHandle vertexBuffer = nullptr;
         nvrhi::BufferHandle indexBuffer = nullptr;
-        Ref<Shader> vertexShader;
-        Ref<Shader> pixelShader;
+        nvrhi::ShaderHandle vertexShader;
+        nvrhi::ShaderHandle pixelShader;
         nvrhi::InputLayoutHandle inputLayout = nullptr;
         nvrhi::BindingLayoutHandle bindingLayout = nullptr;
         nvrhi::GraphicsPipelineHandle pipeline = nullptr;
