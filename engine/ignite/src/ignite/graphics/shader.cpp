@@ -96,35 +96,16 @@ namespace ignite
 
         LOG_ASSERT(std::filesystem::exists(filepath), "[Shader] File does not exists! {}", filepath.generic_string().c_str());
 
-        LOG_INFO("Compiling {} shader to binary: {}", ShaderStageToString(type), filepath.generic_string());
-
-        // try to get
-
-        std::filesystem::path cachedFilepath = GetShaderCacheDirectory() + std::filesystem::path(filepathCopy).replace_extension("").generic_string() + GetShaderExtension(api);
-        if (std::ifstream binFile(cachedFilepath, std::ios::binary); binFile.is_open())
         {
-            binFile.seekg(0, std::ios::end);
-            size_t fileSize = static_cast<size_t>(binFile.tellg());
-            shaderBlob.data.resize(fileSize /  sizeof(uint8_t));
-
-            binFile.seekg(0, std::ios::beg);
-            binFile.read(reinterpret_cast<char *>(shaderBlob.data.data()), fileSize);
-            
-            binFile.close();
-        }
-        else
-        {
-            // compile
+            // get or compile shader
             ShaderMake::ShaderContextDesc shaderDesc = ShaderMake::ShaderContextDesc();
 
             // filepath from filepathCopy
             std::shared_ptr<ShaderMake::ShaderContext> shaderContext = std::make_shared<ShaderMake::ShaderContext>(filepathCopy.generic_string(), type, shaderDesc, recompile);
-            ShaderMake::CompileStatus status = Renderer::GetShaderContext()->CompileOrGetShader({ shaderContext });
+            ShaderMake::CompileStatus status = Renderer::GetShaderContext()->CompileShader({ shaderContext });
 
             bool success = status == ShaderMake::CompileStatus::Success || status == ShaderMake::CompileStatus::SkipCompile;
-            LOG_ASSERT(success, "[Shader] failed to compile shader");
-
-            LOG_INFO("Shader compiled to binary!");
+            LOG_ASSERT(success, "[Shader] failed to get or compile shader");
 
             // copy blob
             shaderBlob = std::move(shaderContext->blob);
