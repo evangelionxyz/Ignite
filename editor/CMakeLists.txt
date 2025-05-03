@@ -18,12 +18,13 @@ target_include_directories(IgniteEditor PRIVATE
   ${THIRDPARTY}/IMGUIZMO
   ${THIRDPARTY}/entt
   ${THIRDPARTY}/STB/include
-  ${THIRDPARTY}/ShaderMake/include
+  ${THIRDPARTY}/ShaderMake/ShaderMake/include
   ${THIRDPARTY}/NVRHI/thirdparty/Vulkan-Headers/include
   ${VULKAN_INCLUDE_DIR}
 )
 
 target_link_libraries(IgniteEditor PRIVATE IgniteEngine)
+target_compile_definitions(IgniteEditor PRIVATE SHADERMAKE_COLORS)
 
 if (WIN32)
   target_compile_definitions(IgniteEditor PRIVATE 

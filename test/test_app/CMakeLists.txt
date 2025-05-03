@@ -4,6 +4,7 @@ add_executable(TestApp
 )
 
 target_link_libraries(TestApp PRIVATE IgniteEngine)
+target_compile_definitions(TestApp PRIVATE SHADERMAKE_COLORS)
 
 target_include_directories(TestApp PRIVATE
     src
@@ -18,7 +19,7 @@ target_include_directories(TestApp PRIVATE
     ${THIRDPARTY}/IMGUIZMO
     ${THIRDPARTY}/entt
     ${THIRDPARTY}/STB/include
-    ${THIRDPARTY}/ShaderMake/include
+    ${THIRDPARTY}/ShaderMake/ShaderMake/include
     ${VULKAN_INCLUDE_DIR}
 )
 

@@ -1,6 +1,7 @@
 #include "editor_layer.hpp"
 #include "panels/scene_panel.hpp"
 #include "ignite/graphics/renderer_2d.hpp"
+#include "ignite/graphics/mesh_factory.hpp"
 
 #include <glm/glm.hpp>
 #include <nvrhi/utils.h>
@@ -37,59 +38,7 @@ namespace ignite
     };
 
     MeshRenderData *meshData = nullptr;
-
-    std::array<VertexMesh, 24> cubeVertices = {
-        // Front face
-        VertexMesh{{-0.5f, -0.5f,  0.5f}, { 0.f,  0.f,  1.f}, {0.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{ 0.5f, -0.5f,  0.5f}, { 0.f,  0.f,  1.f}, {1.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{ 0.5f,  0.5f,  0.5f}, { 0.f,  0.f,  1.f}, {1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{-0.5f,  0.5f,  0.5f}, { 0.f,  0.f,  1.f}, {0.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
     
-        // Back face
-        VertexMesh{{ 0.5f, -0.5f, -0.5f}, { 0.f,  0.f, -1.f}, {0.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{-0.5f, -0.5f, -0.5f}, { 0.f,  0.f, -1.f}, {1.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{-0.5f,  0.5f, -0.5f}, { 0.f,  0.f, -1.f}, {1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{ 0.5f,  0.5f, -0.5f}, { 0.f,  0.f, -1.f}, {0.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-    
-        // Left face
-        VertexMesh{{-0.5f, -0.5f, -0.5f}, {-1.f,  0.f,  0.f}, {0.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{-0.5f, -0.5f,  0.5f}, {-1.f,  0.f,  0.f}, {1.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{-0.5f,  0.5f,  0.5f}, {-1.f,  0.f,  0.f}, {1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{-0.5f,  0.5f, -0.5f}, {-1.f,  0.f,  0.f}, {0.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-    
-        // Right face
-        VertexMesh{{ 0.5f, -0.5f,  0.5f}, { 1.f,  0.f,  0.f}, {0.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{ 0.5f, -0.5f, -0.5f}, { 1.f,  0.f,  0.f}, {1.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{ 0.5f,  0.5f, -0.5f}, { 1.f,  0.f,  0.f}, {1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{ 0.5f,  0.5f,  0.5f}, { 1.f,  0.f,  0.f}, {0.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-    
-        // Top face
-        VertexMesh{{-0.5f,  0.5f,  0.5f}, { 0.f,  1.f,  0.f}, {0.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{ 0.5f,  0.5f,  0.5f}, { 0.f,  1.f,  0.f}, {1.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{ 0.5f,  0.5f, -0.5f}, { 0.f,  1.f,  0.f}, {1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{-0.5f,  0.5f, -0.5f}, { 0.f,  1.f,  0.f}, {0.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-    
-        // Bottom face
-        VertexMesh{{-0.5f, -0.5f, -0.5f}, { 0.f, -1.f,  0.f}, {0.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{ 0.5f, -0.5f, -0.5f}, { 0.f, -1.f,  0.f}, {1.f, 0.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{ 0.5f, -0.5f,  0.5f}, { 0.f, -1.f,  0.f}, {1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-        VertexMesh{{-0.5f, -0.5f,  0.5f}, { 0.f, -1.f,  0.f}, {0.f, 1.f}, {1.f, 1.f}, {1.f, 1.f, 1.f, 1.f}},
-    };
-
-    std::array<uint32_t, 36> cubeIndices = {
-        // Front face
-        0, 1, 2,  2, 3, 0,
-        // Back face
-        4, 5, 6,  6, 7, 4,
-        // Left face
-        8, 9,10, 10,11, 8,
-        // Right face
-       12,13,14, 14,15,12,
-        // Top face
-       16,17,18, 18,19,16,
-        // Bottom face
-       20,21,22, 22,23,20
-    };
 
     EditorLayer::EditorLayer(const std::string &name)
         : Layer(name), m_DeviceManager(nullptr)
@@ -131,7 +80,7 @@ namespace ignite
 
         // create buffers
         const auto vbDesc = nvrhi::BufferDesc()
-            .setByteSize(sizeof(cubeVertices))
+            .setByteSize(sizeof(MeshFactory::CubeVertices))
             .setIsVertexBuffer(true)
             .setInitialState(nvrhi::ResourceStates::VertexBuffer)
             .setKeepInitialState(true)
@@ -141,7 +90,7 @@ namespace ignite
         LOG_ASSERT(meshData->vertexBuffer, "Failed to create vertex buffer");
         
         const auto ibDesc = nvrhi::BufferDesc()
-            .setByteSize(sizeof(cubeIndices))
+            .setByteSize(sizeof(MeshFactory::CubeIndices))
             .setIsIndexBuffer(true)
             .setInitialState(nvrhi::ResourceStates::IndexBuffer)
             .setKeepInitialState(true)
@@ -166,8 +115,8 @@ namespace ignite
         m_CommandLists[0]->open();
         m_Texture->Write(m_CommandLists[0]);
 
-        m_CommandLists[0]->writeBuffer(meshData->vertexBuffer, cubeVertices.data(), sizeof(cubeVertices));
-        m_CommandLists[0]->writeBuffer(meshData->indexBuffer, cubeIndices.data(), sizeof(cubeIndices));
+        m_CommandLists[0]->writeBuffer(meshData->vertexBuffer, MeshFactory::CubeVertices.data(), sizeof(MeshFactory::CubeVertices));
+        m_CommandLists[0]->writeBuffer(meshData->indexBuffer, MeshFactory::CubeIndices.data(), sizeof(MeshFactory::CubeIndices));
 
         m_CommandLists[0]->close();
         device->executeCommandList(m_CommandLists[0]);
@@ -340,7 +289,7 @@ namespace ignite
 
         m_CommandLists[1]->setGraphicsState(meshGraphicsState);
         nvrhi::DrawArguments args;
-        args.setVertexCount(cubeIndices.size());
+        args.setVertexCount(MeshFactory::CubeIndices.size());
         args.instanceCount = 1;
         m_CommandLists[1]->drawIndexed(args);
         m_CommandLists[1]->close();

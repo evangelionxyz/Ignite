@@ -3,6 +3,8 @@
 #include <nvrhi/nvrhi.h>
 #include <glm/glm.hpp>
 
+#include "ignite/core/types.hpp"
+
 namespace ignite
 {
     struct VertexMesh

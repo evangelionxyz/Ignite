@@ -13,6 +13,8 @@ add_library(IgniteEngine
   src/ignite/graphics/shader_factory.cpp
   src/ignite/graphics/shader.cpp
   src/ignite/graphics/texture.cpp
+  src/ignite/graphics/mesh.cpp
+  src/ignite/graphics/mesh_factory.cpp
   src/ignite/graphics/window.cpp
   src/ignite/graphics/renderer_2d.cpp
   src/ignite/graphics/renderer.cpp
@@ -40,12 +42,13 @@ target_include_directories(IgniteEngine PRIVATE
   ${THIRDPARTY}/IMGUIZMO
   ${THIRDPARTY}/entt
   ${THIRDPARTY}/STB/include
-  ${THIRDPARTY}/ShaderMake/include
+  ${THIRDPARTY}/ShaderMake/ShaderMake/include
   ${THIRDPARTY}/NVRHI/thirdparty/Vulkan-Headers/include
   ${VULKAN_INCLUDE_DIR}
 )
 
 target_link_libraries(IgniteEngine PUBLIC glfw spdlog imgui stblib box2d ShaderMake)
+target_compile_definitions(IgniteEngine PRIVATE SHADERMAKE_COLORS)
 
 if (MSVC)
     #target_compile_options(IgniteEngine PRIVATE "/utf-8")
