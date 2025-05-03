@@ -10,7 +10,7 @@
 #include "editor_layer.hpp"
 #include "entt/entt.hpp"
 
-#include <ImGuizmo.h>
+#include "ignite/imgui/gizmo.hpp"
 
 #include <set>
 #include <unordered_map>
@@ -537,24 +537,30 @@ namespace ignite
         ImGui::Image(imguiTex, window->Size);
 
         static glm::mat4 testMatrix(1.0f);
+        static glm::mat4 testMatrix2(1.0f);
 
-        // ImGuizmo render
-        ImGuizmo::SetDrawlist();
-        ImGuizmo::SetRect(window->Pos.x, window->Pos.y, window->Size.x, window->Size.y);
-        ImGuizmo::SetOrthographic(m_ViewportCamera->projectionType == Camera::Type::Orthographic);
+        GizmoInfo gizmoInfo;
+        gizmoInfo.cameraView = m_ViewportCamera->viewMatrix;
+        gizmoInfo.cameraProjection = m_ViewportCamera->projectionMatrix;
+        gizmoInfo.cameraType = m_ViewportCamera->projectionType;
+        gizmoInfo.viewRect = { window->Pos.x, window->Pos.y, window->Size.x, window->Size.y };
 
-        static f32 snapValue = 0.5f;
-        f32 snapValues[] = { snapValue, snapValue, snapValue };
+        {
+            ImGuizmo::PushID("t1");
+            Gizmo gizmo(gizmoInfo);
+            gizmo.SetOperation(ImGuizmo::TRANSLATE);
+            gizmo.Manipulate(testMatrix);
+            ImGuizmo::PopID();
+        }
 
-        bool snapping = true;
-
-        const glm::mat4 &cameraProjection = m_ViewportCamera->projectionMatrix;
-        const glm::mat4 &cameraView = m_ViewportCamera->viewMatrix;
-
-        ImGuizmo::Manipulate(glm::value_ptr(cameraView), glm::value_ptr(cameraProjection)
-            , ImGuizmo::OPERATION::UNIVERSAL, IMGUIZMO_NAMESPACE::LOCAL
-            , glm::value_ptr(testMatrix), nullptr, snapping ? snapValues : nullptr
-            , nullptr, nullptr);
+        {
+            ImGuizmo::PushID("t2");
+            Gizmo gizmo(gizmoInfo);
+            gizmo.SetOperation(ImGuizmo::TRANSLATE);
+            gizmo.Manipulate(testMatrix2);
+            ImGuizmo::PopID();
+        }
+       
 
         ImGui::End();
     }
