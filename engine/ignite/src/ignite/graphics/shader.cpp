@@ -1,11 +1,12 @@
 #include "shader.hpp"
 
+#include "renderer.hpp"
+
 #include "ignite/core/application.hpp"
 
 #include <spirv_cross/spirv_cross.hpp>
 #include <spirv_cross/spirv_glsl.hpp>
 #include <spirv_cross/spirv_hlsl.hpp>
-#include <shaderc/shaderc.hpp>
 
 #include <fstream>
 #include <iterator>
@@ -19,7 +20,7 @@ using Microsoft::WRL::ComPtr;
 
 namespace ignite
 {
-    const char *GetShaderCacheDirectory()
+    std::string GetShaderCacheDirectory()
     {
         return "resources/shaders/bin/";
     }
@@ -31,40 +32,28 @@ namespace ignite
             std::filesystem::create_directories(cachedDirectory);
     }
 
-    const char *ShaderStageToString(ShaderStage stage)
+    const char *ShaderStageToString(ShaderMake::ShaderType type)
     {
-        switch(stage)
+        switch (type)
         {
-            case ShaderStage_Vertex: return "Vertex";
-            case ShaderStage_Fragment: return "Fragment";
+            case ShaderMake::ShaderType::Vertex: return "Vertex";
+            case ShaderMake::ShaderType::Pixel: return "Pixel";
         }
 
-        LOG_ASSERT(false, "Invalid shader stage");
-        return "Invalid shader stage";
+        LOG_ASSERT(false, "Invalid shader type");
+        return "Invalid shader type";
     }
 
-    nvrhi::ShaderType ShaderStageToNVRHIShaderType(ShaderStage stage)
+    nvrhi::ShaderType ShaderStageToNVRHIShaderType(ShaderMake::ShaderType type)
     {
-        switch (stage)
+        switch (type)
         {
-            case ShaderStage_Vertex: return nvrhi::ShaderType::Vertex;
-            case ShaderStage_Fragment: return nvrhi::ShaderType::Pixel;
+            case ShaderMake::ShaderType::Vertex: return nvrhi::ShaderType::Vertex;
+            case ShaderMake::ShaderType::Pixel: return nvrhi::ShaderType::Pixel;
         }
-        
+
         LOG_ASSERT(false, "Invalid shader stage");
         return nvrhi::ShaderType::None;
-    }
-
-    static shaderc_shader_kind ShaderStageToShaderC(ShaderStage stage)
-    {
-        switch(stage)
-        {
-            case ShaderStage_Vertex: return shaderc_glsl_vertex_shader;
-            case ShaderStage_Fragment: return shaderc_glsl_fragment_shader;
-        }
-        
-        LOG_ASSERT(false, "Invalid shader stage");
-        return shaderc_shader_kind(0);
     }
 
     static const char *GetShaderExtension(nvrhi::GraphicsAPI api)
@@ -80,121 +69,89 @@ namespace ignite
     }
 
 
-    Shader::Shader(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderStage stage, bool recompile)
+    Shader::Shader(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile)
     {
         CreateShaderCachedDirectoryIfNeeded();
 
-        ShaderData shaderData = CompileOrGetVulkanShader(filepath, stage, recompile);
+        ShaderMake::ShaderBlob blob = CompileOrGetShader(filepath, type, recompile);
+
+        LOG_ASSERT(blob.data.data(), "[Shader] Blob data is not valid");
 
         nvrhi::ShaderDesc shaderDesc;
-        shaderDesc.shaderType = ShaderStageToNVRHIShaderType(stage);
+        shaderDesc.shaderType = ShaderStageToNVRHIShaderType(type);
 
-        m_Handle = device->createShader(shaderDesc, shaderData.data.data(), shaderData.data.size() * sizeof(u32));
-        
-        LOG_ASSERT(m_Handle, "Failed to create {} shader: {}", 
-            ShaderStageToString(shaderData.stage), 
+        m_Handle = device->createShader(shaderDesc, blob.data.data(), blob.dataSize());
+
+        LOG_ASSERT(m_Handle, "Failed to create {} shader: {}",
+            ShaderStageToString(type),
             filepath.generic_string());
     }
 
-    ShaderData Shader::CompileOrGetVulkanShader(const std::filesystem::path &filepath, ShaderStage stage, bool recompile)
+    ShaderMake::ShaderBlob Shader::CompileOrGetShader(const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile)
     {
-        std::filesystem::path filepathCopy = filepath;
+        ShaderMake::ShaderBlob shaderBlob;
 
-        if (filepathCopy.extension() == ".hlsl")
-        {
-            filepathCopy.replace_extension(""); // remove extension
-        }
-
+        std::filesystem::path filepathCopy = filepath.filename();
         auto api = Application::GetInstance()->GetCreateInfo().graphicsApi;
 
-        ShaderData shaderData;
-        shaderData.stage = stage;
+        LOG_ASSERT(std::filesystem::exists(filepath), "[Shader] File does not exists! {}", filepath.generic_string().c_str());
 
-        shaderc::CompileOptions options;
-        options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
-        options.SetOptimizationLevel(shaderc_optimization_level_performance);
+        LOG_INFO("Compiling {} shader to binary: {}", ShaderStageToString(type), filepath.generic_string());
 
-        options.AddMacroDefinition("VULKAN"); // if needed in the shader
+        // try to get
 
-        std::filesystem::path cacheDirectory = GetShaderCacheDirectory();
-        std::filesystem::path cachedPath = cacheDirectory / (filepathCopy.filename().generic_string() + GetShaderExtension(api));
-
-        std::ifstream in(cachedPath, std::ios::in | std::ios::binary);
-        if (in.is_open() && !recompile)
+        std::filesystem::path cachedFilepath = GetShaderCacheDirectory() + std::filesystem::path(filepathCopy).replace_extension("").generic_string() + GetShaderExtension(api);
+        if (std::ifstream binFile(cachedFilepath, std::ios::binary); binFile.is_open())
         {
-            LOG_ASSERT(std::filesystem::exists(filepath), "[Shader] File does not exists! {}", cachedPath.generic_string().c_str());
+            binFile.seekg(0, std::ios::end);
+            size_t fileSize = static_cast<size_t>(binFile.tellg());
+            shaderBlob.data.resize(fileSize /  sizeof(uint8_t));
 
-            LOG_INFO("Get {} shader from binary: {}", ShaderStageToString(stage), cachedPath.generic_string());
-
-            // get
-            in.seekg(0, std::ios::end);
-            auto size = in.tellg(); // get data size in bytes
-
-            in.seekg(0, std::ios::beg);
-
-            auto &data = shaderData.data;
-            data.resize(size / sizeof(u32));
-            in.read(reinterpret_cast<char *>(data.data()), size);
-
-            in.close();
-
-            LOG_INFO("Shader binary loaded!");
+            binFile.seekg(0, std::ios::beg);
+            binFile.read(reinterpret_cast<char *>(shaderBlob.data.data()), fileSize);
+            
+            binFile.close();
         }
         else
         {
-            LOG_ASSERT(std::filesystem::exists(filepath), "[Shader] File does not exists! {}", filepath.generic_string().c_str());
-
-            LOG_INFO("Compiling {} shader to binary: {}", ShaderStageToString(stage), filepath.generic_string());
-
             // compile
-            std::string sourceCode;
-            std::stringstream ss;
+            ShaderMake::ShaderContextDesc shaderDesc = ShaderMake::ShaderContextDesc();
 
-            std::ifstream sourceIn(filepath, std::ios::in);
-            if (sourceIn.is_open())
-            {
-                ss << sourceIn.rdbuf();
-                sourceIn.close();
-                sourceCode = ss.str();
-            }
+            // filepath from filepathCopy
+            std::shared_ptr<ShaderMake::ShaderContext> shaderContext = std::make_shared<ShaderMake::ShaderContext>(filepathCopy.generic_string(), type, shaderDesc, recompile);
+            ShaderMake::CompileStatus status = Renderer::GetShaderContext()->CompileOrGetShader({ shaderContext });
 
-            shaderc_shader_kind shaderKind = (shaderc_shader_kind)ShaderStageToShaderC(stage);
-    
-            shaderc::Compiler compiler;
-            shaderc::SpvCompilationResult spvModule = compiler.CompileGlslToSpv(sourceCode, shaderKind, filepath.generic_string().c_str());
-    
-            bool success = spvModule.GetCompilationStatus() == shaderc_compilation_status_success;
-            LOG_ASSERT(success, "[Shader] failed to compile vulkan {}", spvModule.GetErrorMessage());
-    
-            // store the module to the shader data
-            shaderData.data = std::vector<u32>(spvModule.cbegin(), spvModule.cend());
-    
-            // save it to cache
-            std::ofstream out(cachedPath, std::ios::out | std::ios::binary);
-            auto &data = shaderData.data;
-            out.write(reinterpret_cast<char *>(data.data()), data.size() * sizeof(u32));
-
-            out.flush();
-            out.close();
+            bool success = status == ShaderMake::CompileStatus::Success || status == ShaderMake::CompileStatus::SkipCompile;
+            LOG_ASSERT(success, "[Shader] failed to compile shader");
 
             LOG_INFO("Shader compiled to binary!");
+
+            // copy blob
+            shaderBlob = std::move(shaderContext->blob);
         }
 
         // print reflect info (only SPIRV file)
         if (api == nvrhi::GraphicsAPI::VULKAN)
         {
-            Reflect(stage, shaderData.data);
+            SPIRVReflect(type, shaderBlob);
         }
 
-        return shaderData;
+        return shaderBlob;
     }
 
-    void Shader::Reflect(ShaderStage stage, const std::vector<u32> &data)
+    void Shader::SPIRVReflect(ShaderMake::ShaderType type, const ShaderMake::ShaderBlob &blob)
     {
-        spirv_cross::Compiler compiler(data);
+        if (blob.data.size() % sizeof(uint32_t) != 0)
+            throw std::runtime_error("Shader blob size is not aligned to 4 bytes");
+
+        const uint32_t *ptr = reinterpret_cast<const uint32_t *>(blob.data.data());
+        size_t wordCount = blob.data.size() / sizeof(uint32_t);
+        std::vector<uint32_t> dataBlob(ptr, ptr + wordCount);
+
+        spirv_cross::Compiler compiler(dataBlob);
         spirv_cross::ShaderResources res = compiler.get_shader_resources();
 
-        LOG_WARN("Shader Reflect - {}", ShaderStageToString(stage));
+        LOG_WARN("Shader Reflect - {}", ShaderStageToString(type));
 
         // --- Uniform Buffers ---
         LOG_WARN("   {} uniform buffers", res.uniform_buffers.size());
@@ -254,9 +211,9 @@ namespace ignite
         // - subpass_inputs
     }
 
-    Ref<Shader> Shader::Create(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderStage stage, bool recompile)
+    Ref<Shader> Shader::Create(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile)
     {
-        Ref<Shader> returnShader = CreateRef<Shader>(device, filepath, stage, recompile);
+        Ref<Shader> returnShader = CreateRef<Shader>(device, filepath, type, recompile);
         if (returnShader->GetHandle() == nullptr)
             return nullptr;
 

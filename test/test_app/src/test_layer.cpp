@@ -61,8 +61,8 @@ namespace ignite
         m_ShaderFactory = CreateRef<ShaderFactory>(m_Device, nativeFS, shaderPath);
 
         // create shader
-        vertexShader = Shader::Create(m_Device, "resources/shaders/test.vertex.hlsl", ShaderStage_Vertex);
-        pixelShader = Shader::Create(m_Device, "resources/shaders/test.pixel.hlsl", ShaderStage_Fragment);
+        vertexShader = Shader::Create(m_Device, "resources/shaders/test.vertex.hlsl", ShaderMake::ShaderType::Vertex);
+        pixelShader = Shader::Create(m_Device, "resources/shaders/test.pixel.hlsl", ShaderMake::ShaderType::Pixel);
 
         // create binding layout
 

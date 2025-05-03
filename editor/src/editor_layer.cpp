@@ -118,8 +118,8 @@ namespace ignite
         LOG_ASSERT(meshData->constantBuffer, "Failed to create constant buffer");
 
         // create shaders
-        meshData->vertexShader = Shader::Create(device, "resources/shaders/default.vertex.hlsl", ShaderStage_Vertex);
-        meshData->pixelShader = Shader::Create(device, "resources/shaders/default.pixel.hlsl", ShaderStage_Fragment);
+        meshData->vertexShader = Shader::Create(device, "resources/shaders/default.vertex.hlsl", ShaderMake::ShaderType::Vertex);
+        meshData->pixelShader = Shader::Create(device, "resources/shaders/default.pixel.hlsl", ShaderMake::ShaderType::Pixel);
         LOG_ASSERT(meshData->vertexShader && meshData->pixelShader, "Failed to create shaders");
 
         const auto attributes = VertexMesh::GetAttributes();

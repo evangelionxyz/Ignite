@@ -32,6 +32,11 @@ includedirs {
     "%{IncludeDir.STB}",
     "%{IncludeDir.NVRHI_VULKAN_HPP}",
     "%{IncludeDir.VULKAN_SDK}",
+    "%{IncludeDir.SHADERMAKE}",
+}
+
+defines {
+    "SHADERMAKE_COLORS"
 }
 
 --linux
@@ -50,6 +55,7 @@ defines {
     "NOMINMAX",
     "_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING",
     "_SILENCE_ALL_MS_EXT_DEPRECATION_WARNINGS",
+    "_CRT_SECURE_NO_WARNINGS"
 }
 
 filter "configurations:Debug"

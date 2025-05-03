@@ -53,8 +53,8 @@ namespace ignite
         s_Data->quadBatch.vertexBufferBase = new VertexQuad[vertAllocSize];
 
         // create shaders
-        s_Data->quadBatch.vertexShader = Shader::Create(device, "resources/shaders/default_2d.vertex.hlsl", ShaderStage_Vertex);
-        s_Data->quadBatch.pixelShader = Shader::Create(device, "resources/shaders/default_2d.pixel.hlsl", ShaderStage_Fragment);
+        s_Data->quadBatch.vertexShader = Shader::Create(device, "resources/shaders/default_2d.vertex.hlsl", ShaderMake::ShaderType::Vertex);
+        s_Data->quadBatch.pixelShader = Shader::Create(device, "resources/shaders/default_2d.pixel.hlsl", ShaderMake::ShaderType::Pixel);
         LOG_ASSERT(s_Data->quadBatch.vertexShader && s_Data->quadBatch.pixelShader, "Failed to create shaders");
 
         const auto attributes = VertexQuad::GetAttributes();

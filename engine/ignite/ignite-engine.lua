@@ -25,6 +25,7 @@ includedirs {
     "%{IncludeDir.STB}",
     "%{IncludeDir.NVRHI_VULKAN_HPP}",
     "%{IncludeDir.VULKAN_SDK}",
+    "%{IncludeDir.SHADERMAKE}",
 }
 
 links {
@@ -33,9 +34,14 @@ links {
     "GLFW",
     "STB",
     "SPDLOG",
+    "ShaderMake",
 
     "NVRHI",
     "NVRHI_VULKAN",
+}
+
+defines {
+    "SHADERMAKE_COLORS"
 }
 
 --linux
@@ -92,6 +98,7 @@ filter "system:windows"
         "NOMINMAX",
         "IGNITE_WITH_DX12",
         "IGNITE_WITH_VULKAN",
+        "_CRT_SECURE_NO_WARNINGS"
     }
     filter "configurations:Debug"
         runtime "Debug"

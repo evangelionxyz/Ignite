@@ -49,8 +49,8 @@ namespace ignite
         m_Device = device;
         commandList = device->createCommandList();
 
-        vertexShader = Shader::Create(device, "resources/shaders/imgui.vertex.hlsl", ShaderStage_Vertex, false);
-        pixelShader = Shader::Create(device, "resources/shaders/imgui.pixel.hlsl", ShaderStage_Fragment, false);
+        vertexShader = Shader::Create(device, "resources/shaders/imgui.vertex.hlsl", ShaderMake::ShaderType::Vertex, false);
+        pixelShader = Shader::Create(device, "resources/shaders/imgui.pixel.hlsl", ShaderMake::ShaderType::Pixel, false);
 
         if (!vertexShader || !pixelShader)
         {

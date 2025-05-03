@@ -33,6 +33,21 @@ namespace ignite
 
         m_Renderer = CreateRef<Renderer>(m_Window->GetDeviceManager(), createInfo.graphicsApi);
 
+        // Create shader make
+        {
+            m_ShaderMakeOptions.compilerType = ShaderMake::CompilerType_DXC;
+            m_ShaderMakeOptions.optimizationLevel = 3;
+            m_ShaderMakeOptions.baseDirectory = "resources/shaders/";
+            m_ShaderMakeOptions.outputDir = "bin";
+
+            if (createInfo.graphicsApi == nvrhi::GraphicsAPI::VULKAN)
+                m_ShaderMakeOptions.platformType = ShaderMake::PlatformType_SPIRV;
+            else if (createInfo.graphicsApi == nvrhi::GraphicsAPI::D3D12)
+                m_ShaderMakeOptions.platformType = ShaderMake::PlatformType_DXIL;
+
+            m_Renderer->CreateShaderContext(&m_ShaderMakeOptions);
+        }
+
         if (createInfo.useGui)
         {
             m_ImGuiLayer = CreateScope<ImGuiLayer>(GetDeviceManager());

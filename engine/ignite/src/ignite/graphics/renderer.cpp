@@ -35,6 +35,16 @@ namespace ignite
         Renderer2D::Shutdown();
     }
 
+    void Renderer::CreateShaderContext(ShaderMake::Options *options)
+    {
+        m_ShaderContext = CreateScope<ShaderMake::Context>(options);
+    }
+
+    ShaderMake::Context *Renderer::GetShaderContext()
+    {
+        return s_instance->m_ShaderContext.get();
+    }
+
     nvrhi::GraphicsAPI Renderer::GetGraphicsAPI()
     {
         return s_instance->m_GraphicsAPI;

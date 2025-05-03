@@ -85,6 +85,8 @@ namespace ignite
 
         Ref<Renderer> m_Renderer;
 
+        ShaderMake::Options m_ShaderMakeOptions;
+
         f64 m_PreviousTime = 0.0;
         f64 m_FrameTimeSum = 0.0;
         f64 m_AverageFrameTime = 0.0;

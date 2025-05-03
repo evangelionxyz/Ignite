@@ -13,6 +13,7 @@ IncludeDir["SPDLOG"] = "%{THIRDPARTY_DIR}/SPDLOG/include"
 IncludeDir["STB"] = "%{THIRDPARTY_DIR}/STB/include"
 IncludeDir["VULKAN_SDK"] = "%{VULKAN_SDK_PATH}/Include"
 IncludeDir["NVRHI_VULKAN_HPP"] = "%{THIRDPARTY_DIR}/NVRHI/thirdparty/Vulkan-Headers/include"
+IncludeDir["SHADERMAKE"] = "%{THIRDPARTY_DIR}/ShaderMake/ShaderMake/include"
 
 --library dirs
 LibraryDir = {}
@@ -55,4 +56,5 @@ group "NVIDIA"
 include "nvrhi.lua"
 include "nvrhi-vk.lua"
 include "nvrhi-d3d12.lua"
+include "shadermake.lua"
 group ""

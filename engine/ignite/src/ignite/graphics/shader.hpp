@@ -7,40 +7,29 @@
 #include <string>
 #include <vector>
 
+#include <ShaderMake/ShaderMake.h>
+
 #include <fstream>
 
 #include <nvrhi/nvrhi.h>
 
 namespace ignite
 {
-    enum ShaderStage
-    {
-        ShaderStage_Vertex,
-        ShaderStage_Fragment
-    };
-
-    struct ShaderData
-    {
-        ShaderStage stage;
-        std::vector<u32> data;
-    };
-
-    static const char *GetShaderCacheDirectory();
+    static std::string GetShaderCacheDirectory();
     static void CreateShaderCachedDirectoryIfNeeded();
-    static const char *ShaderStageToString(ShaderStage stage);
-    static nvrhi::ShaderType ShaderStageToNVRHIShaderType(ShaderStage stage);
+    static nvrhi::ShaderType ShaderTypeToNVRHIShaderType(ShaderMake::ShaderType type);
 
     class  Shader
     {
     public:
         Shader() = default;
-        Shader(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderStage stage, bool recompile = false);
+        Shader(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile = false);
 
-        static ShaderData CompileOrGetVulkanShader(const std::filesystem::path &filepath, ShaderStage stage, bool recompile);
-        static void Reflect(ShaderStage stage, const std::vector<u32> &data);
+        static ShaderMake::ShaderBlob CompileOrGetShader(const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile);
+        static void SPIRVReflect(ShaderMake::ShaderType type, const ShaderMake::ShaderBlob &blob);
+        static Ref<Shader> Create(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile = false);
 
         nvrhi::ShaderHandle GetHandle() { return m_Handle; }
-        static Ref<Shader> Create(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderStage stage, bool recompile = false);
 
     private:
         nvrhi::ShaderHandle m_Handle = nullptr;
