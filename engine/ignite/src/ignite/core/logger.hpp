@@ -66,12 +66,8 @@ OStream& operator<<(OStream& os, glm::qua<T, Q> quaternion)
 #define LOG_DEBUG(...) Logger::GetLogger()->debug(__VA_ARGS__)
 #define LOG_TRACE(...) Logger::GetLogger()->trace(__VA_ARGS__)
 
-#ifdef _DEBUG
 #define LOG_ASSERT(check, ...)\
     if (!(check)) {\
         LOG_ERROR(__VA_ARGS__);\
-        DEBUGBREAK();\
+        DEBUGBREAK()\
     }
-#else
-#define LOG_ASSERT(...)
-#endif

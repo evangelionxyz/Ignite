@@ -11,7 +11,6 @@
 
 namespace ignite
 {
-
     struct MeshRenderData
     {
         Ref<Shader> vertexShader;

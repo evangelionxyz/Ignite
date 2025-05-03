@@ -13,7 +13,7 @@
 #ifdef _DEBUG
     #define ENABLE_ASSERTS
     #ifdef _WIN32
-        #define DEBUGBREAK() __debugbreak()
+        #define DEBUGBREAK() __debugbreak();
     #elif __linux__
         #define DEBUGBREAK() __builtin_trap();
     #endif
