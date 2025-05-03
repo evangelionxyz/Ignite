@@ -345,10 +345,10 @@ namespace ignite
 
         switch (m_DeviceParams.swapChainFormat) // NOLINT(clang-diagnostic-switch-enum)
         {
-            case nvrhi::Format::RGBA8_UNORM:
+            case nvrhi::Format::SRGBA8_UNORM:
                 m_SwapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
             break;
-            case nvrhi::Format::BGRA8_UNORM:
+            case nvrhi::Format::SBGRA8_UNORM:
                 m_SwapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
             break;
             default:

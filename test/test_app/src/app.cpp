@@ -21,6 +21,7 @@ namespace ignite
         createInfo.width = 1280;
         createInfo.height = 720;
         createInfo.useGui = true;
+        // default graphics api
         createInfo.graphicsApi = nvrhi::GraphicsAPI::VULKAN;
         return new TestApp(createInfo);
     }

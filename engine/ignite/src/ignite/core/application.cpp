@@ -15,23 +15,29 @@ namespace ignite
     {
         s_Instance = this;
 
+        if (m_CreateInfo.cmdLineArgs.count > 1)
+        {
+            if (strcmp(createInfo.cmdLineArgs.args[1], "-dx12") == 0)
+                m_CreateInfo.graphicsApi = nvrhi::GraphicsAPI::D3D12;
+        }
+
         m_CommandManager = CreateScope<CommandManager>();
 
         DeviceCreationParameters deviceCreateInfo;
-        deviceCreateInfo.backBufferWidth = createInfo.width;
-        deviceCreateInfo.backBufferHeight = createInfo.height;
-        deviceCreateInfo.startMaximized = createInfo.maximized;
+        deviceCreateInfo.backBufferWidth = m_CreateInfo.width;
+        deviceCreateInfo.backBufferHeight = m_CreateInfo.height;
+        deviceCreateInfo.startMaximized = m_CreateInfo.maximized;
 
         m_Window = CreateScope<Window>(
-            createInfo.name.c_str(),
+            m_CreateInfo.name.c_str(),
             deviceCreateInfo,
-            createInfo.graphicsApi
+            m_CreateInfo.graphicsApi
         );
 
         m_Window->SetEventCallback(BIND_CLASS_EVENT_FN(Application::OnEvent));
         m_Input = Input(m_Window->GetWindowHandle());
 
-        m_Renderer = CreateRef<Renderer>(m_Window->GetDeviceManager(), createInfo.graphicsApi);
+        m_Renderer = CreateRef<Renderer>(m_Window->GetDeviceManager(), m_CreateInfo.graphicsApi);
 
         if (createInfo.useGui)
         {

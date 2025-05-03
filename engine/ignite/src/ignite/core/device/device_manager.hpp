@@ -67,7 +67,7 @@ namespace ignite
         u32 backBufferHeight = 640;
         u32 refreshRate = 0;
         u32 swapChainBufferCount = 3;
-        nvrhi::Format swapChainFormat = nvrhi::Format::RGBA8_UNORM;
+        nvrhi::Format swapChainFormat = nvrhi::Format::SRGBA8_UNORM;
         u32 swapChainSampleCount = 1;
         u32 swapChainSampleQuality = 0;
         u32 maxFramesInFlight = 2;
