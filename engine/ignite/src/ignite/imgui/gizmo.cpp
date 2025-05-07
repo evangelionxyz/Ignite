@@ -7,9 +7,10 @@
 
 namespace ignite {
 
-    Gizmo::Gizmo(const GizmoInfo &info)
-        : m_GizmoInfo(info)
+    void Gizmo::SetInfo(const GizmoInfo &info)
     {
+        m_GizmoInfo = info;
+
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetRect(
             m_GizmoInfo.viewRect.min.x,
@@ -42,6 +43,16 @@ namespace ignite {
             nullptr, 
             m_GizmoInfo.isSnapping ? snapValues : nullptr,
             nullptr, nullptr);
+    }
+
+    void Gizmo::DrawGrid(float gridSize, const glm::mat4 &gridMatrix)
+    {
+        ImGuizmo::DrawGrid(
+            glm::value_ptr(m_GizmoInfo.cameraView),
+            glm::value_ptr(m_GizmoInfo.cameraProjection),
+            glm::value_ptr(gridMatrix),
+            10.0f
+        );
     }
 
     bool Gizmo::IsManipulating() const

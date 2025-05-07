@@ -3,50 +3,17 @@
 #include "ignite/core/application.hpp"
 #include "ignite/core/device/device_manager.hpp"
 
+#include "ignite/graphics/renderer_2d.hpp"
+#include "ignite/scene/camera.hpp"
+
 #include <nvrhi/utils.h>
 
 namespace ignite
 {
-    struct TestVertex
-    {
-        glm::vec2 position;
-        glm::vec4 color;
-
-        static std::array<nvrhi::VertexAttributeDesc, 2> GetAttributes()
-        {
-            return
-            {
-                nvrhi::VertexAttributeDesc()
-                    .setName("POSITION")
-                    .setBufferIndex(0)
-                    .setFormat(nvrhi::Format::RG32_FLOAT)
-                    .setOffset(offsetof(TestVertex, position))
-                    .setElementStride(sizeof(TestVertex)),
-                nvrhi::VertexAttributeDesc()
-                    .setName("COLOR")
-                    .setFormat(nvrhi::Format::RGBA32_FLOAT)
-                    .setOffset(offsetof(TestVertex, color))
-                    .setElementStride(sizeof(TestVertex))
-            };
-        }
-    };
-
-    static std::array<TestVertex, 3> vertices
-    {
-        TestVertex{{ -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-        TestVertex{{  0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-        TestVertex{{  0.5f, -0.5f }, { 0.0f, 1.0f, 1.0f, 1.0f } }
-    };
-
-    static std::array<u32, 3> indices
-    {
-        0, 1, 2
-    };
+    int colorAttachmentIndex = 0;
 
     TestLayer::TestLayer(const std::string &name)
         : Layer(name)
-        , m_DeviceManager(nullptr)
-        , m_Device(nullptr)
     {
     }
 
@@ -55,79 +22,26 @@ namespace ignite
         m_DeviceManager = Application::GetDeviceManager();
         m_Device = m_DeviceManager->GetDevice();
 
-        // create shader factory
-        std::filesystem::path shaderPath = ("resources" + GetShaderFolder(m_DeviceManager->GetGraphicsAPI()));
-        Ref<vfs::NativeFileSystem> nativeFS = CreateRef<vfs::NativeFileSystem>();
-        m_ShaderFactory = CreateRef<ShaderFactory>(m_Device, nativeFS, shaderPath);
+        m_CommandList = m_Device->createCommandList();
+        Renderer2D::InitQuadData(m_DeviceManager->GetDevice(), m_CommandList);
 
-        // create shader
-        vertexShader = Shader::Create(m_Device, "resources/shaders/test.vertex.hlsl", ShaderMake::ShaderType::Vertex);
-        pixelShader = Shader::Create(m_Device, "resources/shaders/test.pixel.hlsl", ShaderMake::ShaderType::Pixel);
+        RenderTargetCreateInfo createInfo = {};
+        createInfo.device = m_Device;
+        createInfo.depthRead = true;
+        createInfo.attachments = {
+            //FramebufferAttachments{ nvrhi::Format::D32S8},
+            FramebufferAttachments{ nvrhi::Format::RGBA8_UNORM },
+        };
 
-        // create binding layout
+        m_RenderTarget = CreateRef<RenderTarget>(createInfo);
 
-        // create input layout
-        auto attributes = TestVertex::GetAttributes();
-        inputLayout = m_Device->createInputLayout(attributes.data(), attributes.size(), vertexShader->GetHandle());
-        LOG_ASSERT(inputLayout, "Failed to create input layout");
+        m_ViewportCamera = CreateScope<Camera>("Editor Camera");
+        //m_ViewportCamera->CreateOrthographic(Application::GetInstance()->GetCreateInfo().width, Application::GetInstance()->GetCreateInfo().height, 8.0f, 0.1f, 350.0f);
+        m_ViewportCamera->CreatePerspective(45.0f, Application::GetInstance()->GetCreateInfo().width, Application::GetInstance()->GetCreateInfo().height, 0.1f, 350.0f);
+        m_ViewportCamera->position = { 3.0f, 2.0f, 3.0f };
+        m_ViewportCamera->yaw = -0.729f;
+        m_ViewportCamera->pitch = 0.410f;
 
-        // create buffers
-        auto vertexBufferDesc = nvrhi::BufferDesc()
-            .setByteSize(sizeof(vertices))
-            .setIsVertexBuffer(true)
-            .setInitialState(nvrhi::ResourceStates::VertexBuffer)
-            .setKeepInitialState(true)
-            .setDebugName("Vertex buffer");
-        vertexBuffer = m_Device->createBuffer(vertexBufferDesc);
-        LOG_ASSERT(vertexBuffer, "Failed to create vertex buffer");
-
-        auto indexBufferDesc = nvrhi::BufferDesc()
-            .setByteSize(sizeof(indices))
-            .setIsIndexBuffer(true)
-            .setInitialState(nvrhi::ResourceStates::IndexBuffer)
-            .setKeepInitialState(true)
-            .setDebugName("Index buffer");
-        indexBuffer = m_Device->createBuffer(indexBufferDesc);
-        LOG_ASSERT(indexBuffer, "Failed to create index buffer");
-
-        // create graphics pipeline
-
-        auto blendState = nvrhi::BlendState();
-        blendState.targets[0].blendEnable = true;
-
-        auto depthStencilState = nvrhi::DepthStencilState()
-            .setDepthWriteEnable(false)
-            .setDepthTestEnable(false);
-
-        auto rasterState = nvrhi::RasterState()
-            .setCullNone()
-            .setFillSolid();
-
-        auto renderState = nvrhi::RenderState()
-            .setBlendState(blendState)
-            .setDepthStencilState(depthStencilState)
-            .setRasterState(rasterState);
-
-        auto pipelineDesc = nvrhi::GraphicsPipelineDesc()
-            .setInputLayout(inputLayout)
-            .setPrimType(nvrhi::PrimitiveType::TriangleList)
-            .setVertexShader(vertexShader->GetHandle())
-            .setPixelShader(pixelShader->GetHandle())
-            .setRenderState(renderState);
-
-        nvrhi::IFramebuffer *framebuffer = m_DeviceManager->GetCurrentFramebuffer();
-        pipeline = m_Device->createGraphicsPipeline(pipelineDesc, framebuffer);
-
-        // write buffer
-        commandList = m_Device->createCommandList();
-
-        commandList->open();
-
-        commandList->writeBuffer(vertexBuffer, vertices.data(), sizeof(vertices));
-        commandList->writeBuffer(indexBuffer, indices.data(), sizeof(indices));
-
-        commandList->close();
-        m_Device->executeCommandList(commandList);
     }
 
     void TestLayer::OnDetach()
@@ -146,30 +60,39 @@ namespace ignite
     {
         Layer::OnRender(framebuffer);
 
-        commandList->open();
-        nvrhi::utils::ClearColorAttachment(commandList, framebuffer, 0, nvrhi::Color(0.1f, 0.1f, 0.1f, 1.0f));
+        uint32_t backBufferIndex = m_DeviceManager->GetCurrentBackBufferIndex();
+        static uint32_t backBufferCount = m_DeviceManager->GetBackBufferCount();
+        uint32_t width = (uint32_t)framebuffer->getFramebufferInfo().getViewport().width();
+        uint32_t height = (uint32_t)framebuffer->getFramebufferInfo().getViewport().height();
 
-        nvrhi::GraphicsState graphicsState = nvrhi::GraphicsState()
-            .setViewport(nvrhi::ViewportState().addViewportAndScissorRect(framebuffer->getFramebufferInfo().getViewport()))
-            .setPipeline(pipeline)
-            .setFramebuffer(framebuffer)
-            .addVertexBuffer({ vertexBuffer, 0, 0 })
-            .setIndexBuffer({ indexBuffer, nvrhi::Format::R32_UINT });
+        m_RenderTarget->CreateFramebuffers(backBufferCount, backBufferIndex, { width, height });
 
-       commandList->setGraphicsState(graphicsState);
+        m_CommandList->open();
 
-        nvrhi::DrawArguments args;
-        args.vertexCount = u32(indices.size());
-        args.instanceCount = 1;
+        // clear main framebuffer
+        nvrhi::utils::ClearColorAttachment(m_CommandList, framebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
 
-        commandList->drawIndexed(args);
+        // clear render target framebuffer
+        m_RenderTarget->ClearColorAttachment(m_CommandList, colorAttachmentIndex, colorAttachmentIndex == 0 ? glm::vec3(0.5f, 0.0f, 0.0f) : glm::vec3(0.0f, 0.5f, 0.0f));
+        nvrhi::IFramebuffer *fb = m_RenderTarget->GetCurrentFramebuffer();
 
-        commandList->close();
-        m_Device->executeCommandList(commandList);
+        Renderer2D::Begin(m_ViewportCamera.get(), fb);
+        Renderer2D::DrawQuad(glm::scale(glm::mat4(1.0f), glm::vec3(2.0f)), glm::vec4(1.0f));
+        Renderer2D::Flush();
+        Renderer2D::End();
+
+        m_CommandList->close();
+        m_Device->executeCommandList(m_CommandList);
     }
 
     void TestLayer::OnGuiRender()
     {
-        ImGui::ShowDemoWindow();
+        ImGui::Begin("Test Window");
+        const ImTextureID imguiTex = reinterpret_cast<ImTextureID>(m_RenderTarget->GetColorAttachment(colorAttachmentIndex).Get());
+        ImGui::Image(imguiTex, {480, 256 });
+
+        ImGui::SliderInt("Color Attachment Index", &colorAttachmentIndex, 0, 1);
+
+        ImGui::End();
     }
 }

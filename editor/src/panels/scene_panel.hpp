@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ipanel.hpp"
-#include "render_target.hpp"
+#include "ignite/graphics/render_target.hpp"
 #include "ignite/scene/entity.hpp"
 #include "ignite/core/uuid.hpp"
 #include <string>
@@ -9,6 +9,8 @@
 #include <ignite/core/types.hpp>
 #include <glm/fwd.hpp>
 #include <nvrhi/nvrhi.h>
+
+#include "ignite/imgui/gizmo.hpp"
 
 namespace ignite
 {
@@ -32,7 +34,7 @@ namespace ignite
         explicit ScenePanel(const char *windowTitle, EditorLayer *editor);
         
         void SetActiveScene(Scene *scene, bool reset = false);
-        void CreateRenderTarget(nvrhi::IDevice *device, f32 width, f32 height);
+        void CreateRenderTarget(nvrhi::IDevice *device);
 
         void OnUpdate(f32 deltaTime) override;
         void OnGuiRender() override;
@@ -44,6 +46,9 @@ namespace ignite
         bool OnMouseScrolledEvent(MouseScrolledEvent &event);
         bool OnMouseMovedEvent(MouseMovedEvent &event);
 
+        void SetGizmoOperation(ImGuizmo::OPERATION op);
+        void SetGizmoMode(ImGuizmo::MODE mode);
+        
         Camera *GetViewportCamera() const { return m_ViewportCamera.get(); }
 
         void RenderHierarchy();
@@ -72,9 +77,14 @@ namespace ignite
         Scope<Camera> m_ViewportCamera;
         Ref<RenderTarget> m_RenderTarget;
         EditorLayer *m_Editor;
-        Scene *m_Scene = nullptr;
 
-        Entity m_SelectedEntity = { };
+        Scene *m_Scene = nullptr;
+        
+        Gizmo m_Gizmo;
+
+        std::vector<UUID> m_SelectedEntityIDs;
+        Entity m_SelectedEntity {};
+
         static UUID m_TrackingSelectedEntity;
 
         struct CameraData

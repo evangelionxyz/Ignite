@@ -123,7 +123,7 @@ namespace ignite
         device->executeCommandList(m_CommandLists[0]);
 
         m_ScenePanel = CreateRef<ScenePanel>("Scene Panel", this);
-        m_ScenePanel->CreateRenderTarget(device, 1280.0f, 720.0f);
+        m_ScenePanel->CreateRenderTarget(device);
 
         NewScene();
     }
@@ -143,6 +143,9 @@ namespace ignite
     void EditorLayer::OnUpdate(const f32 deltaTime)
     {
         Layer::OnUpdate(deltaTime);
+
+        // multi select entity
+        m_Data.multiSelect = Input::IsKeyPressed(Key::LeftShift);
 
         switch (m_Data.sceneState)
         {
@@ -178,6 +181,24 @@ namespace ignite
 
         switch (event.GetKeyCode())
         {
+        case Key::T:
+        {
+            if (!Input::IsMouseButtonPressed(Mouse::ButtonRight))
+                m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::TRANSLATE);
+            break;
+        }
+        case Key::R:
+        {
+            if (!Input::IsMouseButtonPressed(Mouse::ButtonRight))
+                m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::ROTATE);
+            break;
+        }
+        case Key::S:
+        {
+            if (!Input::IsMouseButtonPressed(Mouse::ButtonRight))
+                m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::SCALE);
+            break;
+        }
         case Key::F5:
         {
             (m_Data.sceneState == State_SceneEdit || m_Data.sceneState == State_SceneSimulate)
@@ -218,7 +239,16 @@ namespace ignite
     {
         Layer::OnRender(mainFramebuffer);
 
-        nvrhi::IFramebuffer *viewportFramebuffer = m_ScenePanel->GetRT()->framebuffer;
+        // create render target framebuffer
+
+        uint32_t backBufferIndex = m_DeviceManager->GetCurrentBackBufferIndex();
+        static uint32_t backBufferCount = m_DeviceManager->GetBackBufferCount();
+        uint32_t width = (uint32_t)mainFramebuffer->getFramebufferInfo().getViewport().width();
+        uint32_t height = (uint32_t)mainFramebuffer->getFramebufferInfo().getViewport().height();
+
+        m_ScenePanel->GetRT()->CreateFramebuffers(backBufferCount, backBufferIndex, { width, height });
+
+        nvrhi::IFramebuffer *viewportFramebuffer = m_ScenePanel->GetRT()->GetCurrentFramebuffer();
         nvrhi::Viewport viewport = viewportFramebuffer->getFramebufferInfo().getViewport();
 
         // mesh pipeline
@@ -254,21 +284,20 @@ namespace ignite
             LOG_ASSERT(meshData->pipeline, "Failed to create graphics pipeline");
         }
 
-        // main scene rendering
-        m_CommandLists[0]->open();
-        m_CommandLists[0]->clearTextureFloat(m_ScenePanel->GetRT()->texture,
-            nvrhi::AllSubresources, nvrhi::Color(
-                m_ScenePanel->GetRT()->clearColor.r,
-                m_ScenePanel->GetRT()->clearColor.g,
-                m_ScenePanel->GetRT()->clearColor.b,
-                1.0f
-            )
-        );
-        nvrhi::utils::ClearColorAttachment(m_CommandLists[0], mainFramebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
+        {
+            // main scene rendering
+            m_CommandLists[0]->open();
 
-        m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
-        m_CommandLists[0]->close();
-        m_DeviceManager->GetDevice()->executeCommandList(m_CommandLists[0]);
+            // clear main framebuffer color attachment
+            nvrhi::utils::ClearColorAttachment(m_CommandLists[0], mainFramebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
+
+            m_ScenePanel->GetRT()->ClearColorAttachment(m_CommandLists[0]);
+
+            m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
+            m_CommandLists[0]->close();
+            m_DeviceManager->GetDevice()->executeCommandList(m_CommandLists[0]);
+        }
+        
         
         // mesh command list m_CommandLists index 1
         m_CommandLists[1]->open();
@@ -282,7 +311,7 @@ namespace ignite
 
         const auto meshGraphicsState = nvrhi::GraphicsState()
             .setPipeline(meshData->pipeline)
-            .setFramebuffer(m_ScenePanel->GetRT()->framebuffer)
+            .setFramebuffer(m_ScenePanel->GetRT()->GetCurrentFramebuffer())
             .addBindingSet(meshData->bindingSet)
             .setViewport(nvrhi::ViewportState().addViewportAndScissorRect(viewport))
             .addVertexBuffer(nvrhi::VertexBufferBinding{meshData->vertexBuffer, 0, 0})
@@ -365,6 +394,8 @@ namespace ignite
 
     void EditorLayer::OnScenePlay()
     {
+        m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::NONE);
+
         if (m_Data.sceneState != State_SceneEdit)
             OnSceneStop();
 

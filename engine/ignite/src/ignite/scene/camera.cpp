@@ -66,6 +66,7 @@ namespace ignite
             }
             case Type::Perspective:
             {
+                //projectionMatrix = glm::perspectiveZO(glm::radians(fov), m_AspectRatio, nearClip, farClip);
                 projectionMatrix = glm::perspective(glm::radians(fov), m_AspectRatio, nearClip, farClip);
                 break;
             }

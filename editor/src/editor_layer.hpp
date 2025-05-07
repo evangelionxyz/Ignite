@@ -19,6 +19,7 @@ namespace ignite
         {
             bool debugMode = false;
             bool developerMode = false;
+            bool multiSelect = false;
             State sceneState = State_SceneEdit;
         };
 

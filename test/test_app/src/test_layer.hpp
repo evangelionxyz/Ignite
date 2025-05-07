@@ -1,12 +1,15 @@
 #include "ignite/core/layer.hpp"
 #include "ignite/graphics/shader_factory.hpp"
+#include "ignite/graphics/render_target.hpp"
 #include "ignite/core/logger.hpp"
+#include "ignite/core/types.hpp"
 
 #include "ignite/graphics/shader.hpp"
 
 namespace ignite
 {
     class DeviceManager;
+    class Camera;
 
     class TestLayer : public Layer
     {
@@ -23,21 +26,10 @@ namespace ignite
     private:
         DeviceManager *m_DeviceManager;
         nvrhi::IDevice *m_Device;
+        Scope<Camera> m_ViewportCamera;
 
-        Ref<ShaderFactory> m_ShaderFactory;
+        Ref<RenderTarget> m_RenderTarget;
 
-        Ref<Shader> vertexShader;
-        Ref<Shader> pixelShader;
-
-        nvrhi::InputLayoutHandle inputLayout;
-        nvrhi::BindingLayoutHandle bindingLayout;
-
-        nvrhi::BufferHandle vertexBuffer;
-        nvrhi::BufferHandle indexBuffer;
-
-        nvrhi::GraphicsPipelineDesc pipelineDesc;
-        nvrhi::GraphicsPipelineHandle pipeline;
-
-        nvrhi::CommandListHandle commandList;
+        nvrhi::CommandListHandle m_CommandList;
     };
 }

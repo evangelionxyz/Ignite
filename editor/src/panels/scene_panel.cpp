@@ -10,8 +10,6 @@
 #include "editor_layer.hpp"
 #include "entt/entt.hpp"
 
-#include "ignite/imgui/gizmo.hpp"
-
 #include <set>
 #include <unordered_map>
 #include <string>
@@ -54,9 +52,18 @@ namespace ignite
         m_SelectedEntity = SceneManager::GetEntity(m_Scene, m_TrackingSelectedEntity);
     }
 
-    void ScenePanel::CreateRenderTarget(nvrhi::IDevice *device, f32 width, f32 height)
+    void ScenePanel::CreateRenderTarget(nvrhi::IDevice *device)
     {
-        m_RenderTarget = CreateRef<RenderTarget>(device, width, height);
+
+        RenderTargetCreateInfo createInfo = {};
+        createInfo.device = device;
+        createInfo.depthRead = true;
+        createInfo.attachments = {
+            FramebufferAttachments{ nvrhi::Format::D32S8},
+            FramebufferAttachments{ nvrhi::Format::RGBA8_UNORM },
+        };
+
+        m_RenderTarget = CreateRef<RenderTarget>(createInfo);
     }
 
     void ScenePanel::OnGuiRender()
@@ -528,16 +535,15 @@ namespace ignite
         m_ViewportData.width = window->Size.x;
         m_ViewportData.height = window->Size.y;
 
-        m_RenderTarget->width = window->Size.x;
-        m_RenderTarget->height = window->Size.y;
+        //m_RenderTarget->width = window->Size.x;
+        //m_RenderTarget->height = window->Size.y;
 
-        m_ViewportCamera->SetSize(m_RenderTarget->width, m_RenderTarget->height);
+        m_ViewportCamera->SetSize(window->Size.x, window->Size.y);
 
-        const ImTextureID imguiTex = reinterpret_cast<ImTextureID>(m_RenderTarget->texture.Get());
+        const ImTextureID imguiTex = reinterpret_cast<ImTextureID>(m_RenderTarget->GetColorAttachment(0).Get());
         ImGui::Image(imguiTex, window->Size);
 
-        static glm::mat4 testMatrix(1.0f);
-        static glm::mat4 testMatrix2(1.0f);
+        static glm::mat4 gridMatrix(1.0f);
 
         GizmoInfo gizmoInfo;
         gizmoInfo.cameraView = m_ViewportCamera->viewMatrix;
@@ -545,22 +551,36 @@ namespace ignite
         gizmoInfo.cameraType = m_ViewportCamera->projectionType;
         gizmoInfo.viewRect = { window->Pos.x, window->Pos.y, window->Size.x, window->Size.y };
 
+        m_Gizmo.SetInfo(gizmoInfo);
+
+        for (auto &uuid : m_SelectedEntityIDs)
         {
-            ImGuizmo::PushID("t1");
-            Gizmo gizmo(gizmoInfo);
-            gizmo.SetOperation(ImGuizmo::TRANSLATE);
-            gizmo.Manipulate(testMatrix);
+            Entity entity = SceneManager::GetEntity(m_Scene, uuid);
+            ImGuizmo::PushID((u64)uuid);
+            
+            Transform &tr = entity.GetComponent<Transform>();
+
+            glm::mat4 transformMatrix = tr.WorldTransform();
+
+            m_Gizmo.Manipulate(transformMatrix);
+
+            if (m_Gizmo.IsManipulating())
+            {
+                glm::vec3 scale, translation, skew;
+                glm::vec4 perspective;
+                glm::quat orientation;
+                glm::decompose(transformMatrix, scale, orientation, translation, skew, perspective);
+
+                tr.local_translation = translation;
+                tr.local_scale = scale;
+                tr.local_rotation = orientation;
+            }
+
             ImGuizmo::PopID();
+
         }
 
-        {
-            ImGuizmo::PushID("t2");
-            Gizmo gizmo(gizmoInfo);
-            gizmo.SetOperation(ImGuizmo::TRANSLATE);
-            gizmo.Manipulate(testMatrix2);
-            ImGuizmo::PopID();
-        }
-       
+        m_Gizmo.DrawGrid(1000.0f);
 
         ImGui::End();
     }
@@ -623,7 +643,7 @@ namespace ignite
             }
             
             ImGui::Separator();
-            ImGui::ColorEdit3("Clear color", &m_RenderTarget->clearColor[0]);
+            //ImGui::ColorEdit3("Clear color", &m_RenderTarget->clearColor[0]);
 
             ImGui::TreePop();
         }
@@ -741,6 +761,16 @@ namespace ignite
         return false;
     }
 
+    void ScenePanel::SetGizmoOperation(ImGuizmo::OPERATION op)
+    {
+        m_Gizmo.SetOperation(op);
+    }
+
+    void ScenePanel::SetGizmoMode(ImGuizmo::MODE mode)
+    {
+        m_Gizmo.SetMode(mode);
+    }
+
     void ScenePanel::UpdateCameraInput(f32 deltaTime)
     {
         if (!m_ViewportData.isHovered)
@@ -821,7 +851,28 @@ namespace ignite
 
     Entity ScenePanel::SetSelectedEntity(Entity entity)
     {
+        if (!entity.IsValid())
+        {
+            m_SelectedEntityIDs.clear();
+        }
+
         m_TrackingSelectedEntity = entity.GetUUID();
+
+        if (m_Editor->GetState().multiSelect)
+        {
+            m_SelectedEntityIDs.push_back(m_TrackingSelectedEntity);
+        }
+        else
+        {
+            if (m_SelectedEntityIDs.size() > 1)
+                m_SelectedEntityIDs.clear();
+
+            if (m_SelectedEntityIDs.empty())
+                m_SelectedEntityIDs.push_back(m_TrackingSelectedEntity);
+
+            m_SelectedEntityIDs[0] = m_TrackingSelectedEntity;
+        }
+
         return m_SelectedEntity = entity;
     }
 
@@ -837,6 +888,4 @@ namespace ignite
             SceneManager::DuplicateEntity(m_Scene, m_SelectedEntity);
         }
     }
-
-
 }

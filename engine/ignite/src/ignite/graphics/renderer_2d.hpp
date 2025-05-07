@@ -57,14 +57,14 @@ namespace ignite
 
         nvrhi::IFramebuffer *framebuffer;
         nvrhi::BufferHandle constantBuffer = nullptr;
-        DeviceManager *deviceManager = nullptr;
+        nvrhi::IDevice *device = nullptr;
         nvrhi::ICommandList *commandList = nullptr;
     };
 
     class Renderer2D
     {
     public:
-        static void Init(DeviceManager *deviceManager);
+        static void Init(nvrhi::IDevice *device);
         static void Shutdown();
 
         static void Begin(Camera *camera, nvrhi::IFramebuffer *framebuffer);

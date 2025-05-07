@@ -52,7 +52,7 @@ namespace ignite
         
         device->executeCommandList(commandList);
 
-        Renderer2D::Init(deviceManager);
+        Renderer2D::Init(device);
     }
 
     Renderer::~Renderer()
