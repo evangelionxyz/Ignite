@@ -9,8 +9,10 @@ add_library(IgniteEngine
   src/ignite/core/uuid.cpp
   src/ignite/core/input/input.cpp
   src/ignite/imgui/imgui_nvrhi.cpp
+  src/ignite/imgui/gizmo.cpp
   src/ignite/imgui/imgui_layer.cpp
   src/ignite/graphics/shader_factory.cpp
+  src/ignite/graphics/render_target.cpp
   src/ignite/graphics/shader.cpp
   src/ignite/graphics/texture.cpp
   src/ignite/graphics/mesh.cpp
