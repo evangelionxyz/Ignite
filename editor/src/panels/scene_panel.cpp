@@ -800,7 +800,7 @@ namespace ignite
         const bool shift = Input::IsKeyPressed(Key::LeftShift) || Input::IsKeyPressed(Key::RightShift);
 
         // skip keyboard control
-        if (control || shift)
+        if (control || shift || mbPressed == false)
             return;
 
         if (m_ViewportCamera->projectionType == Camera::Type::Orthographic)
