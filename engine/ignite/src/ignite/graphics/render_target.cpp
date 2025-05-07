@@ -16,7 +16,6 @@ namespace ignite {
 
     void RenderTarget::CreateFramebuffers(uint32_t backBufferCount, uint32_t backBufferIndex, const glm::uvec2 &size)
     {
-
         for (auto attachment : m_CreateInfo.attachments)
         {
             bool isDepthAttachment = attachment.format == nvrhi::Format::D32S8 || attachment.format == nvrhi::Format::D16 || attachment.format == nvrhi::Format::D24S8 || attachment.format == nvrhi::Format::D32;
@@ -35,6 +34,15 @@ namespace ignite {
                 depthDesc.setIsRenderTarget(true);
                 depthDesc.setIsTypeless(true);
                 depthDesc.setKeepInitialState(m_CreateInfo.depthWrite);
+                depthDesc.setClearValue(nvrhi::Color(0.f));
+                depthDesc.setUseClearValue(true);
+                depthDesc.setDimension(nvrhi::TextureDimension::Texture2D);
+
+                // Set clear value for depth buffer
+                //nvrhi::utils::Clear clearValue;
+                //clearValue.depthStencil.depth = 1.0f;  // Far plane (1.0) is the default clear value
+                //clearValue.depthStencil.stencil = 0;
+                //depthDesc.setClearValue(clearValue);
 
                 m_DepthAttachment = m_CreateInfo.device->createTexture(depthDesc);
                 LOG_ASSERT(m_DepthAttachment, "Failed to create render target depth attachment");
@@ -156,6 +164,11 @@ namespace ignite {
 
     }
 
+    nvrhi::TextureHandle RenderTarget::GetDepthAttachment()
+    {
+        return m_DepthAttachment;
+    }
+
     nvrhi::FramebufferHandle RenderTarget::GetCurrentFramebuffer()
     {
         if (m_CurrentBackBufferIndex <= m_Framebuffers.size())
@@ -199,4 +212,10 @@ namespace ignite {
         nvrhi::utils::ClearColorAttachment(commandList, m_Framebuffers[m_CurrentBackBufferIndex], index, nvrhi::Color(clearColor.x, clearColor.y, clearColor.z, 1.0f));
 
     }
+
+    void RenderTarget::ClearDepthAttachment(nvrhi::CommandListHandle commandList, float depth, uint32_t stencil)
+    {
+        nvrhi::utils::ClearDepthStencilAttachment(commandList, m_Framebuffers[m_CurrentBackBufferIndex], depth, stencil);
+    }
+
 }

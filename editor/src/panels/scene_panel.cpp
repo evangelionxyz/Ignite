@@ -54,7 +54,6 @@ namespace ignite
 
     void ScenePanel::CreateRenderTarget(nvrhi::IDevice *device)
     {
-
         RenderTargetCreateInfo createInfo = {};
         createInfo.device = device;
         createInfo.depthRead = true;

@@ -193,11 +193,13 @@ namespace ignite
             blendState.targets[0].setBlendEnable(true);
 
             auto depthStencilState = nvrhi::DepthStencilState()
-                .setDepthWriteEnable(false)
-                .setDepthTestEnable(false);
+                .setDepthWriteEnable(true)
+                .setDepthTestEnable(true)
+                .setDepthFunc(nvrhi::ComparisonFunc::LessOrEqual); // use 1.0 for far depth
 
             auto rasterState = nvrhi::RasterState()
                 .setCullFront()
+                .setFrontCounterClockwise(false)
                 .setMultisampleEnable(false);
 
             auto renderState = nvrhi::RenderState()

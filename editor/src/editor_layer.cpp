@@ -259,11 +259,13 @@ namespace ignite
             blendState.targets[0].setBlendEnable(true);
 
             auto depthStencilState = nvrhi::DepthStencilState()
-                .setDepthWriteEnable(false)
-                .setDepthTestEnable(false);
+                .setDepthWriteEnable(true)
+                .setDepthTestEnable(true)
+                .setDepthFunc(nvrhi::ComparisonFunc::LessOrEqual); // use 1.0 for far depth
 
             auto rasterState = nvrhi::RasterState()
                 .setCullFront()
+                .setFrontCounterClockwise(false)
                 .setMultisampleEnable(false);
 
             auto renderState = nvrhi::RenderState()
@@ -292,6 +294,9 @@ namespace ignite
             nvrhi::utils::ClearColorAttachment(m_CommandLists[0], mainFramebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
 
             m_ScenePanel->GetRT()->ClearColorAttachment(m_CommandLists[0]);
+
+            float farDepth = 1.0f; // LessOrEqual
+            m_CommandLists[0]->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), nvrhi::AllSubresources, true, farDepth, true, 0);
 
             m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
             m_CommandLists[0]->close();
