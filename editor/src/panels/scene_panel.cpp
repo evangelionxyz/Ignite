@@ -56,7 +56,7 @@ namespace ignite
     {
         RenderTargetCreateInfo createInfo = {};
         createInfo.device = device;
-        createInfo.depthRead = true;
+        createInfo.depthWrite = true;
         createInfo.attachments = {
             FramebufferAttachments{ nvrhi::Format::D32S8},
             FramebufferAttachments{ nvrhi::Format::RGBA8_UNORM },
@@ -579,7 +579,7 @@ namespace ignite
 
         }
 
-        m_Gizmo.DrawGrid(1000.0f);
+        // m_Gizmo.DrawGrid(1000.0f);
 
         ImGui::End();
     }
@@ -795,6 +795,13 @@ namespace ignite
         const f32 xFactor = 0.0366f * (x * x) - 0.1778f * x + 0.3021f;
         const f32 yFactor = 0.0366f * (y * y) - 0.1778f * y + 0.3021f;
         const f32 yawSign = m_ViewportCamera->GetUpDirection().y < 0 ? -1.0f : 1.0f;
+
+        const bool control = Input::IsKeyPressed(Key::LeftControl) || Input::IsKeyPressed(Key::RightControl);
+        const bool shift = Input::IsKeyPressed(Key::LeftShift) || Input::IsKeyPressed(Key::RightShift);
+
+        // skip keyboard control
+        if (control || shift)
+            return;
 
         if (m_ViewportCamera->projectionType == Camera::Type::Orthographic)
         {

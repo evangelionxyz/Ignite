@@ -56,7 +56,7 @@ namespace ignite
 
         const auto attributes = VertexQuad::GetAttributes();
         s_r2d->quadBatch.inputLayout = device->createInputLayout(attributes.data(), u32(attributes.size()), s_r2d->quadBatch.vertexShader);
-        LOG_ASSERT(s_r2d->quadBatch.inputLayout, "[Renderer 2D]Failed to create input layout");
+        LOG_ASSERT(s_r2d->quadBatch.inputLayout, "[Renderer 2D] Failed to create input layout");
 
         const auto layoutDesc = VertexQuad::GetBindingLayoutDesc();
         s_r2d->quadBatch.bindingLayout = device->createBindingLayout(layoutDesc);

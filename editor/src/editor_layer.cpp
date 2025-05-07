@@ -67,8 +67,8 @@ namespace ignite
 
         // create shaders
         VPShader *shaders = Renderer::GetDefaultShader("default_mesh");
-        meshData->vertexShader = shaders->vertex;// Shader::Create(device, "resources/shaders/default.vertex.hlsl", ShaderMake::ShaderType::Vertex);
-        meshData->pixelShader = shaders->pixel; // Shader::Create(device, "resources/shaders/default.pixel.hlsl", ShaderMake::ShaderType::Pixel);
+        meshData->vertexShader = shaders->vertex;
+        meshData->pixelShader = shaders->pixel;
         LOG_ASSERT(meshData->vertexShader && meshData->pixelShader, "Failed to create shaders");
 
         const auto attributes = VertexMesh::GetAttributes();
@@ -286,22 +286,20 @@ namespace ignite
             LOG_ASSERT(meshData->pipeline, "Failed to create graphics pipeline");
         }
 
-        {
-            // main scene rendering
-            m_CommandLists[0]->open();
+        // main scene rendering
+        m_CommandLists[0]->open();
 
-            // clear main framebuffer color attachment
-            nvrhi::utils::ClearColorAttachment(m_CommandLists[0], mainFramebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
+        // clear main framebuffer color attachment
+        nvrhi::utils::ClearColorAttachment(m_CommandLists[0], mainFramebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
 
-            m_ScenePanel->GetRT()->ClearColorAttachment(m_CommandLists[0]);
+        m_ScenePanel->GetRT()->ClearColorAttachment(m_CommandLists[0]);
 
-            float farDepth = 1.0f; // LessOrEqual
-            m_CommandLists[0]->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), nvrhi::AllSubresources, true, farDepth, true, 0);
+        float farDepth = 1.0f; // LessOrEqual
+        m_CommandLists[0]->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), nvrhi::AllSubresources, true, farDepth, true, 0);
 
-            m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
-            m_CommandLists[0]->close();
-            m_DeviceManager->GetDevice()->executeCommandList(m_CommandLists[0]);
-        }
+        m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
+        m_CommandLists[0]->close();
+        m_DeviceManager->GetDevice()->executeCommandList(m_CommandLists[0]);
         
         
         // mesh command list m_CommandLists index 1
