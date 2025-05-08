@@ -23,7 +23,7 @@ namespace ignite
     MeshRenderData *meshData = nullptr;
 
     EditorLayer::EditorLayer(const std::string &name)
-        : Layer(name), m_DeviceManager(nullptr)
+        : Layer(name)
     {
     }
 
@@ -31,8 +31,7 @@ namespace ignite
     {
         Layer::OnAttach();
 
-        m_DeviceManager = Application::GetDeviceManager();
-        nvrhi::IDevice *device = m_DeviceManager->GetDevice();
+        m_Device = Application::GetDeviceManager()->GetDevice();
 
         meshData = new MeshRenderData();
 
@@ -43,25 +42,22 @@ namespace ignite
         LOG_ASSERT(meshData->vertexShader && meshData->pixelShader, "Failed to create shaders");
 
         const auto attributes = VertexMesh::GetAttributes();
-        meshData->inputLayout = device->createInputLayout(attributes.data(), attributes.size(), meshData->vertexShader);
+        meshData->inputLayout = m_Device->createInputLayout(attributes.data(), attributes.size(), meshData->vertexShader);
         LOG_ASSERT(meshData->inputLayout, "Failed to create input layout");
 
-        m_Model = CreateRef<Model>(device, "resources/scene.glb");
+        m_Model = CreateRef<Model>(m_Device, "resources/scene.glb");
 
         // write buffer with command list
-        m_CommandLists[0] = device->createCommandList();
-        m_CommandLists[1] = device->createCommandList();
-        Renderer2D::InitQuadData(m_DeviceManager->GetDevice(), m_CommandLists[0]);
+        m_CommandList = m_Device->createCommandList();
+        Renderer2D::InitQuadData(m_Device, m_CommandList);
 
-        m_CommandLists[0]->open();
-
-        m_Model->WriteBuffer(m_CommandLists[0]);
-
-        m_CommandLists[0]->close();
-        device->executeCommandList(m_CommandLists[0]);
+        m_CommandList->open();
+        m_Model->WriteBuffer(m_CommandList);
+        m_CommandList->close();
+        m_Device->executeCommandList(m_CommandList);
 
         m_ScenePanel = CreateRef<ScenePanel>("Scene Panel", this);
-        m_ScenePanel->CreateRenderTarget(device);
+        m_ScenePanel->CreateRenderTarget(m_Device);
 
         NewScene();
     }
@@ -69,8 +65,8 @@ namespace ignite
     void EditorLayer::OnDetach()
     {
         Layer::OnDetach();
-        m_CommandLists[0] = nullptr;
-        m_CommandLists[1] = nullptr;
+        m_CommandList = nullptr;
+        m_CommandList = nullptr;
 
         if (meshData)
         {
@@ -180,13 +176,14 @@ namespace ignite
         Layer::OnRender(mainFramebuffer);
 
         // create render target framebuffer
+        const uint32_t &backBufferIndex = Application::GetDeviceManager()->GetCurrentBackBufferIndex();
+        static uint32_t backBufferCount = Application::GetDeviceManager()->GetBackBufferCount();
+        const nvrhi::Viewport &mainViewport = mainFramebuffer->getFramebufferInfo().getViewport();
+        uint32_t width = (uint32_t)mainViewport.width();
+        uint32_t height = (uint32_t)mainViewport.height();
 
-        uint32_t backBufferIndex = m_DeviceManager->GetCurrentBackBufferIndex();
-        static uint32_t backBufferCount = m_DeviceManager->GetBackBufferCount();
-        uint32_t width = (uint32_t)mainFramebuffer->getFramebufferInfo().getViewport().width();
-        uint32_t height = (uint32_t)mainFramebuffer->getFramebufferInfo().getViewport().height();
-
-        m_ScenePanel->GetRT()->CreateFramebuffers(backBufferCount, backBufferIndex, { width, height });
+        // m_ScenePanel->GetRT()->CreateFramebuffers(backBufferCount, backBufferIndex, { width, height });
+        m_ScenePanel->GetRT()->CreateSingleFramebuffer({ width, height });
 
         nvrhi::IFramebuffer *viewportFramebuffer = m_ScenePanel->GetRT()->GetCurrentFramebuffer();
         nvrhi::Viewport viewport = viewportFramebuffer->getFramebufferInfo().getViewport();
@@ -222,33 +219,30 @@ namespace ignite
                 .setPrimType(nvrhi::PrimitiveType::TriangleList);
 
             // create with viewportFramebuffer (the same framebuffer to render)
-            meshData->pipeline = m_DeviceManager->GetDevice()->createGraphicsPipeline(pipelineDesc, viewportFramebuffer);
+            meshData->pipeline = m_Device->createGraphicsPipeline(pipelineDesc, viewportFramebuffer);
             LOG_ASSERT(meshData->pipeline, "Failed to create graphics pipeline");
         }
 
         // main scene rendering
-        m_CommandLists[0]->open();
+        m_CommandList->open();
 
         // clear main framebuffer color attachment
-        nvrhi::utils::ClearColorAttachment(m_CommandLists[0], mainFramebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
+        nvrhi::utils::ClearColorAttachment(m_CommandList, mainFramebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
 
-        m_ScenePanel->GetRT()->ClearColorAttachment(m_CommandLists[0]);
+        m_ScenePanel->GetRT()->ClearColorAttachment(m_CommandList);
 
         float farDepth = 1.0f; // LessOrEqual
-        m_CommandLists[0]->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), nvrhi::AllSubresources, true, farDepth, true, 0);
+        m_CommandList->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), nvrhi::AllSubresources, true, farDepth, true, 0);
 
         m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
-        m_CommandLists[0]->close();
-        m_DeviceManager->GetDevice()->executeCommandList(m_CommandLists[0]);
-        
-        
-        // mesh command list m_CommandLists index 1
-        m_CommandLists[1]->open();
-        
-        m_Model->Render(m_CommandLists[1], m_ScenePanel->GetRT()->GetCurrentFramebuffer(), meshData->pipeline, m_ScenePanel->GetViewportCamera());
+        m_CommandList->close();
+        m_Device->executeCommandList(m_CommandList);
 
-        m_CommandLists[1]->close();
-        m_DeviceManager->GetDevice()->executeCommandList(m_CommandLists[1]);
+
+        m_CommandList->open();
+        m_Model->Render(m_CommandList, m_ScenePanel->GetRT()->GetCurrentFramebuffer(), meshData->pipeline, m_ScenePanel->GetViewportCamera());
+        m_CommandList->close();
+        m_Device->executeCommandList(m_CommandList);
     }
 
     void EditorLayer::OnGuiRender()

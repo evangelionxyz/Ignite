@@ -27,6 +27,7 @@ namespace ignite {
     public:
         RenderTarget(RenderTargetCreateInfo createInfo);
 
+        void CreateSingleFramebuffer(const glm::uvec2 &size);
         void CreateFramebuffers(uint32_t backBufferCount, uint32_t backBufferIndex, const glm::uvec2 &size);
         void Resize(uint32_t width, uint32_t height, uint32_t backBufferIndex);
 
@@ -47,6 +48,7 @@ namespace ignite {
 
         std::vector<nvrhi::TextureHandle> m_ColorAttachments;
         nvrhi::TextureHandle m_DepthAttachment;
+        bool m_IsSingleFramebuffer = false;
 
         RenderTargetCreateInfo m_CreateInfo;
 

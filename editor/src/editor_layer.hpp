@@ -52,7 +52,7 @@ namespace ignite
         Ref<Model> m_Model;
         EditorData m_Data;
         
-        nvrhi::CommandListHandle m_CommandLists[2];
-        DeviceManager *m_DeviceManager;
+        nvrhi::CommandListHandle m_CommandList;
+        nvrhi::IDevice *m_Device = nullptr;
     };
 }

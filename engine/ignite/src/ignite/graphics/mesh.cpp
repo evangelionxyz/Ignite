@@ -34,7 +34,6 @@ namespace ignite {
         vertexBuffer = device->createBuffer(vbDesc);
         LOG_ASSERT(vertexBuffer, "[Mesh] Failed to create Vertex Buffer");
 
-
         // create index buffer
         nvrhi::BufferDesc ibDesc = nvrhi::BufferDesc();
         ibDesc.isIndexBuffer = true;
@@ -167,7 +166,7 @@ namespace ignite {
             // write model constant buffer
 
             static float rot = 0.0f;
-            rot += 10.0f * Application::GetDeltaTime();
+            rot += 7.0f * Application::GetDeltaTime();
 
             PushConstantMesh modelPushConstant;
             modelPushConstant.transformMatrix = glm::rotate(glm::radians(rot), glm::vec3 { 0.0f, 1.0f, 0.0f });
