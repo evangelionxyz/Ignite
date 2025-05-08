@@ -54,7 +54,7 @@ namespace ignite {
         // TODO: bone transform
 
         i32 meshID;
-        i32 parentID = -1;
+        i32 parentID;
 
         void CreateBuffers();
     };
@@ -78,8 +78,8 @@ namespace ignite {
     class ModelLoader
     {
     public:
-        static void ProcessNode(const aiScene *scene, aiNode *node, const glm::mat4 &transform, const std::string &filepath, std::vector<Ref<Mesh>> &meshes);
-        static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const glm::mat4 &transform, const std::string &filepath, std::vector<Ref<Mesh>> &meshes);
+        static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, i32 parentID = -1);
+        static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes);
 
     private:
         static Assimp::Importer m_Importer;

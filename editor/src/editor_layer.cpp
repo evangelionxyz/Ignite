@@ -69,7 +69,7 @@ namespace ignite
         meshData->bindingLayout = device->createBindingLayout(layoutDesc);
         LOG_ASSERT(meshData->bindingLayout, "Failed to create binding layout");
 
-        m_Model = CreateRef<Model>(device, "resources/scene.glb");
+        m_Model = CreateRef<Model>(device, "resources/scene2.glb");
 
         // create binding set
         auto bindingSetDesc = nvrhi::BindingSetDesc();

@@ -73,9 +73,10 @@ namespace ignite {
 
             // create meshes
             m_Meshes[i] = CreateRef<Mesh>(i); // i = mesh ID
+            m_Meshes[i]->parentID = -1;
         }
 
-        ModelLoader::ProcessNode(scene, scene->mRootNode, glm::mat4(1.0f), filepath.generic_string(), m_Meshes);
+        ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), m_Meshes);
 
         // create constant buffer
         const auto constantBufferDesc = nvrhi::BufferDesc()
@@ -108,14 +109,26 @@ namespace ignite {
     {
         nvrhi::Viewport viewport = framebuffer->getFramebufferInfo().getViewport();
 
-        for (auto &mesh : m_Meshes)
+        for (size_t i = 0; i < m_Meshes.size(); ++i)
         {
+            auto &mesh = m_Meshes[i];
+
             // write push constant
             PushConstantMesh pushConstant;
 
             static float rotatex = 0.0f;
             rotatex += 1.0f * 0.05f;
-            pushConstant.transformMatrix = mesh->localTransform * glm::rotate(glm::radians(rotatex), glm::vec3{ 1.0f, 0.0f, 0.0f });
+
+            pushConstant.transformMatrix = glm::rotate(glm::radians(rotatex), glm::vec3 { 1.0f, 0.0f, 0.0f });
+
+            if (mesh->parentID != -1)
+            {
+                pushConstant.transformMatrix *= m_Meshes[mesh->parentID]->localTransform * mesh->localTransform;
+            }
+            else
+            {
+                pushConstant.transformMatrix *= mesh->localTransform;
+            }
 
             glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(pushConstant.transformMatrix)));
             pushConstant.normalMatrix = glm::mat4(normalMat3);
@@ -143,28 +156,39 @@ namespace ignite {
     }
 
     // Mesh loader
-    void ModelLoader::ProcessNode(const aiScene *scene, aiNode *node, const glm::mat4 &transform, const std::string &filepath, std::vector<Ref<Mesh>> &meshes)
+    void ModelLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, i32 parentID)
     {
-        glm::mat4 meshTransform = scene->mNumAnimations == 0 ? Math::AssimpToGlmMatrix(node->mTransformation) * transform : glm::mat4(1.0f);
+        //glm::mat4 meshTransform = scene->mNumAnimations == 0 ? Math::AssimpToGlmMatrix(node->mTransformation) * transform : glm::mat4(1.0f);
+        glm::mat4 meshTransform = scene->mNumAnimations == 0 ? Math::AssimpToGlmMatrix(node->mTransformation) : glm::mat4(1.0f);
+
+        // store the starting index for meshes created in this node
+        i32 lastMeshIndexInThisNode = -1;
 
         for (uint32_t i = 0; i < node->mNumMeshes; ++i)
         {
             i32 meshIndex = node->mMeshes[i];
             aiMesh *mesh = scene->mMeshes[meshIndex];
 
-            LoadSingleMesh(scene, meshIndex, mesh, meshTransform, filepath, meshes);
+            meshes[meshIndex]->localTransform = meshTransform;
+            meshes[meshIndex]->parentID = parentID;
+
+            LoadSingleMesh(scene, meshIndex, mesh, filepath, meshes);
+
+            // update the last mesh index
+            lastMeshIndexInThisNode = meshIndex;
         }
+
+        i32 newParentID = lastMeshIndexInThisNode != -1 ? lastMeshIndexInThisNode : parentID;
 
         for (u32 i = 0; i < node->mNumChildren; ++i)
         {
-            ProcessNode(scene, node->mChildren[i], meshTransform, filepath, meshes);
+            ProcessNode(scene, node->mChildren[i], filepath, meshes, newParentID);
         }
     }
 
-    void ModelLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const glm::mat4 &transform, const std::string &filepath, std::vector<Ref<Mesh>> &meshes)
+    void ModelLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes)
     {
         meshes[meshIndex]->name = mesh->mName.C_Str();
-        meshes[meshIndex]->localTransform = transform;
 
         // vertices;
         VertexMesh vertex;
