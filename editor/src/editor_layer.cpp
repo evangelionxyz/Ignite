@@ -333,6 +333,15 @@ namespace ignite
         {
             // scene dockspace
             m_ScenePanel->OnGuiRender();
+
+            ImGui::Begin("Meshes List");
+
+            for (auto &mesh : m_Model->GetMeshes())
+            {
+                TraverseMeshes(mesh, 0);
+            }
+
+            ImGui::End();
         }
 
         ImGui::End(); // end dockspace
@@ -381,4 +390,26 @@ namespace ignite
 
         m_Data.sceneState = State_SceneSimulate;
     }
+
+    void EditorLayer::TraverseMeshes(Ref<Mesh> mesh, int traverseIndex)
+    {
+        if (mesh->parentID != -1 && traverseIndex == 0)
+            return;
+
+        ImGuiTreeNodeFlags flags = (mesh->children.empty()) ? ImGuiTreeNodeFlags_Leaf : 0 | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen
+            | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
+
+        bool opened = ImGui::TreeNodeEx(mesh->name.c_str(), flags, mesh->name.c_str());
+
+        if (opened)
+        {
+            for (i32 child : mesh->children)
+            {
+                TraverseMeshes(m_Model->GetMeshes()[child], ++traverseIndex);
+            }
+
+            ImGui::TreePop();
+        }
+    }
+
 }

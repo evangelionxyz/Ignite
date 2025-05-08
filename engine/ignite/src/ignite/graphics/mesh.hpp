@@ -68,6 +68,8 @@ namespace ignite {
         i32 meshID;
         i32 parentID;
 
+        std::vector<i32> children;
+
         void CreateBuffers();
     };
 
@@ -80,6 +82,8 @@ namespace ignite {
         void WriteBuffer(nvrhi::CommandListHandle commandList);
         void OnUpdate(f32 deltaTime);
         void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline, nvrhi::BindingSetHandle bindingSet = nullptr);
+
+        std::vector<Ref<Mesh>> &GetMeshes() { return m_Meshes; }
 
         nvrhi::BufferHandle modelConstantBuffer;
         nvrhi::BufferHandle materialConstantBuffer;

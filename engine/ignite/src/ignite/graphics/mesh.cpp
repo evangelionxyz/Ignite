@@ -181,6 +181,9 @@ namespace ignite {
             meshes[meshIndex]->localTransform = meshTransform;
             meshes[meshIndex]->parentID = parentID;
 
+            if (parentID != -1)
+                meshes[parentID]->children.push_back(meshIndex);
+
             LoadSingleMesh(scene, meshIndex, mesh, filepath, meshes);
 
             // update the last mesh index

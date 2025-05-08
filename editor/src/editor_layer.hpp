@@ -42,7 +42,9 @@ namespace ignite
         void OnScenePlay();
         void OnSceneStop();
         void OnSceneSimulate();
-        
+
+        void TraverseMeshes(Ref<Mesh> mesh, int traverseIndex = 0);
+
         Ref<ScenePanel> m_ScenePanel;
         
         Ref<Scene> m_ActiveScene;
