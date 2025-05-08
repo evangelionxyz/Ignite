@@ -96,7 +96,7 @@ namespace ignite
             m_Window->PollEvents();
 
             const f64 currTime = glfwGetTime();
-            const f64 deltaTime = currTime - m_PreviousTime;
+            m_DeltaTime = currTime - m_PreviousTime;
 
             // update window title
             if (m_AverageFrameTime > 0)
@@ -126,7 +126,7 @@ namespace ignite
             {
                 // update system (physics etc..)
                 for (auto layer = m_LayerStack.rbegin(); layer != m_LayerStack.rend(); ++layer)
-                    (*layer)->OnUpdate(static_cast<f32>(deltaTime));
+                    (*layer)->OnUpdate(static_cast<f32>(m_DeltaTime));
 
                 // render to main framebuffer
                 // begin render frame
@@ -159,7 +159,7 @@ namespace ignite
             // call this at lease once per frame!
             deviceManager->GetDevice()->runGarbageCollection();
 
-            UpdateAverageTimeTime(deltaTime);
+            UpdateAverageTimeTime(m_DeltaTime);
             // set previous time
             m_PreviousTime = currTime;
             ++m_FrameIndex;
@@ -217,4 +217,10 @@ namespace ignite
     {
         return GetInstance()->m_CommandManager.get();
     }
+
+    f32 Application::GetDeltaTime()
+    {
+        return GetInstance()->m_DeltaTime;
+    }
+
 }

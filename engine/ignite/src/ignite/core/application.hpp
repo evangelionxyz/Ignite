@@ -66,6 +66,8 @@ namespace ignite
         static DeviceManager *GetDeviceManager();
         static CommandManager *GetCommandManager();
 
+        static f32 GetDeltaTime();
+
         static void SetWindowTitle(const std::string &title);
 
         static void WindowIconify();
@@ -88,6 +90,7 @@ namespace ignite
         f64 m_PreviousTime = 0.0;
         f64 m_FrameTimeSum = 0.0;
         f64 m_AverageFrameTime = 0.0;
+        f32 m_DeltaTime = 0.0f;
         const f64 m_AverageTimeUpdateInterval = 0.5;
         i32 m_NumberOfAccumulatedFrames = 0;
         i32 m_FrameIndex = 0;

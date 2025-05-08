@@ -74,7 +74,8 @@ namespace ignite
         // create binding set
         auto bindingSetDesc = nvrhi::BindingSetDesc();
         bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, meshData->globalConstantBuffer));
-        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, m_Model->constantBuffer));
+        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, m_Model->modelConstantBuffer));
+        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, m_Model->materialConstantBuffer));
 
         meshData->bindingSet = device->createBindingSet(bindingSetDesc, meshData->bindingLayout);
         LOG_ASSERT(meshData->bindingSet, "Failed to create binding set");

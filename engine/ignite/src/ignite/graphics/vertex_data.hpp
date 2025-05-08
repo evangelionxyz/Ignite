@@ -19,6 +19,13 @@ namespace ignite
         glm::mat4 normalMatrix;
     };
 
+    struct PushConstantMaterial
+    {
+        glm::vec4 baseColor;
+        glm::vec4 diffuseColor;
+        float emissive;
+    };
+
     struct VertexMesh
     {
         glm::vec3 position;
@@ -63,8 +70,9 @@ namespace ignite
         {
             return nvrhi::BindingLayoutDesc()
                 .setVisibility(nvrhi::ShaderType::All)
-                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0))
-                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1));
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0)) // global push constants
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1)) // model push constants
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(2)); // material push constants
         }
     };
 

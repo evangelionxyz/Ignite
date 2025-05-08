@@ -10,6 +10,13 @@ cbuffer ModelPushConstants : register(b1)
     float4x4 normalMatrix;
 }
 
+cbuffer MaterialPushConstants : register(b2)
+{
+    float4 baseColor;
+    float4 diffuseColor;
+    float emissive;
+}
+
 struct PSInput
 {
     float4 position     : SV_POSITION;
@@ -36,7 +43,7 @@ float4 main(PSInput input) : SV_TARGET
     float ambient = 0.2f;
     float lighting = saturate(ambient + diff + spec);
 
-    float4 finalColor = input.color * lighting;
+    float4 finalColor = input.color * baseColor * lighting;
 
     return finalColor;
 }

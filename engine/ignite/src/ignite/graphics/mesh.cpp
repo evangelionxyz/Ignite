@@ -58,19 +58,16 @@ namespace ignite {
         LOG_ASSERT(scene == nullptr || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || scene->mRootNode,
             "[Model] Failed to load {}: {}", filepath, importer.GetErrorString());
 
+        if (scene == nullptr)
+            return;
+
         // load animation here
 
         // count vertices and indices
         m_Meshes.resize(scene->mNumMeshes);
 
-        uint32_t numVertices = 0;
-        uint32_t numIndices = 0;
-
         for (size_t i = 0; i < m_Meshes.size(); ++i)
         {
-            numVertices += scene->mMeshes[i]->mNumVertices;
-            numIndices += scene->mMeshes[i]->mNumFaces * 3;
-
             // create meshes
             m_Meshes[i] = CreateRef<Mesh>(i); // i = mesh ID
             m_Meshes[i]->parentID = -1;
@@ -79,17 +76,22 @@ namespace ignite {
         ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), m_Meshes);
 
         // create constant buffer
-        const auto constantBufferDesc = nvrhi::BufferDesc()
-            .setByteSize(sizeof(PushConstantGlobal))
+        auto constantBufferDesc = nvrhi::BufferDesc()
+            .setByteSize(sizeof(PushConstantMesh))
             .setIsConstantBuffer(true)
             .setIsVolatile(true)
             .setInitialState(nvrhi::ResourceStates::ConstantBuffer)
             .setMaxVersions(16);
 
-        constantBuffer = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(constantBuffer, "[Model] Failed to create constant buffer");
-    }
+        modelConstantBuffer = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(modelConstantBuffer, "[Model] Failed to create model constant buffer");
 
+        // create constant buffer
+        constantBufferDesc.setByteSize(sizeof(PushConstantMaterial));
+
+        materialConstantBuffer = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(materialConstantBuffer, "[Model] Failed to create material constant buffer");
+    }
 
     void Model::WriteBuffer(nvrhi::CommandListHandle commandList)
     {
@@ -113,26 +115,33 @@ namespace ignite {
         {
             auto &mesh = m_Meshes[i];
 
-            // write push constant
-            PushConstantMesh pushConstant;
+            // write material constant buffer
+            PushConstantMaterial materialPushConstant;
+            materialPushConstant.baseColor = mesh->material.baseColor;
+            materialPushConstant.diffuseColor = mesh->material.diffuseColor;
+            materialPushConstant.emissive = mesh->material.emissive;
+            commandList->writeBuffer(materialConstantBuffer, &materialPushConstant, sizeof(PushConstantMaterial));
 
-            static float rotatex = 0.0f;
-            rotatex += 1.0f * 0.05f;
+            // write model constant buffer
+            PushConstantMesh modelPushConstant;
 
-            pushConstant.transformMatrix = glm::rotate(glm::radians(rotatex), glm::vec3 { 1.0f, 0.0f, 0.0f });
+            static float rot = 0.0f;
+            rot += 10.0f * Application::GetDeltaTime();
+
+            modelPushConstant.transformMatrix = glm::rotate(glm::radians(rot), glm::vec3 { 0.0f, 1.0f, 0.0f });
 
             if (mesh->parentID != -1)
             {
-                pushConstant.transformMatrix *= m_Meshes[mesh->parentID]->localTransform * mesh->localTransform;
+                modelPushConstant.transformMatrix *= m_Meshes[mesh->parentID]->localTransform * mesh->localTransform;
             }
             else
             {
-                pushConstant.transformMatrix *= mesh->localTransform;
+                modelPushConstant.transformMatrix *= mesh->localTransform;
             }
 
-            glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(pushConstant.transformMatrix)));
-            pushConstant.normalMatrix = glm::mat4(normalMat3);
-            commandList->writeBuffer(constantBuffer, &pushConstant, sizeof(PushConstantMesh));
+            glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(modelPushConstant.transformMatrix)));
+            modelPushConstant.normalMatrix = glm::mat4(normalMat3);
+            commandList->writeBuffer(modelConstantBuffer, &modelPushConstant, sizeof(PushConstantMesh));
 
             // render
             auto meshGraphicsState = nvrhi::GraphicsState();
@@ -229,9 +238,38 @@ namespace ignite {
         if (mesh->mMaterialIndex >= 0)
         {
             // TODO: Load material here
+            aiMaterial *mat = scene->mMaterials[mesh->mMaterialIndex];
+            LoadMaterial(mat, meshes[meshIndex]);
         }
 
         meshes[meshIndex]->CreateBuffers();
+    }
+
+    void ModelLoader::LoadMaterial(aiMaterial *material, Ref<Mesh> &mesh)
+    {
+        aiColor4D base_color(1.0f, 1.0f, 1.0f, 1.0f);
+        aiColor4D diffuse_color(1.0f, 1.0f, 1.0f, 1.0f);
+        aiColor4D emmisive_color(0.0f, 0.0f, 0.0f, 0.0f);
+        f32 reflectivity = 0.0f;
+
+        material->Get(AI_MATKEY_BASE_COLOR, base_color);
+        material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse_color);
+        // material->Get(AI_MATKEY_ROUGHNESS_FACTOR, material.buffer_data.rougness);
+        material->Get(AI_MATKEY_COLOR_EMISSIVE, emmisive_color);
+        material->Get(AI_MATKEY_REFLECTIVITY, reflectivity);
+
+        mesh->material.baseColor = { base_color.r, base_color.g, base_color.b, 1.0f };
+        mesh->material.diffuseColor = { diffuse_color.r, diffuse_color.g, diffuse_color.b, 1.0f };
+        mesh->material.emissive = emmisive_color.r / diffuse_color.r;
+
+        // TODO: load textures
+        // material.diffuse_texture = LoadTexture(m_Scene, material, filepath, TextureType::DIFFUSE);
+        // material.specular_texture = LoadTexture(m_Scene, material, filepath, TextureType::SPECULAR);
+        // material.roughness_texture = LoadTexture(m_Scene, material, filepath, TextureType::DIFFUSE_ROUGHNESS);
+
+        // set transparent and reflectivity
+        mesh->material._transparent = false;
+        mesh->material._reflective = reflectivity > 0.0f;
     }
 
 }

@@ -22,8 +22,20 @@ namespace ignite {
 
     struct Material
     {
-        glm::vec4 color;
+        glm::vec4 baseColor;
+        glm::vec4 diffuseColor;
+        f32 emissive = 0.0f;
+
         nvrhi::TextureHandle texture = nullptr;
+        
+        bool IsTransparent() const { return _transparent; }
+        bool IsReflective() const { return _reflective; }
+
+    private:
+        bool _transparent = false;
+        bool _reflective = false;
+
+        friend class ModelLoader;
     };
 
     struct MeshCreateInfo
@@ -39,7 +51,7 @@ namespace ignite {
 
         std::vector<VertexMesh> vertices;
         std::vector<uint32_t> indices;
-        Ref<Material> material;
+        Material material;
 
         Ref<Shader> vertexShader;
         Ref<Shader> pixelShader;
@@ -69,7 +81,8 @@ namespace ignite {
         void OnUpdate(f32 deltaTime);
         void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline, nvrhi::BindingSetHandle bindingSet = nullptr);
 
-        nvrhi::BufferHandle constantBuffer;
+        nvrhi::BufferHandle modelConstantBuffer;
+        nvrhi::BufferHandle materialConstantBuffer;
 
     private:
         std::vector<Ref<Mesh>> m_Meshes;
@@ -80,6 +93,7 @@ namespace ignite {
     public:
         static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, i32 parentID = -1);
         static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes);
+        static void LoadMaterial(aiMaterial *material, Ref<Mesh> &mesh);
 
     private:
         static Assimp::Importer m_Importer;
