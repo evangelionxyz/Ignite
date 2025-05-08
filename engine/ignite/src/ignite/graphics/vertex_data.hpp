@@ -72,7 +72,9 @@ namespace ignite
                 .setVisibility(nvrhi::ShaderType::All)
                 .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0)) // global push constants
                 .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1)) // model push constants
-                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(2)); // material push constants
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(2)) // material push constants
+                .addItem(nvrhi::BindingLayoutItem::Texture_SRV(0)) // texture
+                .addItem(nvrhi::BindingLayoutItem::Sampler(0)); // sampler
         }
     };
 

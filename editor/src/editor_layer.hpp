@@ -49,10 +49,8 @@ namespace ignite
         
         Ref<Scene> m_ActiveScene;
         Ref<Scene> m_EditorScene;
-
-        Ref<Texture> m_Texture;
-        EditorData m_Data;
         Ref<Model> m_Model;
+        EditorData m_Data;
         
         nvrhi::CommandListHandle m_CommandLists[2];
         DeviceManager *m_DeviceManager;

@@ -4,8 +4,10 @@
 #include "texture.hpp"
 #include "ignite/math/math.hpp"
 #include "ignite/core/logger.hpp"
-
 #include "ignite/core/application.hpp"
+#include "ignite/scene/camera.hpp"
+
+#include <stb_image.h>
 
 #define ASSIMP_IMPORTER_FLAGS (aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices)
 
@@ -75,22 +77,50 @@ namespace ignite {
 
         ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), m_Meshes);
 
-        // create constant buffer
+        // create global constant buffer
         auto constantBufferDesc = nvrhi::BufferDesc()
-            .setByteSize(sizeof(PushConstantMesh))
+            .setByteSize(sizeof(PushConstantGlobal))
             .setIsConstantBuffer(true)
             .setIsVolatile(true)
             .setInitialState(nvrhi::ResourceStates::ConstantBuffer)
             .setMaxVersions(16);
 
-        modelConstantBuffer = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(modelConstantBuffer, "[Model] Failed to create model constant buffer");
+        constantBufferDesc.setDebugName("Global constant buffer");
+        globalConstantBuffer = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(globalConstantBuffer, "Failed to create constant buffer");
 
-        // create constant buffer
-        constantBufferDesc.setByteSize(sizeof(PushConstantMaterial));
+        const auto layoutDesc = VertexMesh::GetBindingLayoutDesc();
+        bindingLayout = device->createBindingLayout(layoutDesc);
+        LOG_ASSERT(bindingLayout, "Failed to create binding layout");
 
-        materialConstantBuffer = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(materialConstantBuffer, "[Model] Failed to create material constant buffer");
+        for (auto &mesh : m_Meshes)
+        {
+            // create per mesh constant buffers
+            constantBufferDesc.setDebugName("Mesh constant buffer");
+            constantBufferDesc.setByteSize(sizeof(PushConstantMesh));
+            constantBufferDesc.setMaxVersions(16);
+            mesh->modelConstantBuffer = device->createBuffer(constantBufferDesc);
+            LOG_ASSERT(mesh->modelConstantBuffer, "[Model] Failed to create model constant buffer");
+
+            constantBufferDesc.setDebugName("Material constant buffer");
+            constantBufferDesc.setByteSize(sizeof(PushConstantMaterial));
+            constantBufferDesc.setMaxVersions(16);
+            mesh->materialConstantBuffer = device->createBuffer(constantBufferDesc);
+            LOG_ASSERT(mesh->materialConstantBuffer, "[Model] Failed to create material constant buffer");
+
+
+            // create per mesh binding sets
+            auto bsDesc = nvrhi::BindingSetDesc();
+            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, globalConstantBuffer));
+            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, mesh->modelConstantBuffer));
+            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, mesh->materialConstantBuffer));
+            bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, mesh->material.texture));
+            bsDesc.addItem(nvrhi::BindingSetItem::Sampler(0, mesh->material.sampler));
+
+            mesh->bindingSet = device->createBindingSet(bsDesc, bindingLayout);
+            
+            LOG_ASSERT(mesh->bindingSet, "Failed to create binding set");
+        }
     }
 
     void Model::WriteBuffer(nvrhi::CommandListHandle commandList)
@@ -99,6 +129,12 @@ namespace ignite {
         {
             commandList->writeBuffer(mesh->vertexBuffer, mesh->vertices.data(), sizeof(VertexMesh) * mesh->vertices.size());
             commandList->writeBuffer(mesh->indexBuffer, mesh->indices.data(), sizeof(uint32_t) * mesh->indices.size());
+
+            // write textures
+            if (mesh->material.ShouldWriteTexture())
+            {
+                mesh->material.WriteBuffer(commandList);
+            }
         }
     }
 
@@ -107,9 +143,15 @@ namespace ignite {
 
     }
 
-    void Model::Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline, nvrhi::BindingSetHandle bindingSet)
+    void Model::Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline, Camera *camera)
     {
         nvrhi::Viewport viewport = framebuffer->getFramebufferInfo().getViewport();
+
+        // write global push constant
+        PushConstantGlobal globalPushConstant;
+        globalPushConstant.viewProjection = camera->GetViewProjectionMatrix();
+        globalPushConstant.cameraPosition = glm::vec4(camera->position, 1.0f);
+        commandList->writeBuffer(globalConstantBuffer, &globalPushConstant, sizeof(PushConstantGlobal));
 
         for (size_t i = 0; i < m_Meshes.size(); ++i)
         {
@@ -120,28 +162,23 @@ namespace ignite {
             materialPushConstant.baseColor = mesh->material.baseColor;
             materialPushConstant.diffuseColor = mesh->material.diffuseColor;
             materialPushConstant.emissive = mesh->material.emissive;
-            commandList->writeBuffer(materialConstantBuffer, &materialPushConstant, sizeof(PushConstantMaterial));
+            commandList->writeBuffer(mesh->materialConstantBuffer, &materialPushConstant, sizeof(PushConstantMaterial));
 
             // write model constant buffer
-            PushConstantMesh modelPushConstant;
 
             static float rot = 0.0f;
             rot += 10.0f * Application::GetDeltaTime();
 
+            PushConstantMesh modelPushConstant;
             modelPushConstant.transformMatrix = glm::rotate(glm::radians(rot), glm::vec3 { 0.0f, 1.0f, 0.0f });
-
             if (mesh->parentID != -1)
-            {
                 modelPushConstant.transformMatrix *= m_Meshes[mesh->parentID]->localTransform * mesh->localTransform;
-            }
             else
-            {
                 modelPushConstant.transformMatrix *= mesh->localTransform;
-            }
 
             glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(modelPushConstant.transformMatrix)));
             modelPushConstant.normalMatrix = glm::mat4(normalMat3);
-            commandList->writeBuffer(modelConstantBuffer, &modelPushConstant, sizeof(PushConstantMesh));
+            commandList->writeBuffer(mesh->modelConstantBuffer, &modelPushConstant, sizeof(PushConstantMesh));
 
             // render
             auto meshGraphicsState = nvrhi::GraphicsState();
@@ -151,8 +188,8 @@ namespace ignite {
             meshGraphicsState.addVertexBuffer({ mesh->vertexBuffer, 0, 0 });
             meshGraphicsState.indexBuffer = { mesh->indexBuffer, nvrhi::Format::R32_UINT };
 
-            if (bindingSet != nullptr)
-                meshGraphicsState.addBindingSet(bindingSet);
+            if (mesh->bindingSet != nullptr)
+                meshGraphicsState.addBindingSet(mesh->bindingSet);
 
             commandList->setGraphicsState(meshGraphicsState);
 
@@ -242,13 +279,13 @@ namespace ignite {
         {
             // TODO: Load material here
             aiMaterial *mat = scene->mMaterials[mesh->mMaterialIndex];
-            LoadMaterial(mat, meshes[meshIndex]);
+            LoadMaterial(scene, mat, filepath, meshes[meshIndex]);
         }
 
         meshes[meshIndex]->CreateBuffers();
     }
 
-    void ModelLoader::LoadMaterial(aiMaterial *material, Ref<Mesh> &mesh)
+    void ModelLoader::LoadMaterial(const aiScene *scene, aiMaterial *material, const std::string &filepath, Ref<Mesh> &mesh)
     {
         aiColor4D base_color(1.0f, 1.0f, 1.0f, 1.0f);
         aiColor4D diffuse_color(1.0f, 1.0f, 1.0f, 1.0f);
@@ -266,7 +303,96 @@ namespace ignite {
         mesh->material.emissive = emmisive_color.r / diffuse_color.r;
 
         // TODO: load textures
-        // material.diffuse_texture = LoadTexture(m_Scene, material, filepath, TextureType::DIFFUSE);
+
+        if (const i32 texCount = material->GetTextureCount(aiTextureType_DIFFUSE))
+        {
+            for (i32 i = 0; i < texCount; ++i)
+            {
+                aiString textureFilepath;
+                material->GetTexture(aiTextureType_DIFFUSE, i, &textureFilepath);
+                const aiTexture *embeddedTexture = scene->GetEmbeddedTexture(textureFilepath.C_Str());
+
+                if (embeddedTexture)
+                {
+                    nvrhi::IDevice *device = Application::GetDeviceManager()->GetDevice();
+
+                    i32 width, height, channels;
+
+                    // handle compressed textures
+                    if (embeddedTexture->mHeight == 0)
+                    {
+                        LOG_INFO("[Material] Loading compressed format texture of size {} bytes", embeddedTexture->mWidth);
+
+                        mesh->material._buffer.Data = stbi_load_from_memory(
+                            reinterpret_cast<const stbi_uc *>(embeddedTexture->pcData),
+                            embeddedTexture->mWidth, &width, &height, &channels, 4);
+                    }
+                    else
+                    {
+                        width = embeddedTexture->mWidth;
+                        height = embeddedTexture->mHeight;
+
+                        LOG_INFO("[Material] Loading uncompressed texture of size {}x{}", width, height);
+
+                        // for uncompressed texture, convert to RGBA format for consitent handling
+                        const unsigned char *srcData = reinterpret_cast<const unsigned char *>(embeddedTexture->pcData);
+
+                        // Allocate space for RGBA8 data
+                        unsigned char *dstData = new unsigned char[width * height * 4];
+
+                        // Assimp embedded uncompressed texture data is usually in RGB format without alpha
+                        // You can test with alpha channel (or assume RGB with alpha set to 255)
+                        for (int i = 0; i < width * height; ++i)
+                        {
+                            dstData[i * 4 + 0] = srcData[i * 3 + 0]; // R
+                            dstData[i * 4 + 1] = srcData[i * 3 + 1]; // G
+                            dstData[i * 4 + 2] = srcData[i * 3 + 2]; // B
+                            dstData[i * 4 + 3] = 255;               // A
+                        }
+
+                        mesh->material._buffer.Data = dstData;
+                    }
+                    
+
+                    LOG_ASSERT(mesh->material._buffer.Data, "[Material] Failed to load texture");
+
+                    mesh->material._buffer.Size = width * height * 4;
+                    mesh->material._textureWidth = width;
+
+                    // create texture
+                    const auto textureDesc = nvrhi::TextureDesc()
+                        .setDimension(nvrhi::TextureDimension::Texture2D)
+                        .setWidth(width)
+                        .setHeight(height)
+                        .setFormat(nvrhi::Format::RGBA8_UNORM)
+                        .setInitialState(nvrhi::ResourceStates::ShaderResource)
+                        .setKeepInitialState(true)
+                        .setDebugName("Material embedded Texture");
+
+                    mesh->material.texture = device->createTexture(textureDesc);
+                    LOG_ASSERT(mesh->material.texture, "[Material] Failed to create texture!");
+
+
+                    // create sampler
+                    const auto samplerDesc = nvrhi::SamplerDesc()
+                        .setAllAddressModes(nvrhi::SamplerAddressMode::Repeat)
+                        .setAllFilters(true);
+
+                    mesh->material.sampler = device->createSampler(samplerDesc);
+                    LOG_ASSERT(mesh->material.sampler, "[Material] Failed to create texture sampler");
+
+                    mesh->material._shouldWriteTexture = true;
+                }
+            }
+        }
+
+        // use white texture if failed to create texture
+        if (!mesh->material.texture)
+        {
+            mesh->material.texture = Renderer::GetWhiteTexture()->GetHandle();
+            mesh->material.sampler = Renderer::GetWhiteTexture()->GetSampler();
+        }
+
         // material.specular_texture = LoadTexture(m_Scene, material, filepath, TextureType::SPECULAR);
         // material.roughness_texture = LoadTexture(m_Scene, material, filepath, TextureType::DIFFUSE_ROUGHNESS);
 

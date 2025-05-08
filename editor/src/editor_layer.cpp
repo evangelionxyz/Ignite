@@ -16,16 +16,8 @@ namespace ignite
     {
         nvrhi::ShaderHandle vertexShader;
         nvrhi::ShaderHandle pixelShader;
-        nvrhi::BufferHandle vertexBuffer;
-        nvrhi::BufferHandle indexBuffer;
         nvrhi::InputLayoutHandle inputLayout;
-        nvrhi::BindingLayoutHandle bindingLayout;
-        nvrhi::BindingSetHandle bindingSet;
         nvrhi::GraphicsPipelineHandle pipeline;
-
-        nvrhi::BufferHandle globalConstantBuffer;
-
-        PushConstantGlobal pushConstantGlobal;
     };
 
     MeshRenderData *meshData = nullptr;
@@ -44,17 +36,6 @@ namespace ignite
 
         meshData = new MeshRenderData();
 
-        // create push constant
-        const auto constantBufferDesc = nvrhi::BufferDesc()
-            .setByteSize(sizeof(PushConstantGlobal))
-            .setIsConstantBuffer(true)
-            .setIsVolatile(true)
-            .setInitialState(nvrhi::ResourceStates::ConstantBuffer)
-            .setMaxVersions(16);
-
-        meshData->globalConstantBuffer = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(meshData->globalConstantBuffer, "Failed to create constant buffer");
-
         // create shaders
         VPShader *shaders = Renderer::GetDefaultShader("default_mesh");
         meshData->vertexShader = shaders->vertex;
@@ -65,29 +46,14 @@ namespace ignite
         meshData->inputLayout = device->createInputLayout(attributes.data(), attributes.size(), meshData->vertexShader);
         LOG_ASSERT(meshData->inputLayout, "Failed to create input layout");
 
-        const auto layoutDesc = VertexMesh::GetBindingLayoutDesc();
-        meshData->bindingLayout = device->createBindingLayout(layoutDesc);
-        LOG_ASSERT(meshData->bindingLayout, "Failed to create binding layout");
-
-        m_Model = CreateRef<Model>(device, "resources/scene2.glb");
-
-        // create binding set
-        auto bindingSetDesc = nvrhi::BindingSetDesc();
-        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, meshData->globalConstantBuffer));
-        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, m_Model->modelConstantBuffer));
-        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, m_Model->materialConstantBuffer));
-
-        meshData->bindingSet = device->createBindingSet(bindingSetDesc, meshData->bindingLayout);
-        LOG_ASSERT(meshData->bindingSet, "Failed to create binding set");
+        m_Model = CreateRef<Model>(device, "resources/scene.glb");
 
         // write buffer with command list
         m_CommandLists[0] = device->createCommandList();
         m_CommandLists[1] = device->createCommandList();
         Renderer2D::InitQuadData(m_DeviceManager->GetDevice(), m_CommandLists[0]);
 
-        m_Texture = Texture::Create(device, "Resources/textures/test.png");
         m_CommandLists[0]->open();
-        m_Texture->Write(m_CommandLists[0]);
 
         m_Model->WriteBuffer(m_CommandLists[0]);
 
@@ -251,7 +217,7 @@ namespace ignite
                 .setVertexShader(meshData->vertexShader)
                 .setPixelShader(meshData->pixelShader)
                 .setInputLayout(meshData->inputLayout)
-                .addBindingLayout(meshData->bindingLayout)
+                .addBindingLayout(m_Model->bindingLayout)
                 .setRenderState(renderState)
                 .setPrimType(nvrhi::PrimitiveType::TriangleList);
 
@@ -278,13 +244,8 @@ namespace ignite
         
         // mesh command list m_CommandLists index 1
         m_CommandLists[1]->open();
-        meshData->pushConstantGlobal.viewProjection = m_ScenePanel->GetViewportCamera()->GetViewProjectionMatrix();
-        meshData->pushConstantGlobal.cameraPosition = glm::vec4(m_ScenePanel->GetViewportCamera()->position, 1.0f);
-
-        // write only MVP and camera position
-        m_CommandLists[1]->writeBuffer(meshData->globalConstantBuffer, &meshData->pushConstantGlobal, sizeof(PushConstantGlobal));
-
-        m_Model->Render(m_CommandLists[1], m_ScenePanel->GetRT()->GetCurrentFramebuffer(), meshData->pipeline, meshData->bindingSet);
+        
+        m_Model->Render(m_CommandLists[1], m_ScenePanel->GetRT()->GetCurrentFramebuffer(), meshData->pipeline, m_ScenePanel->GetViewportCamera());
 
         m_CommandLists[1]->close();
         m_DeviceManager->GetDevice()->executeCommandList(m_CommandLists[1]);

@@ -27,6 +27,9 @@ struct PSInput
     float4 color        : COLOR;
 };
 
+Texture2D texture0 : register(t0);
+sampler sampler0 : register(s0);
+
 float4 main(PSInput input) : SV_TARGET
 {
     float3 normal = normalize(input.normal);
@@ -43,7 +46,8 @@ float4 main(PSInput input) : SV_TARGET
     float ambient = 0.2f;
     float lighting = saturate(ambient + diff + spec);
 
-    float4 finalColor = input.color * baseColor * lighting;
+    float4 texColor = texture0.Sample(sampler0, input.texCoord) * baseColor;
+    float4 finalColor = input.color * texColor * lighting;
 
     return finalColor;
 }
