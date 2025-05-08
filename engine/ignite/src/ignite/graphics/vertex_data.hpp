@@ -7,6 +7,18 @@
 
 namespace ignite
 {
+    struct PushConstantGlobal
+    {
+        glm::mat4 viewProjection;
+        glm::vec4 cameraPosition;
+    };
+
+    struct PushConstantMesh
+    {
+        glm::mat4 transformMatrix;
+        glm::mat4 normalMatrix;
+    };
+
     struct VertexMesh
     {
         glm::vec3 position;
@@ -51,7 +63,8 @@ namespace ignite
         {
             return nvrhi::BindingLayoutDesc()
                 .setVisibility(nvrhi::ShaderType::All)
-                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0));
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0))
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1));
         }
     };
 

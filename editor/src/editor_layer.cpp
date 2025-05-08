@@ -18,27 +18,17 @@ namespace ignite
         nvrhi::ShaderHandle pixelShader;
         nvrhi::BufferHandle vertexBuffer;
         nvrhi::BufferHandle indexBuffer;
-        nvrhi::BufferHandle constantBuffer;
         nvrhi::InputLayoutHandle inputLayout;
         nvrhi::BindingLayoutHandle bindingLayout;
         nvrhi::BindingSetHandle bindingSet;
         nvrhi::GraphicsPipelineHandle pipeline;
 
-        glm::vec3 position = glm::vec3(0.0f);
-        glm::vec3 rotation = glm::vec3(0.0f);
-        glm::vec3 scale = glm::vec3(1.0f);
+        nvrhi::BufferHandle globalConstantBuffer;
 
-        struct MeshPushConstant
-        {
-            glm::mat4 mvp;
-            glm::mat4 modelMatrix;
-            glm::mat4 normalMatrix;
-            glm::vec4 cameraPosition;
-        } pushConstant;
+        PushConstantGlobal pushConstantGlobal;
     };
 
     MeshRenderData *meshData = nullptr;
-    
 
     EditorLayer::EditorLayer(const std::string &name)
         : Layer(name), m_DeviceManager(nullptr)
@@ -56,14 +46,14 @@ namespace ignite
 
         // create push constant
         const auto constantBufferDesc = nvrhi::BufferDesc()
-            .setByteSize(sizeof(meshData->pushConstant))
+            .setByteSize(sizeof(PushConstantGlobal))
             .setIsConstantBuffer(true)
             .setIsVolatile(true)
             .setInitialState(nvrhi::ResourceStates::ConstantBuffer)
             .setMaxVersions(16);
 
-        meshData->constantBuffer = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(meshData->constantBuffer, "Failed to create constant buffer");
+        meshData->globalConstantBuffer = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(meshData->globalConstantBuffer, "Failed to create constant buffer");
 
         // create shaders
         VPShader *shaders = Renderer::GetDefaultShader("default_mesh");
@@ -79,30 +69,12 @@ namespace ignite
         meshData->bindingLayout = device->createBindingLayout(layoutDesc);
         LOG_ASSERT(meshData->bindingLayout, "Failed to create binding layout");
 
-        // create buffers
-        const auto vbDesc = nvrhi::BufferDesc()
-            .setByteSize(sizeof(MeshFactory::CubeVertices))
-            .setIsVertexBuffer(true)
-            .setInitialState(nvrhi::ResourceStates::VertexBuffer)
-            .setKeepInitialState(true)
-            .setDebugName("Cube vertex buffer");
-
-        meshData->vertexBuffer = device->createBuffer(vbDesc);
-        LOG_ASSERT(meshData->vertexBuffer, "Failed to create vertex buffer");
-        
-        const auto ibDesc = nvrhi::BufferDesc()
-            .setByteSize(sizeof(MeshFactory::CubeIndices))
-            .setIsIndexBuffer(true)
-            .setInitialState(nvrhi::ResourceStates::IndexBuffer)
-            .setKeepInitialState(true)
-            .setDebugName("Cube index buffer");
-        
-        meshData->indexBuffer = device->createBuffer(ibDesc);
-        LOG_ASSERT(meshData->indexBuffer, "Failed to create index buffer");
+        m_Model = CreateRef<Model>(device, "resources/scene.glb");
 
         // create binding set
-        const auto bindingSetDesc = nvrhi::BindingSetDesc()
-            .addItem(nvrhi::BindingSetItem::ConstantBuffer(0, meshData->constantBuffer));
+        auto bindingSetDesc = nvrhi::BindingSetDesc();
+        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, meshData->globalConstantBuffer));
+        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, m_Model->constantBuffer));
 
         meshData->bindingSet = device->createBindingSet(bindingSetDesc, meshData->bindingLayout);
         LOG_ASSERT(meshData->bindingSet, "Failed to create binding set");
@@ -116,8 +88,7 @@ namespace ignite
         m_CommandLists[0]->open();
         m_Texture->Write(m_CommandLists[0]);
 
-        m_CommandLists[0]->writeBuffer(meshData->vertexBuffer, MeshFactory::CubeVertices.data(), sizeof(MeshFactory::CubeVertices));
-        m_CommandLists[0]->writeBuffer(meshData->indexBuffer, MeshFactory::CubeIndices.data(), sizeof(MeshFactory::CubeIndices));
+        m_Model->WriteBuffer(m_CommandLists[0]);
 
         m_CommandLists[0]->close();
         device->executeCommandList(m_CommandLists[0]);
@@ -146,6 +117,8 @@ namespace ignite
 
         // multi select entity
         m_Data.multiSelect = Input::IsKeyPressed(Key::LeftShift);
+
+        m_Model->OnUpdate(deltaTime);
 
         switch (m_Data.sceneState)
         {
@@ -304,27 +277,14 @@ namespace ignite
         
         // mesh command list m_CommandLists index 1
         m_CommandLists[1]->open();
-        meshData->pushConstant.mvp = m_ScenePanel->GetViewportCamera()->GetViewProjectionMatrix();
-        meshData->pushConstant.modelMatrix = glm::translate(glm::mat4(1.0f), meshData->position) 
-            * glm::toMat4(glm::quat(meshData->rotation)) * glm::scale(meshData->scale);
-        glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(meshData->pushConstant.modelMatrix)));
-        meshData->pushConstant.normalMatrix = glm::mat4(normalMat3);
-        meshData->pushConstant.cameraPosition = glm::vec4(m_ScenePanel->GetViewportCamera()->position, 1.0f);
-        m_CommandLists[1]->writeBuffer(meshData->constantBuffer, &meshData->pushConstant, sizeof(meshData->pushConstant));
+        meshData->pushConstantGlobal.viewProjection = m_ScenePanel->GetViewportCamera()->GetViewProjectionMatrix();
+        meshData->pushConstantGlobal.cameraPosition = glm::vec4(m_ScenePanel->GetViewportCamera()->position, 1.0f);
 
-        const auto meshGraphicsState = nvrhi::GraphicsState()
-            .setPipeline(meshData->pipeline)
-            .setFramebuffer(m_ScenePanel->GetRT()->GetCurrentFramebuffer())
-            .addBindingSet(meshData->bindingSet)
-            .setViewport(nvrhi::ViewportState().addViewportAndScissorRect(viewport))
-            .addVertexBuffer(nvrhi::VertexBufferBinding{meshData->vertexBuffer, 0, 0})
-            .setIndexBuffer({meshData->indexBuffer, nvrhi::Format::R32_UINT});
+        // write only MVP and camera position
+        m_CommandLists[1]->writeBuffer(meshData->globalConstantBuffer, &meshData->pushConstantGlobal, sizeof(PushConstantGlobal));
 
-        m_CommandLists[1]->setGraphicsState(meshGraphicsState);
-        nvrhi::DrawArguments args;
-        args.setVertexCount(MeshFactory::CubeIndices.size());
-        args.instanceCount = 1;
-        m_CommandLists[1]->drawIndexed(args);
+        m_Model->Render(m_CommandLists[1], m_ScenePanel->GetRT()->GetCurrentFramebuffer(), meshData->pipeline, meshData->bindingSet);
+
         m_CommandLists[1]->close();
         m_DeviceManager->GetDevice()->executeCommandList(m_CommandLists[1]);
     }
@@ -372,14 +332,6 @@ namespace ignite
         {
             // scene dockspace
             m_ScenePanel->OnGuiRender();
-
-            ImGui::Begin("Cube");
-            ImGui::PushID("CubeID");
-            ImGui::DragFloat3("Position", &meshData->position.x, 0.025f);
-            ImGui::DragFloat3("Rotation", &meshData->rotation.x, 0.025f);
-            ImGui::DragFloat3("Scale", &meshData->scale.x, 0.025f);
-            ImGui::PopID();
-            ImGui::End();
         }
 
         ImGui::End(); // end dockspace

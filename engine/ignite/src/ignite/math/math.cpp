@@ -224,7 +224,6 @@ namespace ignite
         return (discriminant > 0);
     }
 
-#if 0
     glm::mat4 Math::AssimpToGlmMatrix(aiMatrix4x4 mat)
     {
         glm::mat4 m;
@@ -253,6 +252,7 @@ namespace ignite
         return q;
     }
 
+#if 0
     physx::PxVec3 Math::GlmToPhysXVec3(const glm::vec3 &vec)
     {
         return physx::PxVec3{ vec.x, vec.y, vec.z };

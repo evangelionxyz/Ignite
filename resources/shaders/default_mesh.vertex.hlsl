@@ -1,10 +1,14 @@
 cbuffer PushConstants : register(b0)
 {
-    float4x4 mvp;
-    float4x4 modelMatrix;
-    float4x4 normalMatrix;
-    float4 cameraPos;
+    float4x4 viewProjection;
+    float4 cameraPosition;
 };
+
+cbuffer ModelPushConstants : register(b1)
+{
+    float4x4 transformMatrix;
+    float4x4 normalMatrix;
+}
 
 struct VSInput
 {
@@ -29,10 +33,10 @@ PSInput main(VSInput input)
 {
     PSInput output;
 
-    float4 worldPos     = mul(modelMatrix, float4(input.position, 1.0f));
-    float3 worldNormal = normalize(mul((float3x3)normalMatrix, input.normal));
+    float4 worldPos     = mul(transformMatrix, float4(input.position, 1.0f));
+    float3 worldNormal  = normalize(mul((float3x3)normalMatrix, input.normal));
 
-    output.position     = mul(mvp, worldPos);
+    output.position     = mul(viewProjection, worldPos);
     output.normal       = worldNormal;
     output.worldPos     = worldPos.xyz;
     output.texCoord     = input.texCoord;

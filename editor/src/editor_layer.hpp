@@ -3,7 +3,7 @@
 #include <nvrhi/nvrhi.h>
 #include "ignite/core/layer.hpp"
 #include "ignite/ignite.hpp"
-
+#include "ignite/graphics/mesh.hpp"
 #include "states.hpp"
 
 namespace ignite
@@ -50,6 +50,7 @@ namespace ignite
 
         Ref<Texture> m_Texture;
         EditorData m_Data;
+        Ref<Model> m_Model;
         
         nvrhi::CommandListHandle m_CommandLists[2];
         DeviceManager *m_DeviceManager;

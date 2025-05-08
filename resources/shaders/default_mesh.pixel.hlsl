@@ -1,10 +1,14 @@
 cbuffer PushConstants : register(b0)
 {
-    float4x4 mvp;
-    float4x4 modelMatrix;
-    float4x4 normalMatrix;
-    float4 cameraPos;
+    float4x4 viewProjection;
+    float4 cameraPosition;
 };
+
+cbuffer ModelPushConstants : register(b1)
+{
+    float4x4 transformMatrix;
+    float4x4 normalMatrix;
+}
 
 struct PSInput
 {
@@ -19,7 +23,7 @@ struct PSInput
 float4 main(PSInput input) : SV_TARGET
 {
     float3 normal = normalize(input.normal);
-    float3 viewDirection = normalize(cameraPos.xzy - input.worldPos);
+    float3 viewDirection = normalize(cameraPosition.xzy - input.worldPos);
     float3 lightDirection = normalize(float3(-0.5f, -1.0f, -3.0f));
 
     // lambert diffuse

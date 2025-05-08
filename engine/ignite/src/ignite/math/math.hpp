@@ -15,8 +15,9 @@
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
-
 #include "obb.hpp"
+
+#include <assimp/postprocess.h>
 
 namespace ignite
 {
@@ -34,11 +35,11 @@ namespace ignite
         static glm::vec3 GetRayFromScreenCoords(const glm::vec2 &coord, const glm::vec2 &screen, const glm::mat4 &projection, const glm::mat4 &view, bool isPerspective, glm::vec3 &rayOrigin);
         static bool RaySphereIntersection(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection, const glm::vec3 &sphereCenter, float sphereRadius);
 
-#if 0
         static glm::mat4 AssimpToGlmMatrix(aiMatrix4x4 mat);
         static glm::vec3 AssimpToGlmVec3(aiVector3D vec);
         static glm::quat AssimpToGlmQuat(aiQuaternion quat);
 
+#if 0
         static physx::PxVec3 GlmToPhysXVec3(const glm::vec3 &vec);
         static physx::PxQuat GlmToPhysXQuat(const glm::quat &quat);
         static glm::vec3 PhysXToGlmVec3(const physx::PxVec3 &vec);
