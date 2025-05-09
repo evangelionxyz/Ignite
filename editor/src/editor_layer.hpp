@@ -52,7 +52,8 @@ namespace ignite
         
         Ref<Scene> m_ActiveScene;
         Ref<Scene> m_EditorScene;
-        Ref<Model> m_Model;
+        Ref<Model> m_Helmet;
+        Ref<Model> m_Scene;
         Ref<GraphicsPipeline> m_MeshPipeline;
         Ref<GraphicsPipeline> m_EnvPipeline;
         Environment m_Env;

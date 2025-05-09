@@ -34,7 +34,7 @@ PSInput main(VSInput input)
     PSInput output;
 
     float4 worldPos     = mul(transformMatrix, float4(input.position, 1.0f));
-    float3 worldNormal  = normalize(mul((float3x3)normalMatrix, input.normal));
+    float3 worldNormal  = mul((float3x3)normalMatrix, input.normal);
 
     output.position     = mul(viewProjection, worldPos);
     output.normal       = worldNormal;

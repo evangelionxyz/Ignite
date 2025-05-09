@@ -105,6 +105,7 @@ namespace ignite {
         static Ref<Model> Create(nvrhi::IDevice *device, nvrhi::BindingLayoutHandle bindingLayout, const std::filesystem::path &filepath);
 
         nvrhi::BufferHandle globalConstantBuffer;
+        glm::mat4 transform = glm::mat4(1.0f);
     private:
 
         std::vector<Ref<Mesh>> m_Meshes;

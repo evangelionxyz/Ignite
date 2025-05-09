@@ -161,15 +161,11 @@ namespace ignite {
 
             // write model constant buffer
 
-            static float rot = 0.0f;
-            rot += 7.0f * Application::GetDeltaTime();
-
             PushConstantMesh modelPushConstant;
-            modelPushConstant.transformMatrix = glm::rotate(glm::radians(rot), glm::vec3 { 0.0f, 1.0f, 0.0f });
             if (mesh->parentID != -1)
-                modelPushConstant.transformMatrix *= m_Meshes[mesh->parentID]->localTransform * mesh->localTransform;
+                modelPushConstant.transformMatrix = transform * m_Meshes[mesh->parentID]->localTransform * mesh->localTransform;
             else
-                modelPushConstant.transformMatrix *= mesh->localTransform;
+                modelPushConstant.transformMatrix = transform * mesh->localTransform;
 
             glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(modelPushConstant.transformMatrix)));
             modelPushConstant.normalMatrix = glm::mat4(normalMat3);

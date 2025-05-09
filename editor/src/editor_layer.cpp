@@ -30,6 +30,7 @@ namespace ignite
             params.enableBlend = true;
             params.depthWrite = true;
             params.depthTest = true;
+            params.recompileShader = true;
             params.cullMode = nvrhi::RasterCullMode::Front;
             params.vertexShaderFilepath = "default_mesh.vertex.hlsl";
             params.pixelShaderFilepath = "default_mesh.pixel.hlsl";
@@ -77,13 +78,15 @@ namespace ignite
         }
 
 
-        m_Model = Model::Create(m_Device, m_MeshPipeline->GetBindingLayout(), "resources/models/DamagedHelmet.gltf");
+        m_Helmet = Model::Create(m_Device, m_MeshPipeline->GetBindingLayout(), "resources/models/DamagedHelmet.gltf");
+        m_Scene = Model::Create(m_Device, m_MeshPipeline->GetBindingLayout(), "resources/scene.glb");
 
         // write buffer with command list
         Renderer2D::InitQuadData(m_Device, m_CommandList);
 
         m_CommandList->open();
-        m_Model->WriteBuffer(m_CommandList);
+        m_Helmet->WriteBuffer(m_CommandList);
+        m_Scene->WriteBuffer(m_CommandList);
         m_CommandList->close();
         m_Device->executeCommandList(m_CommandList);
 
@@ -106,7 +109,13 @@ namespace ignite
         // multi select entity
         m_Data.multiSelect = Input::IsKeyPressed(Key::LeftShift);
 
-        m_Model->OnUpdate(deltaTime);
+        m_Helmet->OnUpdate(deltaTime);
+        m_Scene->OnUpdate(deltaTime);
+
+        static float t = 0.0f;
+        t += deltaTime * 0.5f;
+
+        m_Helmet->transform = glm::rotate(t, glm::vec3 { 0.0f, 1.0f, 0.0f });
 
         switch (m_Data.sceneState)
         {
@@ -229,18 +238,15 @@ namespace ignite
         m_CommandList->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), nvrhi::AllSubresources, true, farDepth, true, 0);
 
         m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
-        m_CommandList->close();
-        m_Device->executeCommandList(m_CommandList);
 
-        m_CommandList->open();
         // render environment
         m_Env.Render(m_CommandList, viewportFramebuffer, m_EnvPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
-        m_CommandList->close();
-        m_Device->executeCommandList(m_CommandList);
 
-        m_CommandList->open();
         // render objects
-        m_Model->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
+        m_Helmet->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
+        // m_Scene->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
+
+
         m_CommandList->close();
         m_Device->executeCommandList(m_CommandList);
     }
@@ -291,7 +297,7 @@ namespace ignite
 
             ImGui::Begin("Meshes List");
 
-            for (auto &mesh : m_Model->GetMeshes())
+            for (auto &mesh : m_Helmet->GetMeshes())
             {
                 TraverseMeshes(mesh, 0);
             }
@@ -360,7 +366,7 @@ namespace ignite
         {
             for (i32 child : mesh->children)
             {
-                TraverseMeshes(m_Model->GetMeshes()[child], ++traverseIndex);
+                TraverseMeshes(m_Helmet->GetMeshes()[child], ++traverseIndex);
             }
 
             ImGui::TreePop();
