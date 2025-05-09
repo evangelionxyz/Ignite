@@ -6,31 +6,38 @@
 
 namespace ignite {
 
+    // clock wise
     std::array<glm::vec3, 24> vertices = {
+
+        glm::vec3( 1.0f,  1.0f,  1.0f), // top right    front  
+        glm::vec3( 1.0f,  1.0f, -1.0f), // top right    back
+        glm::vec3( 1.0f, -1.0f, -1.0f), // bottom right back
+        glm::vec3( 1.0f, -1.0f,  1.0f), // bottom right front
+
+        glm::vec3(-1.0f,  1.0f, -1.0f), // top    left back
+        glm::vec3(-1.0f,  1.0f,  1.0f), // top    left front
+        glm::vec3(-1.0f, -1.0f,  1.0f), // bottom left front
+        glm::vec3(-1.0f, -1.0f, -1.0f), // bottom left back
+        
+        glm::vec3(-1.0f,  1.0f,  1.0f), // top left  front
+        glm::vec3(-1.0f,  1.0f, -1.0f), // top left  back
+        glm::vec3( 1.0f,  1.0f, -1.0f), // top right back
         glm::vec3( 1.0f,  1.0f,  1.0f), // top right front
-        glm::vec3( 1.0f,  1.0f, -1.0f),
-        glm::vec3( 1.0f, -1.0f, -1.0f),
-        glm::vec3( 1.0f, -1.0f,  1.0f),
-        glm::vec3(-1.0f,  1.0f,  1.0f),
-        glm::vec3(-1.0f,  1.0f, -1.0f),
-        glm::vec3(-1.0f, -1.0f, -1.0f),
-        glm::vec3(-1.0f, -1.0f,  1.0f),
-        glm::vec3(-1.0f,  1.0f,  1.0f),
-        glm::vec3( 1.0f,  1.0f,  1.0f),
-        glm::vec3( 1.0f,  1.0f, -1.0f),
-        glm::vec3(-1.0f,  1.0f, -1.0f),
-        glm::vec3(-1.0f, -1.0f,  1.0f),
-        glm::vec3( 1.0f, -1.0f,  1.0f),
-        glm::vec3( 1.0f, -1.0f, -1.0f),
-        glm::vec3(-1.0f, -1.0f, -1.0f),
-        glm::vec3(-1.0f, -1.0f, -1.0f),
-        glm::vec3( 1.0f, -1.0f, -1.0f),
-        glm::vec3( 1.0f,  1.0f, -1.0f),
-        glm::vec3(-1.0f,  1.0f, -1.0f),
-        glm::vec3(-1.0f, -1.0f,  1.0f),
-        glm::vec3( 1.0f, -1.0f,  1.0f),
-        glm::vec3( 1.0f,  1.0f,  1.0f),
-        glm::vec3(-1.0f,  1.0f,  1.0f),
+
+        glm::vec3(-1.0f, -1.0f,  1.0f), // bottom left  front
+        glm::vec3( 1.0f, -1.0f,  1.0f), // bottom right front
+        glm::vec3( 1.0f, -1.0f, -1.0f), // bottom right back
+        glm::vec3(-1.0f, -1.0f, -1.0f), // bottom left  back
+
+        glm::vec3(-1.0f, -1.0f, -1.0f), // bottom left  back
+        glm::vec3( 1.0f, -1.0f, -1.0f), // bottom right back
+        glm::vec3( 1.0f,  1.0f, -1.0f), // top    right back
+        glm::vec3(-1.0f,  1.0f, -1.0f), // top    left  back
+
+        glm::vec3(-1.0f, -1.0f,  1.0f), // bottom left  front
+        glm::vec3(-1.0f,  1.0f,  1.0f), // top    left  front
+        glm::vec3( 1.0f,  1.0f,  1.0f), // top    right front
+        glm::vec3( 1.0f, -1.0f,  1.0f), // bottom right front
     };
 
     Environment::Environment(nvrhi::IDevice *device, nvrhi::CommandListHandle commandList, const EnvironmentCreateInfo &createInfo, nvrhi::BindingLayoutHandle bindingLayout)

@@ -50,7 +50,7 @@ namespace ignite
             params.depthWrite = true;
             params.depthTest = true;
             params.recompileShader = true;
-            params.cullMode = nvrhi::RasterCullMode::None;
+            params.cullMode = nvrhi::RasterCullMode::Front;
             params.comparison = nvrhi::ComparisonFunc::Always;
             params.vertexShaderFilepath = "skybox.vertex.hlsl";
             params.pixelShaderFilepath = "skybox.pixel.hlsl";
