@@ -1,4 +1,4 @@
-#include "binding_helpers.hlsli"
+#include "include/binding_helpers.hlsli"
 
 struct VS_INPUT
 {

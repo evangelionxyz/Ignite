@@ -84,6 +84,7 @@ namespace ignite
         m_Shaders["quadBatch2D"] = VPShader(device, "quad_batch_2d");
         m_Shaders["imgui"] = VPShader(device, "imgui");
         m_Shaders["default_mesh"] = VPShader(device, "default_mesh");
+        m_Shaders["skybox"] = VPShader(device, "skybox");
 
         std::vector<Ref<ShaderMake::ShaderContext>> contexts;
         for (auto &shader : m_Shaders)

@@ -1,16 +1,16 @@
-cbuffer PushConstants : register(b0)
+cbuffer GlobalConstants : register(b0)
 {
     float4x4 viewProjection;
     float4 cameraPosition;
 };
 
-cbuffer ModelPushConstants : register(b1)
+cbuffer ModelConstants : register(b1)
 {
     float4x4 transformMatrix;
     float4x4 normalMatrix;
 }
 
-cbuffer MaterialPushConstants : register(b2)
+cbuffer MaterialConstants : register(b2)
 {
     float4 baseColor;
     float4 diffuseColor;

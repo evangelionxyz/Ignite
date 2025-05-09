@@ -33,7 +33,7 @@ namespace ignite {
             depthStencilState.depthFunc = m_Params.comparison; // use 1.0 for far depth
 
             nvrhi::RasterState rasterState;
-            rasterState.setCullFront();
+            rasterState.cullMode = m_Params.cullMode;
             rasterState.setFrontCounterClockwise(false);
             rasterState.setMultisampleEnable(false);
 

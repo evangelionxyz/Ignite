@@ -22,29 +22,64 @@ namespace ignite
         Layer::OnAttach();
 
         m_Device = Application::GetDeviceManager()->GetDevice();
+        m_CommandList = m_Device->createCommandList();
+
+        // create mesh graphics pipeline
+        {
+            GraphicsPipelineParams params;
+            params.enableBlend = true;
+            params.depthWrite = true;
+            params.depthTest = true;
+            params.cullMode = nvrhi::RasterCullMode::Front;
+            params.vertexShaderFilepath = "default_mesh.vertex.hlsl";
+            params.pixelShaderFilepath = "default_mesh.pixel.hlsl";
+
+            auto attributes = VertexMesh::GetAttributes();
+            GraphicsPiplineCreateInfo pci;
+            pci.attributes = attributes.data();
+            pci.attributeCount = static_cast<uint32_t>(attributes.size());
+            pci.bindingLayoutDesc = VertexMesh::GetBindingLayoutDesc();
+
+            m_MeshPipeline = GraphicsPipeline::Create(m_Device, params, pci);
+        }
+
+        // create skybox graphics pipeline
+        {
+            GraphicsPipelineParams params;
+            params.enableBlend = true;
+            params.depthWrite = true;
+            params.depthTest = true;
+            params.recompileShader = true;
+            params.cullMode = nvrhi::RasterCullMode::None;
+            params.comparison = nvrhi::ComparisonFunc::Always;
+            params.vertexShaderFilepath = "skybox.vertex.hlsl";
+            params.pixelShaderFilepath = "skybox.pixel.hlsl";
+
+            auto attribute = Environment::GetAttribute();
+            GraphicsPiplineCreateInfo pci;
+            pci.attributes = &attribute;
+            pci.attributeCount = 1;
+            pci.bindingLayoutDesc = Environment::GetBindingLayoutDesc();
+
+            m_EnvPipeline = GraphicsPipeline::Create(m_Device, params, pci);
+
+            // create env
+            // order +X, -X, +Y, -Y, +Z, -Z.
+            EnvironmentCreateInfo eci;
+            eci.rightFilepath = "resources/skybox/right.jpg";
+            eci.leftFilepath = "resources/skybox/left.jpg";
+            eci.topFilepath = "resources/skybox/top.jpg";
+            eci.bottomFilepath = "resources/skybox/bottom.jpg";
+            eci.frontFilepath = "resources/skybox/front.jpg";
+            eci.backFilepath = "resources/skybox/back.jpg";
+
+            m_Env = Environment(m_Device, m_CommandList, eci, m_EnvPipeline->GetBindingLayout());
+        }
 
 
-
-        GraphicsPipelineParams params;
-        params.enableBlend = true;
-        params.depthWrite = true;
-        params.depthTest = true;
-        params.vertexShaderFilepath = "default_mesh.vertex.hlsl";
-        params.pixelShaderFilepath = "default_mesh.pixel.hlsl";
-
-        auto attributes = VertexMesh::GetAttributes();
-        GraphicsPiplineCreateInfo createInfo;
-        createInfo.attributes = attributes.data();
-        createInfo.attributeCount = static_cast<uint32_t>(attributes.size());
-        createInfo.bindingLayoutDesc = VertexMesh::GetBindingLayoutDesc();
-
-        // create graphics pipeline
-        m_GraphicsPipeline = GraphicsPipeline::Create(m_Device, params, createInfo);
-
-        m_Model = Model::Create(m_Device, m_GraphicsPipeline->GetBindingLayout(), "resources/scene.glb");
+        m_Model = Model::Create(m_Device, m_MeshPipeline->GetBindingLayout(), "resources/models/DamagedHelmet.gltf");
 
         // write buffer with command list
-        m_CommandList = m_Device->createCommandList();
         Renderer2D::InitQuadData(m_Device, m_CommandList);
 
         m_CommandList->open();
@@ -75,16 +110,16 @@ namespace ignite
 
         switch (m_Data.sceneState)
         {
-        case State_ScenePlay:
-        {
-            m_ActiveScene->OnUpdateRuntimeSimulate(deltaTime);
-            break;
-        }
-        case State_SceneEdit:
-        {
-            m_ActiveScene->OnUpdateEdit(deltaTime);
-            break;
-        }
+            case State_ScenePlay:
+            {
+                m_ActiveScene->OnUpdateRuntimeSimulate(deltaTime);
+                break;
+            }
+            case State_SceneEdit:
+            {
+                m_ActiveScene->OnUpdateEdit(deltaTime);
+                break;
+            }
         }
 
         // update panels
@@ -107,56 +142,56 @@ namespace ignite
 
         switch (event.GetKeyCode())
         {
-        case Key::T:
-        {
-            if (!Input::IsMouseButtonPressed(Mouse::ButtonRight))
-                m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::TRANSLATE);
-            break;
-        }
-        case Key::R:
-        {
-            if (!Input::IsMouseButtonPressed(Mouse::ButtonRight))
-                m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::ROTATE);
-            break;
-        }
-        case Key::S:
-        {
-            if (!Input::IsMouseButtonPressed(Mouse::ButtonRight))
-                m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::SCALE);
-            break;
-        }
-        case Key::F5:
-        {
-            (m_Data.sceneState == State_SceneEdit || m_Data.sceneState == State_SceneSimulate)
-                ? OnScenePlay()
-                : OnSceneStop();
-
-            break;
-        }
-        case Key::F6:
-        {
-            (m_Data.sceneState == State_SceneEdit || m_Data.sceneState == State_ScenePlay)
-                ? OnScenePlay()
-                : OnSceneStop();
-            break;
-        }
-        case Key::D:
-        {
-            if (control)
-                m_ScenePanel->DuplicateSelectedEntity();
-            break;
-        }
-        case Key::Z:
-        {
-            if (control)
+            case Key::T:
             {
-                if (shift)
-                    Application::GetCommandManager()->Redo();
-                else
-                    Application::GetCommandManager()->Undo();
+                if (!Input::IsMouseButtonPressed(Mouse::ButtonRight))
+                    m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::TRANSLATE);
+                break;
             }
-            break;
-        }
+            case Key::R:
+            {
+                if (!Input::IsMouseButtonPressed(Mouse::ButtonRight))
+                    m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::ROTATE);
+                break;
+            }
+            case Key::S:
+            {
+                if (!Input::IsMouseButtonPressed(Mouse::ButtonRight))
+                    m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::SCALE);
+                break;
+            }
+            case Key::F5:
+            {
+                (m_Data.sceneState == State_SceneEdit || m_Data.sceneState == State_SceneSimulate)
+                    ? OnScenePlay()
+                    : OnSceneStop();
+
+                break;
+            }
+            case Key::F6:
+            {
+                (m_Data.sceneState == State_SceneEdit || m_Data.sceneState == State_ScenePlay)
+                    ? OnScenePlay()
+                    : OnSceneStop();
+                break;
+            }
+            case Key::D:
+            {
+                if (control)
+                    m_ScenePanel->DuplicateSelectedEntity();
+                break;
+            }
+            case Key::Z:
+            {
+                if (control)
+                {
+                    if (shift)
+                        Application::GetCommandManager()->Redo();
+                    else
+                        Application::GetCommandManager()->Undo();
+                }
+                break;
+            }
         }
         return false;
     }
@@ -178,8 +213,9 @@ namespace ignite
         nvrhi::IFramebuffer *viewportFramebuffer = m_ScenePanel->GetRT()->GetCurrentFramebuffer();
         nvrhi::Viewport viewport = viewportFramebuffer->getFramebufferInfo().getViewport();
 
-        // mesh pipeline
-        m_GraphicsPipeline->Create(m_Device, viewportFramebuffer);
+        // create pipelines
+        m_EnvPipeline->Create(m_Device, viewportFramebuffer);
+        m_MeshPipeline->Create(m_Device, viewportFramebuffer);
 
         // main scene rendering
         m_CommandList->open();
@@ -197,7 +233,14 @@ namespace ignite
         m_Device->executeCommandList(m_CommandList);
 
         m_CommandList->open();
-        m_Model->Render(m_CommandList, m_ScenePanel->GetRT()->GetCurrentFramebuffer(), m_GraphicsPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
+        // render environment
+        m_Env.Render(m_CommandList, viewportFramebuffer, m_EnvPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
+        m_CommandList->close();
+        m_Device->executeCommandList(m_CommandList);
+
+        m_CommandList->open();
+        // render objects
+        m_Model->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
         m_CommandList->close();
         m_Device->executeCommandList(m_CommandList);
     }

@@ -18,6 +18,7 @@ namespace ignite {
         std::string vertexShaderFilepath;
         std::string pixelShaderFilepath;
         
+        nvrhi::RasterCullMode cullMode = nvrhi::RasterCullMode::Front;
         nvrhi::ComparisonFunc comparison = nvrhi::ComparisonFunc::LessOrEqual;
         nvrhi::PrimitiveType primitiveType = nvrhi::PrimitiveType::TriangleList;
 
