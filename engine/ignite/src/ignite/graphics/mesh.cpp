@@ -48,7 +48,7 @@ namespace ignite {
 
     // Model class
 
-    Model::Model(nvrhi::IDevice *device, const std::filesystem::path &filepath)
+    Model::Model(nvrhi::IDevice *device, nvrhi::BindingLayoutHandle bindingLayout, const std::filesystem::path &filepath)
     {
         LOG_ASSERT(std::filesystem::exists(filepath), "[Model] Filepath does not exists!");
 
@@ -88,9 +88,6 @@ namespace ignite {
         globalConstantBuffer = device->createBuffer(constantBufferDesc);
         LOG_ASSERT(globalConstantBuffer, "Failed to create constant buffer");
 
-        const auto layoutDesc = VertexMesh::GetBindingLayoutDesc();
-        bindingLayout = device->createBindingLayout(layoutDesc);
-        LOG_ASSERT(bindingLayout, "Failed to create binding layout");
 
         for (auto &mesh : m_Meshes)
         {
@@ -106,7 +103,6 @@ namespace ignite {
             constantBufferDesc.setMaxVersions(16);
             mesh->materialConstantBuffer = device->createBuffer(constantBufferDesc);
             LOG_ASSERT(mesh->materialConstantBuffer, "[Model] Failed to create material constant buffer");
-
 
             // create per mesh binding sets
             auto bsDesc = nvrhi::BindingSetDesc();
@@ -198,6 +194,11 @@ namespace ignite {
 
             commandList->drawIndexed(args);
         }
+    }
+
+    Ref<Model> Model::Create(nvrhi::IDevice *device, nvrhi::BindingLayoutHandle bindingLayout, const std::filesystem::path &filepath)
+    {
+        return CreateRef<Model>(device, bindingLayout, filepath);
     }
 
     // Mesh loader

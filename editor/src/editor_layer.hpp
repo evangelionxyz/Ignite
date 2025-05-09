@@ -4,6 +4,7 @@
 #include "ignite/core/layer.hpp"
 #include "ignite/ignite.hpp"
 #include "ignite/graphics/mesh.hpp"
+#include "ignite/graphics/graphics_pipeline.hpp"
 #include "states.hpp"
 
 namespace ignite
@@ -50,6 +51,7 @@ namespace ignite
         Ref<Scene> m_ActiveScene;
         Ref<Scene> m_EditorScene;
         Ref<Model> m_Model;
+        Ref<GraphicsPipeline> m_GraphicsPipeline;
         EditorData m_Data;
         
         nvrhi::CommandListHandle m_CommandList;

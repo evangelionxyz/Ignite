@@ -12,16 +12,6 @@
 
 namespace ignite
 {
-    struct MeshRenderData
-    {
-        nvrhi::ShaderHandle vertexShader;
-        nvrhi::ShaderHandle pixelShader;
-        nvrhi::InputLayoutHandle inputLayout;
-        nvrhi::GraphicsPipelineHandle pipeline;
-    };
-
-    MeshRenderData *meshData = nullptr;
-
     EditorLayer::EditorLayer(const std::string &name)
         : Layer(name)
     {
@@ -33,19 +23,25 @@ namespace ignite
 
         m_Device = Application::GetDeviceManager()->GetDevice();
 
-        meshData = new MeshRenderData();
 
-        // create shaders
-        VPShader *shaders = Renderer::GetDefaultShader("default_mesh");
-        meshData->vertexShader = shaders->vertex;
-        meshData->pixelShader = shaders->pixel;
-        LOG_ASSERT(meshData->vertexShader && meshData->pixelShader, "Failed to create shaders");
 
-        const auto attributes = VertexMesh::GetAttributes();
-        meshData->inputLayout = m_Device->createInputLayout(attributes.data(), attributes.size(), meshData->vertexShader);
-        LOG_ASSERT(meshData->inputLayout, "Failed to create input layout");
+        GraphicsPipelineParams params;
+        params.enableBlend = true;
+        params.depthWrite = true;
+        params.depthTest = true;
+        params.vertexShaderFilepath = "default_mesh.vertex.hlsl";
+        params.pixelShaderFilepath = "default_mesh.pixel.hlsl";
 
-        m_Model = CreateRef<Model>(m_Device, "resources/scene.glb");
+        auto attributes = VertexMesh::GetAttributes();
+        GraphicsPiplineCreateInfo createInfo;
+        createInfo.attributes = attributes.data();
+        createInfo.attributeCount = static_cast<uint32_t>(attributes.size());
+        createInfo.bindingLayoutDesc = VertexMesh::GetBindingLayoutDesc();
+
+        // create graphics pipeline
+        m_GraphicsPipeline = GraphicsPipeline::Create(m_Device, params, createInfo);
+
+        m_Model = Model::Create(m_Device, m_GraphicsPipeline->GetBindingLayout(), "resources/scene.glb");
 
         // write buffer with command list
         m_CommandList = m_Device->createCommandList();
@@ -66,12 +62,6 @@ namespace ignite
     {
         Layer::OnDetach();
         m_CommandList = nullptr;
-        m_CommandList = nullptr;
-
-        if (meshData)
-        {
-            delete meshData;
-        }
     }
 
     void EditorLayer::OnUpdate(const f32 deltaTime)
@@ -189,39 +179,7 @@ namespace ignite
         nvrhi::Viewport viewport = viewportFramebuffer->getFramebufferInfo().getViewport();
 
         // mesh pipeline
-        if (meshData->pipeline == nullptr)
-        {
-            // create graphics pipeline
-            nvrhi::BlendState blendState;
-            blendState.targets[0].setBlendEnable(true);
-
-            auto depthStencilState = nvrhi::DepthStencilState()
-                .setDepthWriteEnable(true)
-                .setDepthTestEnable(true)
-                .setDepthFunc(nvrhi::ComparisonFunc::LessOrEqual); // use 1.0 for far depth
-
-            auto rasterState = nvrhi::RasterState()
-                .setCullFront()
-                .setFrontCounterClockwise(false)
-                .setMultisampleEnable(false);
-
-            auto renderState = nvrhi::RenderState()
-                .setRasterState(rasterState)
-                .setDepthStencilState(depthStencilState)
-                .setBlendState(blendState);
-
-            auto pipelineDesc = nvrhi::GraphicsPipelineDesc()
-                .setVertexShader(meshData->vertexShader)
-                .setPixelShader(meshData->pixelShader)
-                .setInputLayout(meshData->inputLayout)
-                .addBindingLayout(m_Model->bindingLayout)
-                .setRenderState(renderState)
-                .setPrimType(nvrhi::PrimitiveType::TriangleList);
-
-            // create with viewportFramebuffer (the same framebuffer to render)
-            meshData->pipeline = m_Device->createGraphicsPipeline(pipelineDesc, viewportFramebuffer);
-            LOG_ASSERT(meshData->pipeline, "Failed to create graphics pipeline");
-        }
+        m_GraphicsPipeline->Create(m_Device, viewportFramebuffer);
 
         // main scene rendering
         m_CommandList->open();
@@ -238,9 +196,8 @@ namespace ignite
         m_CommandList->close();
         m_Device->executeCommandList(m_CommandList);
 
-
         m_CommandList->open();
-        m_Model->Render(m_CommandList, m_ScenePanel->GetRT()->GetCurrentFramebuffer(), meshData->pipeline, m_ScenePanel->GetViewportCamera());
+        m_Model->Render(m_CommandList, m_ScenePanel->GetRT()->GetCurrentFramebuffer(), m_GraphicsPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
         m_CommandList->close();
         m_Device->executeCommandList(m_CommandList);
     }
