@@ -94,7 +94,7 @@ namespace ignite {
     {
     public:
         Model() = default;
-        Model(nvrhi::IDevice *device, const std::filesystem::path &filepath);
+        Model(nvrhi::IDevice *device, nvrhi::BindingLayoutHandle bindingLayout, const std::filesystem::path &filepath);
 
         void WriteBuffer(nvrhi::CommandListHandle commandList);
         void OnUpdate(f32 deltaTime);
@@ -102,10 +102,11 @@ namespace ignite {
 
         std::vector<Ref<Mesh>> &GetMeshes() { return m_Meshes; }
 
-        nvrhi::BufferHandle globalConstantBuffer;
-        nvrhi::BindingLayoutHandle bindingLayout;
+        static Ref<Model> Create(nvrhi::IDevice *device, nvrhi::BindingLayoutHandle bindingLayout, const std::filesystem::path &filepath);
 
+        nvrhi::BufferHandle globalConstantBuffer;
     private:
+
         std::vector<Ref<Mesh>> m_Meshes;
     };
 
