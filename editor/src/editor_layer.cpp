@@ -99,9 +99,6 @@ namespace ignite
     void EditorLayer::OnDetach()
     {
         Layer::OnDetach();
-
-        ModelLoader::ClearTextureCache();
-        
         m_CommandList = nullptr;
     }
 
@@ -115,10 +112,10 @@ namespace ignite
         m_Helmet->OnUpdate(deltaTime);
         m_Scene->OnUpdate(deltaTime);
 
-        static float t = 0.0f;
+       /* static float t = 0.0f;
         t += deltaTime * 0.5f;
 
-        m_Helmet->transform = glm::rotate(t, glm::vec3 { 0.0f, 1.0f, 0.0f });
+        m_Helmet->transform = glm::rotate(t, glm::vec3 { 0.0f, 1.0f, 0.0f });*/
 
         switch (m_Data.sceneState)
         {
@@ -246,8 +243,8 @@ namespace ignite
         m_Env.Render(m_CommandList, viewportFramebuffer, m_EnvPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
 
         // render objects
-        m_Helmet->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
-        // m_Scene->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
+        m_Helmet->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle(), m_ScenePanel->GetViewportCamera(), &m_Env);
+        m_Scene->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle(), m_ScenePanel->GetViewportCamera(), &m_Env);
 
 
         m_CommandList->close();
@@ -298,12 +295,60 @@ namespace ignite
             // scene dockspace
             m_ScenePanel->OnGuiRender();
 
-            ImGui::Begin("Meshes List");
+            ImGui::Begin("Lighting & Material");
+            
+            static glm::vec2 sunAngles = { 45.0f, 45.0f }; // pitch (elevation), yaw (azimuth)
 
+            if (ImGui::DragFloat2("Sun Angles (Pitch/Yaw)", &sunAngles.x, 0.5f))
+            {
+                float pitch = glm::radians(sunAngles.x); // elevation
+                float yaw = glm::radians(sunAngles.y); // azimuth
+
+                glm::vec3 dir;
+                dir.x = cos(pitch) * sin(yaw);
+                dir.y = sin(pitch);
+                dir.z = cos(pitch) * cos(yaw);
+
+                m_Env.dirLight.direction = glm::vec4(glm::normalize(dir), 0.0f);
+            }
+
+            ImGui::ColorEdit4("Color", &m_Env.dirLight.color.x);
+            ImGui::DragFloat("Intensity", &m_Env.dirLight.intensity, 0.025f, 0.0f, 100.0f);
+            ImGui::DragFloat("Angular Size", &m_Env.dirLight.angularSize, 0.1f, 0.0f, 100.0f);
+            ImGui::DragFloat("Ambient", &m_Env.dirLight.ambientIntensity, 0.025f, 0.0f, 100.0f);
+            
+            ImGui::DragFloat("Exposure", &m_Env.params.exposure, 0.025f, 0.1f, 10.0f);
+            ImGui::DragFloat("Gamma", &m_Env.params.gamma, 0.025f, 0.1f, 10.0f);
+
+            if (m_SelectedMaterial)
+            {
+                ImGui::Separator();
+
+                ImGui::ColorEdit4("Base Color", &m_SelectedMaterial->baseColor.x);
+                ImGui::ColorEdit4("Diffuse Color", &m_SelectedMaterial->diffuseColor.x);
+                ImGui::DragFloat("Metallic", &m_SelectedMaterial->metallic, 0.005f, 0.0f, 1.0f);
+                ImGui::DragFloat("Rougness", &m_SelectedMaterial->roughness, 0.005f, 0.0f, 1.0f);
+                ImGui::DragFloat("Emissive", &m_SelectedMaterial->emissive, 0.005f, 0.0f, 1.0f);
+            }
+
+            ImGui::End();
+
+            ImGui::Begin("Models");
+
+            ImGui::PushID("helmet");
             for (auto &mesh : m_Helmet->GetMeshes())
             {
-                TraverseMeshes(mesh, 0);
+                TraverseMeshes(m_Helmet.get(), mesh, 0);
             }
+            ImGui::PopID();
+
+            ImGui::Separator();
+            ImGui::PushID("scene");
+            for (auto &mesh : m_Scene->GetMeshes())
+            {
+                TraverseMeshes(m_Scene.get(), mesh, 0);
+            }
+            ImGui::PopID();
 
             ImGui::End();
         }
@@ -355,7 +400,7 @@ namespace ignite
         m_Data.sceneState = State_SceneSimulate;
     }
 
-    void EditorLayer::TraverseMeshes(Ref<Mesh> mesh, int traverseIndex)
+    void EditorLayer::TraverseMeshes(Model *model, Ref<Mesh> mesh, int traverseIndex)
     {
         if (mesh->parentID != -1 && traverseIndex == 0)
             return;
@@ -365,11 +410,16 @@ namespace ignite
 
         bool opened = ImGui::TreeNodeEx(mesh->name.c_str(), flags, mesh->name.c_str());
 
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+        {
+            m_SelectedMaterial = &mesh->material.data;
+        }
+
         if (opened)
         {
             for (i32 child : mesh->children)
             {
-                TraverseMeshes(m_Helmet->GetMeshes()[child], ++traverseIndex);
+                TraverseMeshes(model, model->GetMeshes()[child], ++traverseIndex);
             }
 
             ImGui::TreePop();

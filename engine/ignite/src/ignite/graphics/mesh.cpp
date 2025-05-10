@@ -2,10 +2,12 @@
 
 #include "renderer.hpp"
 #include "texture.hpp"
+#include "lighting.hpp"
 #include "ignite/math/math.hpp"
 #include "ignite/core/logger.hpp"
 #include "ignite/core/application.hpp"
 #include "ignite/scene/camera.hpp"
+#include "ignite/graphics/environment.hpp"
 
 #include <stb_image.h>
 
@@ -77,6 +79,7 @@ namespace ignite {
         }
 
         ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), m_Meshes);
+        textureCache.clear();
 
         // create global constant buffer
         auto constantBufferDesc = nvrhi::BufferDesc()
@@ -90,6 +93,17 @@ namespace ignite {
         globalConstantBuffer = device->createBuffer(constantBufferDesc);
         LOG_ASSERT(globalConstantBuffer, "Failed to create constant buffer");
 
+        constantBufferDesc.setDebugName("Directional light constant buffer");
+        constantBufferDesc.setByteSize(sizeof(DirLight));
+        constantBufferDesc.setMaxVersions(16);
+        dirLightConstantBuffer = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(dirLightConstantBuffer, "[Model] Failed to create material constant buffer");
+
+        constantBufferDesc.setDebugName("Environment constant buffer");
+        constantBufferDesc.setByteSize(sizeof(EnvironmentParams));
+        constantBufferDesc.setMaxVersions(16);
+        environmentConstantBuffer = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(environmentConstantBuffer, "[Model] Failed to create environment constant buffer");
 
         for (auto &mesh : m_Meshes)
         {
@@ -101,7 +115,7 @@ namespace ignite {
             LOG_ASSERT(mesh->modelConstantBuffer, "[Model] Failed to create model constant buffer");
 
             constantBufferDesc.setDebugName("Material constant buffer");
-            constantBufferDesc.setByteSize(sizeof(PushConstantMaterial));
+            constantBufferDesc.setByteSize(sizeof(MaterialData));
             constantBufferDesc.setMaxVersions(16);
             mesh->materialConstantBuffer = device->createBuffer(constantBufferDesc);
             LOG_ASSERT(mesh->materialConstantBuffer, "[Model] Failed to create material constant buffer");
@@ -111,10 +125,13 @@ namespace ignite {
             bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, globalConstantBuffer));
             bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, mesh->modelConstantBuffer));
             bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, mesh->materialConstantBuffer));
+            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, dirLightConstantBuffer));
+            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, environmentConstantBuffer));
             bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, mesh->material.textures[aiTextureType_DIFFUSE].handle));
             bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(1, mesh->material.textures[aiTextureType_SPECULAR].handle));
             bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, mesh->material.textures[aiTextureType_EMISSIVE].handle));
             bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, mesh->material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
+            bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(4, mesh->material.textures[aiTextureType_NORMALS].handle));
 
             bsDesc.addItem(nvrhi::BindingSetItem::Sampler(0, mesh->material.sampler));
 
@@ -144,7 +161,7 @@ namespace ignite {
 
     }
 
-    void Model::Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline, Camera *camera)
+    void Model::Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline, Camera *camera, Environment *env)
     {
         nvrhi::Viewport viewport = framebuffer->getFramebufferInfo().getViewport();
 
@@ -154,16 +171,16 @@ namespace ignite {
         globalPushConstant.cameraPosition = glm::vec4(camera->position, 1.0f);
         commandList->writeBuffer(globalConstantBuffer, &globalPushConstant, sizeof(PushConstantGlobal));
 
+        // write env push constant
+        commandList->writeBuffer(dirLightConstantBuffer, &env->dirLight, sizeof(DirLight));
+        commandList->writeBuffer(environmentConstantBuffer, &env->params, sizeof(EnvironmentParams));
+
         for (size_t i = 0; i < m_Meshes.size(); ++i)
         {
             auto &mesh = m_Meshes[i];
 
             // write material constant buffer
-            PushConstantMaterial materialPushConstant;
-            materialPushConstant.baseColor = mesh->material.baseColor;
-            materialPushConstant.diffuseColor = mesh->material.diffuseColor;
-            materialPushConstant.emissive = mesh->material.emissive;
-            commandList->writeBuffer(mesh->materialConstantBuffer, &materialPushConstant, sizeof(PushConstantMaterial));
+            commandList->writeBuffer(mesh->materialConstantBuffer, &mesh->material.data, sizeof(mesh->material.data));
 
             // write model constant buffer
 
@@ -296,19 +313,23 @@ namespace ignite {
 
         material->Get(AI_MATKEY_BASE_COLOR, base_color);
         material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse_color);
-        // material->Get(AI_MATKEY_ROUGHNESS_FACTOR, material.buffer_data.rougness);
         material->Get(AI_MATKEY_COLOR_EMISSIVE, emmisive_color);
+        material->Get(AI_MATKEY_METALLIC_FACTOR, mesh->material.data.metallic);
+        material->Get(AI_MATKEY_ROUGHNESS_FACTOR, mesh->material.data.roughness);
         material->Get(AI_MATKEY_REFLECTIVITY, reflectivity);
 
-        mesh->material.baseColor = { base_color.r, base_color.g, base_color.b, 1.0f };
-        mesh->material.diffuseColor = { diffuse_color.r, diffuse_color.g, diffuse_color.b, 1.0f };
-        mesh->material.emissive = emmisive_color.r / diffuse_color.r;
+        mesh->material.data.baseColor = { base_color.r, base_color.g, base_color.b, 1.0f };
+        mesh->material.data.diffuseColor = { diffuse_color.r, diffuse_color.g, diffuse_color.b, 1.0f };
+        
+        if (diffuse_color.r > 0.0f)
+            mesh->material.data.emissive = emmisive_color.r / diffuse_color.r;
 
         // load textures
         LoadTextures(scene, material, &mesh->material, aiTextureType_DIFFUSE);
         LoadTextures(scene, material, &mesh->material, aiTextureType_SPECULAR);
         LoadTextures(scene, material, &mesh->material, aiTextureType_EMISSIVE);
         LoadTextures(scene, material, &mesh->material, aiTextureType_DIFFUSE_ROUGHNESS);
+        LoadTextures(scene, material, &mesh->material, aiTextureType_NORMALS);
 
         // set transparent and reflectivity
         mesh->material._transparent = false;
@@ -409,10 +430,4 @@ namespace ignite {
         meshMaterial->sampler = Renderer::GetWhiteTexture()->GetSampler();
 
     }
-
-    void ModelLoader::ClearTextureCache()
-    {
-        textureCache.clear();
-    }
-
 }

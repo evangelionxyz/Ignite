@@ -11,7 +11,7 @@ float3 LightFalloff(float3 lightIntensity, float3 fallOff, float3 lightPosition,
 float3 SchlickFresnel(float3 lightDirection, float3 normal, float3 specularColor)
 {
     float LH = dot(lightDirection, normal);
-    return saturate(specularColor + (1.0f - specularColor) * pow(1.0f - LH, 5.0f));
+    return specularColor + (1.0f - specularColor) * pow(1.0f - LH, 5.0f);
 }
 
 float TRDistribution(float3 normal, float3 halfVector, float roughness)
@@ -24,8 +24,8 @@ float TRDistribution(float3 normal, float3 halfVector, float roughness)
 
 float GGXVisiblity(float3 normal, float3 lightDirection, float3 viewDirection, float roughness)
 {
-    float NL = max(dot(normal, lightDirection), 0.0f);
-    float NV = max(dot(normal, viewDirection), 0.0f);
+    float NL = max(dot(normal, lightDirection), 0.05f);
+    float NV = max(dot(normal, viewDirection), 0.05f);
     float RSq = roughness * roughness;
     float RMod = 1.0f - RSq;
     float recipG1 = NL * sqrt(RSq + (RMod * NL * NL));
@@ -44,19 +44,14 @@ float3 GGXReflect(float3 normal, float3 reflectDirection, float3 viewDirection, 
     return retColor;
 }
 
-float3 TextureEmissive(float3 diffuseColor, float emissive)
-{
-    return emissive * diffuseColor;
-}
-
 float3 BinnPhong(float3 normal, float3 lightDirection, float3 viewDirection, float3 lightIrradiance, float3 diffuseColor, float3 specularColor, float roughness)
 {
-    float3 diffuse = diffuseColor;
+    float3 diffuse = diffuseColor * M_RCPPI;
     float3 halfVector = normalize(viewDirection + lightDirection);
     float roughnessPhong = (2.0f / (roughness * roughness)) - 2.0f;
     float3 specular = pow(max(dot(normal, halfVector), 0.0), roughnessPhong) * specularColor;
-    diffuse *= M_RCPPI;
     specular *= (roughnessPhong + 8.0f) / (8.0f * M_PI);
+
     float3 retColor = diffuse + specular;
     retColor *= max(dot(normal, lightDirection), 0.0f);
     retColor *= lightIrradiance;
@@ -65,13 +60,19 @@ float3 BinnPhong(float3 normal, float3 lightDirection, float3 viewDirection, flo
 
 float3 GGX(float3 normal, float3 lightDirection, float3 viewDirection, float3 lightIrradiance, float3 diffuseColor, float3 specularColor, float roughness)
 {
-    float3 diffuse = mul(diffuseColor, M_RCPPI);
+    float3 diffuse = diffuseColor * M_RCPPI;
     float3 halfVector = normalize(viewDirection + lightDirection);
     float3 F = SchlickFresnel(lightDirection, halfVector, specularColor);
-    float D = TRDistribution(normal, viewDirection, roughness);
+    float D = TRDistribution(normal, halfVector, roughness);
     float V = GGXVisiblity(normal, lightDirection, viewDirection, roughness);
+
     float3 retColor = diffuse + (F * D * V);
     retColor *= max(dot(normal, lightDirection), 0.0f);
     retColor *= lightIrradiance;
     return retColor;
+}
+
+float3 TextureEmissive(float3 diffuseColor, float emissive)
+{
+    return emissive * diffuseColor;
 }

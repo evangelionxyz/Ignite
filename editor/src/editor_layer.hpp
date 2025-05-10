@@ -6,6 +6,7 @@
 #include "ignite/graphics/mesh.hpp"
 #include "ignite/graphics/graphics_pipeline.hpp"
 #include "ignite/graphics/environment.hpp"
+#include "ignite/graphics/lighting.hpp"
 
 #include "states.hpp"
 
@@ -46,7 +47,7 @@ namespace ignite
         void OnSceneStop();
         void OnSceneSimulate();
 
-        void TraverseMeshes(Ref<Mesh> mesh, int traverseIndex = 0);
+        void TraverseMeshes(Model *model, Ref<Mesh> mesh, int traverseIndex = 0);
 
         Ref<ScenePanel> m_ScenePanel;
         
@@ -56,6 +57,7 @@ namespace ignite
         Ref<Model> m_Scene;
         Ref<GraphicsPipeline> m_MeshPipeline;
         Ref<GraphicsPipeline> m_EnvPipeline;
+        MaterialData *m_SelectedMaterial = nullptr;
         Environment m_Env;
         EditorData m_Data;
         

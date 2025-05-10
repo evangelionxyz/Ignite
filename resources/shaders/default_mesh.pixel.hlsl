@@ -1,31 +1,51 @@
 #include "include/tonemapping.hlsli"
 #include "include/srgb_to_linear.hlsli"
 #include "include/pbr.hlsli"
+#include "include/binding_helpers.hlsli"
 
-cbuffer GlobalConstants : register(b0)
+struct Camera
 {
     float4x4 viewProjection;
-    float4 cameraPosition;
+    float4 position;
 };
 
-cbuffer ModelConstants : register(b1)
+struct Object
 {
     float4x4 transformMatrix;
     float4x4 normalMatrix;
-}
+};
 
-cbuffer MaterialConstants : register(b2)
+struct Material
 {
     float4 baseColor;
     float4 diffuseColor;
+    float metallic;
+    float roughness;
     float emissive;
-}
+};
 
-cbuffer DirLightConstants : register(b3)
+struct DirLight
 {
-    float4 DLDirection;
-    float4 DLColor;
-}
+    float4 color;
+    float4 direction;
+    float intensity;
+    float angularSize;
+    float ambientIntensity;
+    float shadowStrength;
+};
+
+struct Environment
+{
+    float exposure;
+    float gamma;
+};
+
+// push constant buffers
+cbuffer CameraBuffer : register(b0) { Camera camera; }
+cbuffer ObjectBuffer : register(b1) { Object object; }
+cbuffer MaterialBuffer : register(b2) { Material material; }
+cbuffer DirLightBuffer : register(b3) { DirLight dirLight; }
+cbuffer EnvironmentBuffer : register(b4) { Environment env; }
 
 struct PSInput
 {
@@ -41,6 +61,7 @@ Texture2D diffuseTex : register(t0);
 Texture2D specularTex : register(t1);
 Texture2D emissiveTex : register(t2);
 Texture2D roughnessTex : register(t3);
+Texture2D normalTex : register(t4);
 sampler sampler0 : register(s0);
 
 float3 CalcDirLight(float3 ldirection, float3 lcolor, float3 normal, float3 viewDirection, float3 diffTexColor, float shadow)
@@ -63,38 +84,48 @@ float4 main(PSInput input) : SV_TARGET
 {
     float3 lighting = float3(0.0f, 0.0f, 0.0f);
 
-    float3 diffCol = diffuseTex.Sample(sampler0, input.uv).rgb;
-    float3 specCol = specularTex.Sample(sampler0, input.uv).rgb;
+    float3 diffColTex = diffuseTex.Sample(sampler0, input.uv).rgb;
+    float3 specColTex = specularTex.Sample(sampler0, input.uv).rgb;
     float3 emissiveCol = emissiveTex.Sample(sampler0, input.uv).rgb;
-    float3 roughCol = roughnessTex.Sample(sampler0, input.uv).rgb;
+    float3 roughColTex = roughnessTex.Sample(sampler0, input.uv).rgb;
+    float3 normalColTex = normalTex.Sample(sampler0, input.uv).rgb;
 
     float3 normal = normalize(input.normal);
-    float3 viewDir = normalize(cameraPosition.xyz - input.worldPos);
+    float3 viewDir = normalize(camera.position.xyz - input.worldPos);
+    float3 lightDir = normalize(dirLight.direction.xyz);
 
-    // directional light
-    float3 lightDir = normalize(float3(0.0f, 1.0f, 0.4f));
-    float3 lightColor = float3(1.0f, 0.8f, 0.9f);
+    // Combine material + texture values
+    float3 diffuseColor = diffColTex * material.diffuseColor.rgb;
+    float3 specularColor = lerp(float3(0.04f, 0.04f, 0.04f), specColTex, material.metallic);
+    float roughness = clamp(material.roughness * roughColTex.r, 0.05f, 1.0f); // prevent 0 roughness
 
-    // PBR parameters
-    float roughness = 1.0f;
-    float3 irradiance = lightColor * 1.0f; // light intensity
+    // ===== AMBIENT =====
+    float3 ambient = dirLight.color.rgb * dirLight.ambientIntensity * diffuseColor;
 
-    lighting = BinnPhong(
+    // ===== IRRADIANCE =====
+    float3 irradiance = dirLight.color.rgb * dirLight.intensity;
+
+    // ===== LIGHTING (GGX) =====
+    lighting = GGX(
         normal,
         lightDir,
         viewDir,
         irradiance,
-        diffCol,
-        specCol,
+        diffuseColor,
+        specularColor,
         roughness
     );
 
-    float exposure = 1.0f;
-    float gamma = 2.2f;
-    float3 toneMapped = tonemap(float4(lighting, 1.0f), exposure, gamma).rgb;
-    toneMapped = SRGBToLinear(toneMapped.rgb);
+    lighting += ambient;
 
-    return float4(toneMapped * (diffCol + emissiveCol) * baseColor.rgb, 1.0f);
+    // ===== EMISSIVE =====
+    float3 emissive = TextureEmissive(emissiveCol, material.emissive);
+
+    // ===== TONE MAPPING & OUTPUT =====
+    float3 toneMapped = tonemap(float4(lighting + emissive, 1.0f), env.exposure, env.gamma).rgb;
+    toneMapped = SRGBToLinear(toneMapped);
+
+    return float4(toneMapped * material.baseColor.rgb, 1.0f);
 
     // normal visual debug
     // return float4(normal * 0.5 + 0.5, 1.0); // Visual debug

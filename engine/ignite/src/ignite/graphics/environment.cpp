@@ -77,7 +77,7 @@ namespace ignite {
         
         // create constant buffer
         nvrhi::BufferDesc cbDesc;
-        cbDesc.byteSize = sizeof(EnvParamsConstant);
+        cbDesc.byteSize = sizeof(EnvironmentParams);
         cbDesc.isConstantBuffer = true;
         cbDesc.debugName = "Skybox params constant buffer";
         cbDesc.initialState = nvrhi::ResourceStates::ConstantBuffer;
@@ -178,13 +178,7 @@ namespace ignite {
         commandList->writeBuffer(m_ConstantBuffer, glm::value_ptr(viewProjection), sizeof(glm::mat4));
         
         // write params buffer
-        
-        static float t = 0.0f;
-        t += 0.001f;
-        EnvParamsConstant params;
-        params.exposure = glm::abs(glm::sin(t));
-
-        commandList->writeBuffer(m_ParamsConstantBuffer, &params, sizeof(EnvParamsConstant));
+        commandList->writeBuffer(m_ParamsConstantBuffer, &params, sizeof(EnvironmentParams));
 
         // render
         auto state = nvrhi::GraphicsState();

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "lighting.hpp"
+
 #include <string>
 #include <vector>
 #include <nvrhi/nvrhi.h>
@@ -8,9 +10,9 @@ namespace ignite {
 
     class Camera;
 
-    struct EnvParamsConstant
+    struct EnvironmentParams
     {
-        float exposure = 0.4f;
+        float exposure = 4.5f;
         float gamma = 2.2f;
     };
 
@@ -36,6 +38,9 @@ namespace ignite {
 
         static nvrhi::VertexAttributeDesc GetAttribute();
         static nvrhi::BindingLayoutDesc GetBindingLayoutDesc();
+
+        EnvironmentParams params;
+        DirLight dirLight;
 
     private:
         nvrhi::BufferHandle m_ConstantBuffer;
