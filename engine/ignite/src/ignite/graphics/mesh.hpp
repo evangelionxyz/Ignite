@@ -28,7 +28,15 @@ namespace ignite {
         glm::vec4 diffuseColor;
         f32 emissive = 0.0f;
 
-        nvrhi::TextureHandle texture = nullptr;
+        struct TextureData
+        {
+            Buffer buffer;
+            uint32_t rowPitch = 0;
+            nvrhi::TextureHandle handle;
+        };
+
+        std::unordered_map<aiTextureType, TextureData> textures;
+
         nvrhi::SamplerHandle sampler = nullptr;
 
         bool IsTransparent() const { return _transparent; }
@@ -37,9 +45,12 @@ namespace ignite {
 
         void WriteBuffer(nvrhi::CommandListHandle commandList)
         {
-            if (_buffer.Data)
+            for (auto [type, texData] : textures)
             {
-                commandList->writeTexture(texture, 0, 0, _buffer.Data, _textureWidth * 4);
+                if (texData.buffer.Data)
+                {
+                    commandList->writeTexture(texData.handle, 0, 0, texData.buffer.Data, texData.rowPitch);
+                }
             }
         }
 
@@ -47,8 +58,6 @@ namespace ignite {
         bool _transparent = false;
         bool _reflective = false;
         bool _shouldWriteTexture = false;
-        uint32_t _textureWidth = 0;
-        Buffer _buffer;
 
         friend class ModelLoader;
     };
@@ -117,8 +126,7 @@ namespace ignite {
         static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, i32 parentID = -1);
         static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes);
         static void LoadMaterial(const aiScene *scene, aiMaterial *material, const std::string &filepath, Ref<Mesh> &mesh);
-
-    private:
-        static Assimp::Importer m_Importer;
+        static void LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type);
+        static void ClearTextureCache();
     };
 }

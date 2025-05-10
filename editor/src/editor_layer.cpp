@@ -99,6 +99,9 @@ namespace ignite
     void EditorLayer::OnDetach()
     {
         Layer::OnDetach();
+
+        ModelLoader::ClearTextureCache();
+        
         m_CommandList = nullptr;
     }
 

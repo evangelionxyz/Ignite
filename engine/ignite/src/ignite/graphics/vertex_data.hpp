@@ -73,7 +73,10 @@ namespace ignite
                 .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0)) // global push constants
                 .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1)) // model push constants
                 .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(2)) // material push constants
-                .addItem(nvrhi::BindingLayoutItem::Texture_SRV(0)) // texture
+                .addItem(nvrhi::BindingLayoutItem::Texture_SRV(0)) // diffuse
+                .addItem(nvrhi::BindingLayoutItem::Texture_SRV(1)) // specular
+                .addItem(nvrhi::BindingLayoutItem::Texture_SRV(2)) // emissive
+                .addItem(nvrhi::BindingLayoutItem::Texture_SRV(3)) // roughness
                 .addItem(nvrhi::BindingLayoutItem::Sampler(0)); // sampler
         }
     };

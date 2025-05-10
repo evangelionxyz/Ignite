@@ -13,6 +13,8 @@
 
 namespace ignite {
 
+    static std::unordered_map<std::string, nvrhi::TextureHandle> textureCache;
+
     // Mesh class
     Mesh::Mesh(i32 id)
         : meshID(id)
@@ -109,7 +111,11 @@ namespace ignite {
             bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, globalConstantBuffer));
             bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, mesh->modelConstantBuffer));
             bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, mesh->materialConstantBuffer));
-            bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, mesh->material.texture));
+            bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, mesh->material.textures[aiTextureType_DIFFUSE].handle));
+            bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(1, mesh->material.textures[aiTextureType_SPECULAR].handle));
+            bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, mesh->material.textures[aiTextureType_EMISSIVE].handle));
+            bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, mesh->material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
+
             bsDesc.addItem(nvrhi::BindingSetItem::Sampler(0, mesh->material.sampler));
 
             mesh->bindingSet = device->createBindingSet(bsDesc, bindingLayout);
@@ -298,17 +304,39 @@ namespace ignite {
         mesh->material.diffuseColor = { diffuse_color.r, diffuse_color.g, diffuse_color.b, 1.0f };
         mesh->material.emissive = emmisive_color.r / diffuse_color.r;
 
-        // TODO: load textures
+        // load textures
+        LoadTextures(scene, material, &mesh->material, aiTextureType_DIFFUSE);
+        LoadTextures(scene, material, &mesh->material, aiTextureType_SPECULAR);
+        LoadTextures(scene, material, &mesh->material, aiTextureType_EMISSIVE);
+        LoadTextures(scene, material, &mesh->material, aiTextureType_DIFFUSE_ROUGHNESS);
 
-        if (const i32 texCount = material->GetTextureCount(aiTextureType_DIFFUSE))
+        // set transparent and reflectivity
+        mesh->material._transparent = false;
+        mesh->material._reflective = reflectivity > 0.0f;
+    }
+
+    void ModelLoader::LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type)
+    {
+        if (const i32 texCount = material->GetTextureCount(type))
         {
             for (i32 i = 0; i < texCount; ++i)
             {
                 aiString textureFilepath;
-                material->GetTexture(aiTextureType_DIFFUSE, i, &textureFilepath);
-                const aiTexture *embeddedTexture = scene->GetEmbeddedTexture(textureFilepath.C_Str());
+                material->GetTexture(type, i, &textureFilepath);
 
-                if (embeddedTexture)
+                // try to load from cache
+                for (auto &[path, tex] : textureCache)
+                {
+                    if (std::strcmp(path.c_str(), textureFilepath.C_Str()) == 0)
+                    {
+                        meshMaterial->textures[type].handle = tex;
+                        break;
+                    }
+                }
+
+                // create new texture
+                const aiTexture *embeddedTexture = scene->GetEmbeddedTexture(textureFilepath.C_Str());
+                if (embeddedTexture && meshMaterial->textures[type].handle == nullptr)
                 {
                     nvrhi::IDevice *device = Application::GetDeviceManager()->GetDevice();
 
@@ -319,7 +347,7 @@ namespace ignite {
                     {
                         LOG_INFO("[Material] Loading compressed format texture of size {} bytes", embeddedTexture->mWidth);
 
-                        mesh->material._buffer.Data = stbi_load_from_memory(
+                        meshMaterial->textures[type].buffer.Data = stbi_load_from_memory(
                             reinterpret_cast<const stbi_uc *>(embeddedTexture->pcData),
                             embeddedTexture->mWidth, &width, &height, &channels, 4);
                     }
@@ -346,14 +374,13 @@ namespace ignite {
                             dstData[i * 4 + 3] = 255;               // A
                         }
 
-                        mesh->material._buffer.Data = dstData;
+                        meshMaterial->textures[type].buffer.Data = dstData;
                     }
-                    
 
-                    LOG_ASSERT(mesh->material._buffer.Data, "[Material] Failed to load texture");
+                    LOG_ASSERT(meshMaterial->textures[type].buffer.Data, "[Material] Failed to load texture");
 
-                    mesh->material._buffer.Size = width * height * 4;
-                    mesh->material._textureWidth = width;
+                    meshMaterial->textures[type].buffer.Size = width * height * 4;
+                    meshMaterial->textures[type].rowPitch = width * 4;
 
                     // create texture
                     const auto textureDesc = nvrhi::TextureDesc()
@@ -365,36 +392,27 @@ namespace ignite {
                         .setKeepInitialState(true)
                         .setDebugName("Material embedded Texture");
 
-                    mesh->material.texture = device->createTexture(textureDesc);
-                    LOG_ASSERT(mesh->material.texture, "[Material] Failed to create texture!");
+                    meshMaterial->textures[type].handle = device->createTexture(textureDesc);
+                    LOG_ASSERT(meshMaterial->textures[type].handle, "[Material] Failed to create texture!");
 
+                    // store to cache
+                    textureCache[textureFilepath.C_Str()] = meshMaterial->textures[type].handle;
 
-                    // create sampler
-                    const auto samplerDesc = nvrhi::SamplerDesc()
-                        .setAllAddressModes(nvrhi::SamplerAddressMode::Repeat)
-                        .setAllFilters(true);
-
-                    mesh->material.sampler = device->createSampler(samplerDesc);
-                    LOG_ASSERT(mesh->material.sampler, "[Material] Failed to create texture sampler");
-
-                    mesh->material._shouldWriteTexture = true;
+                    meshMaterial->_shouldWriteTexture = true;
                 }
             }
         }
 
-        // use white texture if failed to create texture
-        if (!mesh->material.texture)
-        {
-            mesh->material.texture = Renderer::GetWhiteTexture()->GetHandle();
-            mesh->material.sampler = Renderer::GetWhiteTexture()->GetSampler();
-        }
+        if (!meshMaterial->textures[type].handle)
+            meshMaterial->textures[type].handle = Renderer::GetWhiteTexture()->GetHandle();
 
-        // material.specular_texture = LoadTexture(m_Scene, material, filepath, TextureType::SPECULAR);
-        // material.roughness_texture = LoadTexture(m_Scene, material, filepath, TextureType::DIFFUSE_ROUGHNESS);
+        meshMaterial->sampler = Renderer::GetWhiteTexture()->GetSampler();
 
-        // set transparent and reflectivity
-        mesh->material._transparent = false;
-        mesh->material._reflective = reflectivity > 0.0f;
+    }
+
+    void ModelLoader::ClearTextureCache()
+    {
+        textureCache.clear();
     }
 
 }
