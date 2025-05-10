@@ -33,8 +33,12 @@ namespace ignite
         ~Renderer();
 
         void CreateShaderContext(ShaderMake::Options *options);
+
         static ShaderMake::Context *GetShaderContext();
+        
         static Ref<Texture> GetWhiteTexture();
+        static Ref<Texture> GetBlackTexture();
+
         static nvrhi::GraphicsAPI GetGraphicsAPI();
 
         static VPShader *GetDefaultShader(const std::string &shaderName);
@@ -50,5 +54,6 @@ namespace ignite
         std::unordered_map<std::string, VPShader> m_Shaders;
 
         Ref<Texture> m_WhiteTexture;
+        Ref<Texture> m_BlackTexture;
     };
 }

@@ -3,6 +3,8 @@
 #include "lighting.hpp"
 
 #include <string>
+#include <filesystem>
+
 #include <vector>
 #include <nvrhi/nvrhi.h>
 
@@ -12,20 +14,13 @@ namespace ignite {
 
     struct EnvironmentParams
     {
-        float exposure = 4.5f;
-        float gamma = 2.2f;
+        float exposure = 1.0f;
+        float gamma = 0.9f;
     };
 
     struct EnvironmentCreateInfo
     {
-        // order +X, -X, +Y, -Y, +Z, -Z.
-
-        const char *rightFilepath = nullptr;
-        const char *leftFilepath = nullptr;
-        const char *topFilepath = nullptr;
-        const char *bottomFilepath = nullptr;
-        const char *frontFilepath = nullptr;
-        const char *backFilepath = nullptr;
+        std::filesystem::path filepath;
     };
 
     class Environment
@@ -42,14 +37,25 @@ namespace ignite {
         EnvironmentParams params;
         DirLight dirLight;
 
+        nvrhi::TextureHandle GetHDRTexture() { return m_HDRTexture; }
+
+        nvrhi::BufferHandle GetParamsBuffer() { return m_ParamsConstantBuffer; }
+        nvrhi::BufferHandle GetDirLightBuffer() { return m_DirLightConstantBuffer; }
+        nvrhi::BufferHandle GetCameraBuffer() { return m_CameraConstantBuffer; }
+
     private:
-        nvrhi::BufferHandle m_ConstantBuffer;
+        void CreateLightingBuffer(nvrhi::IDevice *device);
+
         nvrhi::BufferHandle m_VertexBuffer;
         nvrhi::BufferHandle m_IndexBuffer;
+
+        nvrhi::BufferHandle m_CameraConstantBuffer;
         nvrhi::BufferHandle m_ParamsConstantBuffer;
+        nvrhi::BufferHandle m_DirLightConstantBuffer;
+
         nvrhi::BindingSetHandle m_BindingSet;
 
-        nvrhi::TextureHandle m_CubeTexture;
+        nvrhi::TextureHandle m_HDRTexture;
         nvrhi::SamplerHandle m_Sampler;
 
     };

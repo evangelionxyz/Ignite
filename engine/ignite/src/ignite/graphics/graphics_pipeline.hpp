@@ -41,7 +41,6 @@ namespace ignite {
         nvrhi::ShaderHandle GetPixelShader() { return m_PixelShader; }
         nvrhi::InputLayoutHandle GetInputLayout() { return m_InputLayout; }
         nvrhi::BindingLayoutHandle GetBindingLayout() { return m_BindingLayout; }
-        std::vector<nvrhi::BufferHandle> GetConstantBuffers() { return m_ConstantBuffers; }
 
         static Ref<GraphicsPipeline> Create(nvrhi::IDevice *device, const GraphicsPipelineParams &params, const GraphicsPiplineCreateInfo &createInfo);
 
@@ -54,7 +53,6 @@ namespace ignite {
         nvrhi::ShaderHandle m_PixelShader;
         nvrhi::InputLayoutHandle m_InputLayout;
         nvrhi::BindingLayoutHandle m_BindingLayout;
-        std::vector<nvrhi::BufferHandle> m_ConstantBuffers;
         GraphicsPipelineParams m_Params;
     };
 }

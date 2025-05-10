@@ -51,8 +51,7 @@ namespace ignite {
     }
 
     // Model class
-
-    Model::Model(nvrhi::IDevice *device, nvrhi::BindingLayoutHandle bindingLayout, const std::filesystem::path &filepath)
+    Model::Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo)
     {
         LOG_ASSERT(std::filesystem::exists(filepath), "[Model] Filepath does not exists!");
 
@@ -81,62 +80,48 @@ namespace ignite {
         ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), m_Meshes);
         textureCache.clear();
 
-        // create global constant buffer
+        // create buffers
         auto constantBufferDesc = nvrhi::BufferDesc()
-            .setByteSize(sizeof(PushConstantGlobal))
             .setIsConstantBuffer(true)
             .setIsVolatile(true)
-            .setInitialState(nvrhi::ResourceStates::ConstantBuffer)
-            .setMaxVersions(16);
-
-        constantBufferDesc.setDebugName("Global constant buffer");
-        globalConstantBuffer = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(globalConstantBuffer, "Failed to create constant buffer");
-
-        constantBufferDesc.setDebugName("Directional light constant buffer");
-        constantBufferDesc.setByteSize(sizeof(DirLight));
-        constantBufferDesc.setMaxVersions(16);
-        dirLightConstantBuffer = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(dirLightConstantBuffer, "[Model] Failed to create material constant buffer");
-
-        constantBufferDesc.setDebugName("Environment constant buffer");
-        constantBufferDesc.setByteSize(sizeof(EnvironmentParams));
-        constantBufferDesc.setMaxVersions(16);
-        environmentConstantBuffer = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(environmentConstantBuffer, "[Model] Failed to create environment constant buffer");
+            .setMaxVersions(16)
+            .setInitialState(nvrhi::ResourceStates::ConstantBuffer);
 
         for (auto &mesh : m_Meshes)
         {
+            // create per mesh binding sets
+            auto bsDesc = nvrhi::BindingSetDesc();
+
             // create per mesh constant buffers
             constantBufferDesc.setDebugName("Mesh constant buffer");
             constantBufferDesc.setByteSize(sizeof(PushConstantMesh));
-            constantBufferDesc.setMaxVersions(16);
-            mesh->modelConstantBuffer = device->createBuffer(constantBufferDesc);
-            LOG_ASSERT(mesh->modelConstantBuffer, "[Model] Failed to create model constant buffer");
+            mesh->objectBuffer = createInfo.device->createBuffer(constantBufferDesc);
+            LOG_ASSERT(mesh->objectBuffer, "[Model] Failed to create object constant buffer");
 
             constantBufferDesc.setDebugName("Material constant buffer");
             constantBufferDesc.setByteSize(sizeof(MaterialData));
-            constantBufferDesc.setMaxVersions(16);
-            mesh->materialConstantBuffer = device->createBuffer(constantBufferDesc);
-            LOG_ASSERT(mesh->materialConstantBuffer, "[Model] Failed to create material constant buffer");
+            mesh->materialBuffer = createInfo.device->createBuffer(constantBufferDesc);
+            LOG_ASSERT(mesh->materialBuffer, "[Model] Failed to create material constant buffer");
 
-            // create per mesh binding sets
-            auto bsDesc = nvrhi::BindingSetDesc();
-            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, globalConstantBuffer));
-            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, mesh->modelConstantBuffer));
-            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, mesh->materialConstantBuffer));
-            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, dirLightConstantBuffer));
-            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, environmentConstantBuffer));
+            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, createInfo.cameraBuffer));
+            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, createInfo.lightBuffer));
+            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, createInfo.envBuffer));
+            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, mesh->objectBuffer));
+            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, mesh->materialBuffer));
+            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(5, createInfo.debugBuffer));
+
             bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, mesh->material.textures[aiTextureType_DIFFUSE].handle));
             bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(1, mesh->material.textures[aiTextureType_SPECULAR].handle));
             bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, mesh->material.textures[aiTextureType_EMISSIVE].handle));
             bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, mesh->material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
             bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(4, mesh->material.textures[aiTextureType_NORMALS].handle));
 
+            for (auto &[index, tex] : createInfo.textures)
+                bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(index, tex));
+
             bsDesc.addItem(nvrhi::BindingSetItem::Sampler(0, mesh->material.sampler));
 
-            mesh->bindingSet = device->createBindingSet(bsDesc, bindingLayout);
-            
+            mesh->bindingSet = createInfo.device->createBindingSet(bsDesc, createInfo.bindingLayout);
             LOG_ASSERT(mesh->bindingSet, "Failed to create binding set");
         }
     }
@@ -161,26 +146,16 @@ namespace ignite {
 
     }
 
-    void Model::Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline, Camera *camera, Environment *env)
+    void Model::Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline)
     {
         nvrhi::Viewport viewport = framebuffer->getFramebufferInfo().getViewport();
-
-        // write global push constant
-        PushConstantGlobal globalPushConstant;
-        globalPushConstant.viewProjection = camera->GetViewProjectionMatrix();
-        globalPushConstant.cameraPosition = glm::vec4(camera->position, 1.0f);
-        commandList->writeBuffer(globalConstantBuffer, &globalPushConstant, sizeof(PushConstantGlobal));
-
-        // write env push constant
-        commandList->writeBuffer(dirLightConstantBuffer, &env->dirLight, sizeof(DirLight));
-        commandList->writeBuffer(environmentConstantBuffer, &env->params, sizeof(EnvironmentParams));
 
         for (size_t i = 0; i < m_Meshes.size(); ++i)
         {
             auto &mesh = m_Meshes[i];
 
             // write material constant buffer
-            commandList->writeBuffer(mesh->materialConstantBuffer, &mesh->material.data, sizeof(mesh->material.data));
+            commandList->writeBuffer(mesh->materialBuffer, &mesh->material.data, sizeof(mesh->material.data));
 
             // write model constant buffer
 
@@ -192,7 +167,7 @@ namespace ignite {
 
             glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(modelPushConstant.transformMatrix)));
             modelPushConstant.normalMatrix = glm::mat4(normalMat3);
-            commandList->writeBuffer(mesh->modelConstantBuffer, &modelPushConstant, sizeof(PushConstantMesh));
+            commandList->writeBuffer(mesh->objectBuffer, &modelPushConstant, sizeof(PushConstantMesh));
 
             // render
             auto meshGraphicsState = nvrhi::GraphicsState();
@@ -215,9 +190,9 @@ namespace ignite {
         }
     }
 
-    Ref<Model> Model::Create(nvrhi::IDevice *device, nvrhi::BindingLayoutHandle bindingLayout, const std::filesystem::path &filepath)
+    Ref<Model> Model::Create(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo)
     {
-        return CreateRef<Model>(device, bindingLayout, filepath);
+        return CreateRef<Model>(filepath, createInfo);
     }
 
     // Mesh loader
@@ -317,9 +292,7 @@ namespace ignite {
         material->Get(AI_MATKEY_METALLIC_FACTOR, mesh->material.data.metallic);
         material->Get(AI_MATKEY_ROUGHNESS_FACTOR, mesh->material.data.roughness);
         material->Get(AI_MATKEY_REFLECTIVITY, reflectivity);
-
         mesh->material.data.baseColor = { base_color.r, base_color.g, base_color.b, 1.0f };
-        mesh->material.data.diffuseColor = { diffuse_color.r, diffuse_color.g, diffuse_color.b, 1.0f };
         
         if (diffuse_color.r > 0.0f)
             mesh->material.data.emissive = emmisive_color.r / diffuse_color.r;
@@ -360,6 +333,8 @@ namespace ignite {
                 if (embeddedTexture && meshMaterial->textures[type].handle == nullptr)
                 {
                     nvrhi::IDevice *device = Application::GetDeviceManager()->GetDevice();
+
+                    stbi_set_flip_vertically_on_load(false);
 
                     i32 width, height, channels;
 
@@ -425,7 +400,9 @@ namespace ignite {
         }
 
         if (!meshMaterial->textures[type].handle)
+        {
             meshMaterial->textures[type].handle = Renderer::GetWhiteTexture()->GetHandle();
+        }
 
         meshMaterial->sampler = Renderer::GetWhiteTexture()->GetSampler();
 

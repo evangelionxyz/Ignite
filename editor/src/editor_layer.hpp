@@ -16,6 +16,11 @@ namespace ignite
     class DeviceManager;
     class ScenePanel;
 
+    struct DebugRenderData
+    {
+        int renderIndex = 0;
+    };
+
     class EditorLayer final : public Layer
     {
     private:
@@ -57,9 +62,13 @@ namespace ignite
         Ref<Model> m_Scene;
         Ref<GraphicsPipeline> m_MeshPipeline;
         Ref<GraphicsPipeline> m_EnvPipeline;
+
         MaterialData *m_SelectedMaterial = nullptr;
+        DebugRenderData m_DebugRenderData;
         Environment m_Env;
         EditorData m_Data;
+
+        nvrhi::BufferHandle m_DebugRenderBuffer;
         
         nvrhi::CommandListHandle m_CommandList;
         nvrhi::IDevice *m_Device = nullptr;

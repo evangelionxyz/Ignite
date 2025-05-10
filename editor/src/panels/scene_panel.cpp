@@ -59,7 +59,7 @@ namespace ignite
         createInfo.depthWrite = true;
         createInfo.attachments = {
             FramebufferAttachments{ nvrhi::Format::D32S8},
-            FramebufferAttachments{ nvrhi::Format::RGBA8_UNORM },
+            FramebufferAttachments{ nvrhi::Format::SRGBA8_UNORM },
         };
 
         m_RenderTarget = CreateRef<RenderTarget>(createInfo);

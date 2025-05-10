@@ -24,6 +24,18 @@ namespace ignite
         m_Device = Application::GetDeviceManager()->GetDevice();
         m_CommandList = m_Device->createCommandList();
 
+        {
+            // create debug render
+            nvrhi::BufferDesc dbDesc;
+            dbDesc.byteSize = sizeof(DebugRenderData);
+            dbDesc.isConstantBuffer = true;
+            dbDesc.initialState = nvrhi::ResourceStates::ConstantBuffer;
+            dbDesc.keepInitialState = true;
+
+            m_DebugRenderBuffer = m_Device->createBuffer(dbDesc);
+            LOG_ASSERT(m_DebugRenderBuffer, "Failed to create debug render constant buffer!");
+        }
+
         // create mesh graphics pipeline
         {
             GraphicsPipelineParams params;
@@ -65,21 +77,22 @@ namespace ignite
             m_EnvPipeline = GraphicsPipeline::Create(m_Device, params, pci);
 
             // create env
-            // order +X, -X, +Y, -Y, +Z, -Z.
             EnvironmentCreateInfo eci;
-            eci.rightFilepath = "resources/skybox/right.jpg";
-            eci.leftFilepath = "resources/skybox/left.jpg";
-            eci.topFilepath = "resources/skybox/top.jpg";
-            eci.bottomFilepath = "resources/skybox/bottom.jpg";
-            eci.frontFilepath = "resources/skybox/front.jpg";
-            eci.backFilepath = "resources/skybox/back.jpg";
-
+            eci.filepath = "resources/hdr/klippad_sunrise_2_2k.hdr";
             m_Env = Environment(m_Device, m_CommandList, eci, m_EnvPipeline->GetBindingLayout());
         }
 
+        ModelCreateInfo modelCI;
+        modelCI.device = m_Device;
+        modelCI.bindingLayout = m_MeshPipeline->GetBindingLayout();
+        modelCI.cameraBuffer = m_Env.GetCameraBuffer();
+        modelCI.lightBuffer = m_Env.GetDirLightBuffer();
+        modelCI.envBuffer = m_Env.GetParamsBuffer();
+        modelCI.debugBuffer = m_DebugRenderBuffer;
+        modelCI.textures = { ModelInputTexture{ 5, m_Env.GetHDRTexture() } };
 
-        m_Helmet = Model::Create(m_Device, m_MeshPipeline->GetBindingLayout(), "resources/models/DamagedHelmet.gltf");
-        m_Scene = Model::Create(m_Device, m_MeshPipeline->GetBindingLayout(), "resources/scene.glb");
+        m_Helmet = Model::Create("resources/models/DamagedHelmet.gltf", modelCI);
+        m_Scene = Model::Create("resources/scene.glb", modelCI);
 
         // write buffer with command list
         Renderer2D::InitQuadData(m_Device, m_CommandList);
@@ -111,11 +124,6 @@ namespace ignite
 
         m_Helmet->OnUpdate(deltaTime);
         m_Scene->OnUpdate(deltaTime);
-
-       /* static float t = 0.0f;
-        t += deltaTime * 0.5f;
-
-        m_Helmet->transform = glm::rotate(t, glm::vec3 { 0.0f, 1.0f, 0.0f });*/
 
         switch (m_Data.sceneState)
         {
@@ -243,9 +251,8 @@ namespace ignite
         m_Env.Render(m_CommandList, viewportFramebuffer, m_EnvPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
 
         // render objects
-        m_Helmet->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle(), m_ScenePanel->GetViewportCamera(), &m_Env);
-        m_Scene->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle(), m_ScenePanel->GetViewportCamera(), &m_Env);
-
+        m_Helmet->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle());
+        m_Scene->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle());
 
         m_CommandList->close();
         m_Device->executeCommandList(m_CommandList);
@@ -313,7 +320,7 @@ namespace ignite
             }
 
             ImGui::ColorEdit4("Color", &m_Env.dirLight.color.x);
-            ImGui::DragFloat("Intensity", &m_Env.dirLight.intensity, 0.0005f, 0.01f, 100.0f);
+            ImGui::DragFloat("Intensity", &m_Env.dirLight.intensity, 0.005f, 0.01f, 100.0f);
             ImGui::DragFloat("Angular Size", &m_Env.dirLight.angularSize, 0.1f, 0.1f, 100.0f);
             ImGui::DragFloat("Ambient", &m_Env.dirLight.ambientIntensity, 0.005f, 0.01f, 100.0f);
             
@@ -325,10 +332,18 @@ namespace ignite
                 ImGui::Separator();
 
                 ImGui::ColorEdit4("Base Color", &m_SelectedMaterial->baseColor.x);
-                ImGui::ColorEdit4("Diffuse Color", &m_SelectedMaterial->diffuseColor.x);
-                ImGui::DragFloat("Metallic", &m_SelectedMaterial->metallic, 0.005f, 0.0f, 100.0f);
-                ImGui::DragFloat("Rougness", &m_SelectedMaterial->roughness, 0.005f, 0.0f, 100.0f);
-                ImGui::DragFloat("Emissive", &m_SelectedMaterial->emissive, 0.005f, 0.0f, 100.0f);
+                ImGui::DragFloat("Metallic", &m_SelectedMaterial->metallic, 0.005f, 0.0f, 1.0f);
+                ImGui::DragFloat("Rougness", &m_SelectedMaterial->roughness, 0.005f, 0.0f, 1.0f);
+                ImGui::DragFloat("Emissive", &m_SelectedMaterial->emissive, 0.005f, 0.0f, 1000.0f);
+            }
+
+            
+            if (ImGui::DragInt("Render Target", &m_DebugRenderData.renderIndex, 0.05f, 0, 4))
+            {
+                m_CommandList->open();
+                m_CommandList->writeBuffer(m_DebugRenderBuffer, &m_DebugRenderData, sizeof(DebugRenderData));
+                m_CommandList->close();
+                m_Device->executeCommandList(m_CommandList);
             }
 
             ImGui::End();

@@ -1,4 +1,4 @@
-#include "include/srgb_to_linear.hlsli"
+#include "include/helpers.hlsli"
 
 struct PS_INPUT
 {

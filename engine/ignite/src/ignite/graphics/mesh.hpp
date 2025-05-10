@@ -26,7 +26,6 @@ namespace ignite {
     struct MaterialData
     {
         glm::vec4 baseColor;
-        glm::vec4 diffuseColor;
         f32 metallic = 0.0f;
         f32 roughness = 1.0f;
         f32 emissive = 0.0f;
@@ -93,9 +92,10 @@ namespace ignite {
 
         nvrhi::BufferHandle vertexBuffer;
         nvrhi::BufferHandle indexBuffer;
-        nvrhi::BufferHandle modelConstantBuffer;
-        nvrhi::BufferHandle materialConstantBuffer;
         nvrhi::BindingSetHandle bindingSet;
+
+        nvrhi::BufferHandle objectBuffer;
+        nvrhi::BufferHandle materialBuffer;
 
         // TODO: bone transform
 
@@ -103,32 +103,45 @@ namespace ignite {
         i32 parentID;
 
         std::vector<i32> children;
-
         void CreateBuffers();
+    };
+
+    struct ModelInputTexture
+    {
+        int index = -1;
+        nvrhi::TextureHandle texture;
+    };
+    
+    struct ModelCreateInfo
+    {
+        nvrhi::IDevice *device;
+        nvrhi::IBindingLayout *bindingLayout;
+        std::vector<ModelInputTexture> textures;
+
+        nvrhi::BufferHandle cameraBuffer;
+        nvrhi::BufferHandle lightBuffer;
+        nvrhi::BufferHandle envBuffer;
+        nvrhi::BufferHandle debugBuffer;
     };
 
     class Model
     {
     public:
         Model() = default;
-        Model(nvrhi::IDevice *device, nvrhi::BindingLayoutHandle bindingLayout, const std::filesystem::path &filepath);
+        Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo);
 
         void WriteBuffer(nvrhi::CommandListHandle commandList);
         void OnUpdate(f32 deltaTime);
-        void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline, Camera *camera, Environment *env);
+        void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline);
 
         std::vector<Ref<Mesh>> &GetMeshes() { return m_Meshes; }
 
-        static Ref<Model> Create(nvrhi::IDevice *device, nvrhi::BindingLayoutHandle bindingLayout, const std::filesystem::path &filepath);
-
-        nvrhi::BufferHandle globalConstantBuffer;
-        nvrhi::BufferHandle dirLightConstantBuffer;
-        nvrhi::BufferHandle environmentConstantBuffer;
+        static Ref<Model> Create(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo);
 
         glm::mat4 transform = glm::mat4(1.0f);
     private:
-
         std::vector<Ref<Mesh>> m_Meshes;
+        nvrhi::IBindingLayout *m_BindingLayout;
     };
 
     class ModelLoader

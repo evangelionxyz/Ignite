@@ -25,10 +25,14 @@ namespace ignite
 
         {
             u32 white = 0xFFFFFFFF;
-            m_WhiteTexture = Texture::Create(device, Buffer(&white, sizeof(white)));
+            m_WhiteTexture = Texture::Create(device, Buffer(&white, sizeof(u32)));
+
+            u32 black = 0x00000000;
+            m_BlackTexture = Texture::Create(device, Buffer(&black, sizeof(u32)));
             
             commandList->open();
             m_WhiteTexture->Write(commandList);
+            m_BlackTexture->Write(commandList);
             commandList->close();
         }
 
@@ -113,4 +117,10 @@ namespace ignite
     {
         return s_instance->m_WhiteTexture;
     }
+
+    Ref<Texture> Renderer::GetBlackTexture()
+    {
+        return s_instance->m_BlackTexture;
+    }
+
 }

@@ -1,6 +1,7 @@
 #include "environment.hpp"
 #include "ignite/core/logger.hpp"
 #include "ignite/scene/camera.hpp"
+#include "vertex_data.hpp"
 
 #include <stb_image.h>
 
@@ -66,41 +67,54 @@ namespace ignite {
 
         // create model projection buffer
         nvrhi::BufferDesc trbDesc;
-        trbDesc.byteSize = sizeof(glm::mat4);
+        trbDesc.byteSize = sizeof(PushConstantGlobal);
         trbDesc.isConstantBuffer = true;
+        trbDesc.isVolatile = true;
         trbDesc.debugName = "Skybox transform constant buffer";
         trbDesc.initialState = nvrhi::ResourceStates::ConstantBuffer;
         trbDesc.keepInitialState = true;
-        m_ConstantBuffer = device->createBuffer(trbDesc);
-        LOG_ASSERT(m_ConstantBuffer, "[Environment] Failed to create constant buffer!");
+        trbDesc.maxVersions = 16;
+        m_CameraConstantBuffer = device->createBuffer(trbDesc);
+        LOG_ASSERT(m_CameraConstantBuffer, "[Environment] Failed to create camera constant buffer!");
 
-        
         // create constant buffer
         nvrhi::BufferDesc cbDesc;
         cbDesc.byteSize = sizeof(EnvironmentParams);
         cbDesc.isConstantBuffer = true;
+        cbDesc.isVolatile = true;
         cbDesc.debugName = "Skybox params constant buffer";
         cbDesc.initialState = nvrhi::ResourceStates::ConstantBuffer;
         cbDesc.keepInitialState = true;
+        cbDesc.maxVersions = 16;
 
         m_ParamsConstantBuffer = device->createBuffer(cbDesc);
         LOG_ASSERT(m_ParamsConstantBuffer, "[Environment] Failed to create constant buffer!");
 
+        stbi_set_flip_vertically_on_load(true); // HDRs are typically flipped
 
-        // create texture
+        CreateLightingBuffer(device);
+
+        int width, height, channels;
+        float *hdrData = stbi_loadf(createInfo.filepath.generic_string().c_str(), 
+            &width, 
+            &height, 
+            &channels, 
+            4);
+
+        LOG_ASSERT(hdrData, "[Environment] Failed to load HDR image");
+
+        // create texture (HDR)
         const auto textureDesc = nvrhi::TextureDesc()
-            .setDimension(nvrhi::TextureDimension::TextureCube)
-            .setWidth(480) // hardcoded
-            .setHeight(480) // harcoded
-            .setFormat(nvrhi::Format::RGBA8_UNORM)
+            .setDimension(nvrhi::TextureDimension::Texture2D)
+            .setWidth(width)
+            .setHeight(height)
+            .setFormat(nvrhi::Format::RGBA32_FLOAT)
             .setInitialState(nvrhi::ResourceStates::ShaderResource)
             .setKeepInitialState(true)
-            .setArraySize(6)
-            .setMipLevels(1)
             .setDebugName("CubemapTexture");
 
-        m_CubeTexture = device->createTexture(textureDesc);
-        LOG_ASSERT(m_CubeTexture, "[Environment] Failed to create texture!");
+        m_HDRTexture = device->createTexture(textureDesc);
+        LOG_ASSERT(m_HDRTexture, "[Environment] Failed to create texture!");
 
         // create sampler
         const auto samplerDesc = nvrhi::SamplerDesc()
@@ -111,32 +125,15 @@ namespace ignite {
 
         commandList->open();
 
-        // order +X, -X, +Y, -Y, +Z, -Z.
-        for (int face = 0; face < 6; ++face)
-        {
-            const char *filepath = ((const char **)&createInfo)[face];
-
-            int width, height, channels;
-
-            uint8_t *srcData = stbi_load(filepath, &width, &height, &channels, 4);
-
-            LOG_ASSERT(srcData, "Failed to load image for cubemap face");
-
-            // Define region for one face (array slice)
-            nvrhi::TextureSlice slice;
-            slice.arraySlice = face;
-            slice.mipLevel = 0;
-
-            commandList->writeTexture(m_CubeTexture, slice.arraySlice, slice.mipLevel, srcData, width * 4, width * height * 4);
-
-            stbi_image_free(srcData);
-        }
+        // write texture
+        commandList->writeTexture(m_HDRTexture, 0, 0, hdrData, width * sizeof(float) * 4, width * height * sizeof(float) * 4);
+        stbi_image_free(hdrData);
 
         // create binding set
         nvrhi::BindingSetDesc bsDesc;
-        bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, m_ConstantBuffer));
+        bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, m_CameraConstantBuffer));
         bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, m_ParamsConstantBuffer));
-        bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, m_CubeTexture));
+        bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, m_HDRTexture));
         bsDesc.addItem(nvrhi::BindingSetItem::Sampler(0, m_Sampler));
 
         m_BindingSet = device->createBindingSet(bsDesc, bindingLayout);
@@ -174,11 +171,14 @@ namespace ignite {
 
     void Environment::Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline, Camera *camera)
     {
-        glm::mat4 viewProjection = camera->GetViewProjectionMatrix();
-        commandList->writeBuffer(m_ConstantBuffer, glm::value_ptr(viewProjection), sizeof(glm::mat4));
+        PushConstantGlobal camPushConstant;
+        camPushConstant.viewProjection = camera->GetViewProjectionMatrix();
+        camPushConstant.cameraPosition = glm::vec4(camera->position, 1.0f);
+        commandList->writeBuffer(m_CameraConstantBuffer, &camPushConstant, sizeof(PushConstantGlobal));
         
         // write params buffer
         commandList->writeBuffer(m_ParamsConstantBuffer, &params, sizeof(EnvironmentParams));
+        commandList->writeBuffer(m_DirLightConstantBuffer, &dirLight, sizeof(DirLight));
 
         // render
         auto state = nvrhi::GraphicsState();
@@ -213,10 +213,25 @@ namespace ignite {
     {
         return nvrhi::BindingLayoutDesc()
             .setVisibility(nvrhi::ShaderType::All)
-            .addItem(nvrhi::BindingLayoutItem::ConstantBuffer(0))
-            .addItem(nvrhi::BindingLayoutItem::ConstantBuffer(1))
+            .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0))
+            .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1))
             .addItem(nvrhi::BindingLayoutItem::Texture_SRV(0))
             .addItem(nvrhi::BindingLayoutItem::Sampler(0));
+    }
+
+    void Environment::CreateLightingBuffer(nvrhi::IDevice *device)
+    {
+        nvrhi::BufferDesc desc;
+        desc.byteSize = sizeof(DirLight);
+        desc.isConstantBuffer = true;
+        desc.isVolatile = true;
+        desc.debugName = "Directional light constant buffer";
+        desc.initialState = nvrhi::ResourceStates::ConstantBuffer;
+        desc.keepInitialState = true;
+        desc.maxVersions = 16;
+
+        m_DirLightConstantBuffer = device->createBuffer(desc);
+        LOG_ASSERT(m_DirLightConstantBuffer, "[Environment] Failed to create directional light constant buffer!");
     }
 
 }

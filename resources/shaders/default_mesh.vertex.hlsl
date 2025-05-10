@@ -3,7 +3,7 @@
 struct Camera
 {
     float4x4 viewProjection;
-    float4 cameraPosition;
+    float4 position;
 };
 
 struct Object
@@ -12,15 +12,8 @@ struct Object
     float4x4 normalMatrix;
 };
 
-cbuffer CameraBuffer : register(b0)
-{
-    Camera camera;
-}
-
-cbuffer ObjectBuffer : register(b1)
-{
-    Object object;
-}
+cbuffer CameraBuffer : register(b0) { Camera camera; }
+cbuffer ObjectBuffer : register(b3) { Object object; }
 
 struct VSInput
 {

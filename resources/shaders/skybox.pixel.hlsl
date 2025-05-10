@@ -1,5 +1,4 @@
-#include "include/tonemapping.hlsli"
-#include "include/srgb_to_linear.hlsli"
+#include "include/helpers.hlsli"
 
 struct Environment
 {
@@ -15,13 +14,13 @@ struct PSInput
     float3 UVW      : UVW;
 };
 
-TextureCube texture0 : register(t0);
-sampler sampler0 : register(s0);
+Texture2D texture0 : register(t0);
+SamplerState sampler0 : register(s0);
 
 float4 main(PSInput input) : SV_TARGET
 {
-    float4 color = texture0.SampleLevel(sampler0, input.UVW, 1.5f);
-    color = tonemap(color, env.exposure, env.gamma);
-    color = float4(SRGBToLinear(color.rgb), 1.0f);
-    return color;
+    float3 dir = normalize(input.UVW);
+    float3 color = SampleSphericalMap(texture0, sampler0, dir);
+    color = FilmicTonemap(color, env.exposure, env.gamma);
+    return float4(color, 1.0f);
 }

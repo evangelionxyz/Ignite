@@ -30,22 +30,22 @@ namespace ignite
         {
             case nvrhi::MessageSeverity::Info:
             {
-                LOG_INFO("NVHRI INFO: {}", messageText);
+                LOG_INFO("NVHRI INFO: {}\n", messageText);
                 break;
             }
             case nvrhi::MessageSeverity::Warning:
             {
-                LOG_WARN("NVHRI WARN: {}", messageText);
+                LOG_WARN("NVHRI WARN: {}\n", messageText);
                 break;
             }
             case nvrhi::MessageSeverity::Error:
             {
-                LOG_ERROR("NVHRI WARN: {}", messageText);
+                LOG_ERROR("NVHRI ERROR: {}\n", messageText);
                 break;
             }
             case nvrhi::MessageSeverity::Fatal:
             {
-                LOG_ASSERT(false, "NVHRI FATAL: {}", messageText);
+                LOG_ASSERT(false, "NVHRI FATAL: {}\n", messageText);
                 break;
             }
         }
