@@ -80,6 +80,12 @@ namespace ignite {
         ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), m_Meshes);
         textureCache.clear();
 
+        if (scene->HasAnimations())
+        {
+            ModelLoader::LoadAnimation(scene, animations);
+        }
+
+
         // create buffers
         auto constantBufferDesc = nvrhi::BufferDesc()
             .setIsConstantBuffer(true)
@@ -264,11 +270,6 @@ namespace ignite {
             meshes[meshIndex]->indices.push_back(face.mIndices[2]);
         }
 
-        if (scene->HasAnimations())
-        {
-            // TODO: Load bones here
-        }
-
         if (mesh->mMaterialIndex >= 0)
         {
             // TODO: Load material here
@@ -307,6 +308,17 @@ namespace ignite {
         // set transparent and reflectivity
         mesh->material._transparent = false;
         mesh->material._reflective = reflectivity > 0.0f;
+    }
+
+    void ModelLoader::LoadAnimation(const aiScene *scene, std::vector<Ref<SkeletalAnimation>> &animations)
+    {
+        animations.resize(scene->mNumAnimations);
+
+        for (uint32_t i = 0; i < scene->mNumAnimations; ++i)
+        {
+            aiAnimation *anim = scene->mAnimations[i];
+            animations[i] = CreateRef<SkeletalAnimation>(anim);
+        }
     }
 
     void ModelLoader::LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type)

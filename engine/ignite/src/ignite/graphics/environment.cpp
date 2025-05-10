@@ -200,6 +200,19 @@ namespace ignite {
         commandList->drawIndexed(args);
     }
 
+    void Environment::SetSunDirection(float pitch, float yaw)
+    {
+        float pitchR = glm::radians(pitch); // elevation
+        float yawR = glm::radians(yaw); // azimuth
+
+        glm::vec3 dir;
+        dir.x = cos(pitchR) * sin(yawR);
+        dir.y = sin(pitchR);
+        dir.z = cos(pitchR) * cos(yawR);
+
+        dirLight.direction = glm::vec4(glm::normalize(dir), 0.0f);
+    }
+
     nvrhi::VertexAttributeDesc Environment::GetAttribute()
     {
         return nvrhi::VertexAttributeDesc()

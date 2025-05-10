@@ -81,6 +81,7 @@ namespace ignite
             EnvironmentCreateInfo eci;
             eci.filepath = "resources/hdr/rogland_clear_night_4k.hdr";
             m_Env = Environment(m_Device, m_CommandList, eci, m_EnvPipeline->GetBindingLayout());
+            m_Env.SetSunDirection(50.0f, -27.0f);
         }
 
         // write buffer with command list
@@ -308,19 +309,11 @@ namespace ignite
 
             ImGui::Begin("Lighting & Material");
             
-            static glm::vec2 sunAngles = { 45.0f, 45.0f }; // pitch (elevation), yaw (azimuth)
+            static glm::vec2 sunAngles = { 50, -27.0f }; // pitch (elevation), yaw (azimuth)
 
             if (ImGui::DragFloat2("Sun Angles (Pitch/Yaw)", &sunAngles.x, 0.25f))
             {
-                float pitch = glm::radians(sunAngles.x); // elevation
-                float yaw = glm::radians(sunAngles.y); // azimuth
-
-                glm::vec3 dir;
-                dir.x = cos(pitch) * sin(yaw);
-                dir.y = sin(pitch);
-                dir.z = cos(pitch) * cos(yaw);
-
-                m_Env.dirLight.direction = glm::vec4(glm::normalize(dir), 0.0f);
+                m_Env.SetSunDirection(sunAngles.x, sunAngles.y);
             }
 
             ImGui::ColorEdit4("Color", &m_Env.dirLight.color.x);
@@ -341,7 +334,6 @@ namespace ignite
                 ImGui::DragFloat("Emissive", &m_SelectedMaterial->emissive, 0.005f, 0.0f, 1000.0f);
             }
 
-            
             if (ImGui::DragInt("Render Target", &m_DebugRenderData.renderIndex, 0.05f, 0, 4))
             {
                 m_CommandList->open();
@@ -367,18 +359,31 @@ namespace ignite
             {
                 auto &model = m_Models[i];
 
-                ImGui::PushID(i);
-                ImGui::Text("%zu", i);
-                for (auto &mesh : model->GetMeshes())
-                {
-                    TraverseMeshes(model.get(), mesh, 0);
-                }
-                ImGui::PopID();
+                bool opened = ImGui::TreeNodeEx((void *)(uint64_t *) &model, ImGuiTreeNodeFlags_OpenOnDoubleClick, "Model %zu", i);
+                if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                    m_SelectedModel = model.get();
 
-                if (i < m_Models.size() - 1)
-                    ImGui::Separator();
+                if (opened)
+                {
+                    for (auto &mesh : model->GetMeshes())
+                        TraverseMeshes(model.get(), mesh, 0);
+                    
+                    ImGui::TreePop();
+                }
             }
 
+            if(m_SelectedModel && ImGui::TreeNode("Animation"))
+            {
+                for (auto &anim : m_SelectedModel->animations)
+                {
+                    bool opened = ImGui::TreeNodeEx(anim->GetName().c_str(), ImGuiTreeNodeFlags_Leaf, "%s", anim->GetName().c_str());
+                    if (opened)
+                    {
+                        ImGui::TreePop();
+                    }
+                }
+                ImGui::TreePop();
+            }
             ImGui::End();
         }
 
@@ -440,16 +445,12 @@ namespace ignite
         bool opened = ImGui::TreeNodeEx(mesh->name.c_str(), flags, mesh->name.c_str());
 
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-        {
             m_SelectedMaterial = &mesh->material.data;
-        }
 
         if (opened)
         {
             for (i32 child : mesh->children)
-            {
                 TraverseMeshes(model, model->GetMeshes()[child], ++traverseIndex);
-            }
 
             ImGui::TreePop();
         }

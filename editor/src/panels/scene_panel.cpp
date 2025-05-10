@@ -717,7 +717,7 @@ namespace ignite
                 {
                     if (Input::IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
                     {
-                        m_CameraData.moveSpeed += dy * 0.5f;
+                        m_CameraData.moveSpeed += dy;
                         m_CameraData.moveSpeed = glm::clamp(m_CameraData.moveSpeed, 0.5f, m_CameraData.maxMoveSpeed);
                     }
                     else

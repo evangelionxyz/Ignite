@@ -6,6 +6,7 @@
 #include "assimp/scene.h"
 #include "ignite/core/uuid.hpp"
 #include "ignite/core/buffer.hpp"
+#include "ignite/animation/skeletal_animation.hpp"
 
 #include <assimp/postprocess.h>
 #include <nvrhi/nvrhi.h>
@@ -139,6 +140,8 @@ namespace ignite {
         static Ref<Model> Create(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo);
 
         glm::mat4 transform = glm::mat4(1.0f);
+        std::vector<Ref<SkeletalAnimation>> animations;
+
     private:
         std::vector<Ref<Mesh>> m_Meshes;
         nvrhi::IBindingLayout *m_BindingLayout;
@@ -150,6 +153,7 @@ namespace ignite {
         static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, i32 parentID = -1);
         static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes);
         static void LoadMaterial(const aiScene *scene, aiMaterial *material, const std::string &filepath, Ref<Mesh> &mesh);
+        static void LoadAnimation(const aiScene *scene, std::vector<Ref<SkeletalAnimation>> &animations);
         static void LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type);
     };
 }

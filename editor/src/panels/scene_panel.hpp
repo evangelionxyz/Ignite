@@ -90,7 +90,7 @@ namespace ignite
         struct CameraData
         {
             f32 moveSpeed = 6.0f;
-            const f32 maxMoveSpeed = 200.0f;
+            const f32 maxMoveSpeed = 500.0f;
             const f32 rotationSpeed = 0.8f;
             glm::vec3 lastPosition = { 0.0f, 0.0f, 0.0f };
         } m_CameraData;

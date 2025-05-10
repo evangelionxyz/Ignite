@@ -31,6 +31,8 @@ namespace ignite {
 
         void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline, Camera *camera);
 
+        void SetSunDirection(float pitch, float yaw);
+
         static nvrhi::VertexAttributeDesc GetAttribute();
         static nvrhi::BindingLayoutDesc GetBindingLayoutDesc();
 

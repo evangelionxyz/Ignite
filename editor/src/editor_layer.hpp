@@ -72,6 +72,8 @@ namespace ignite
         Ref<GraphicsPipeline> m_EnvPipeline;
 
         MaterialData *m_SelectedMaterial = nullptr;
+        Model *m_SelectedModel = nullptr;
+
         DebugRenderData m_DebugRenderData;
         Environment m_Env;
         EditorData m_Data;
