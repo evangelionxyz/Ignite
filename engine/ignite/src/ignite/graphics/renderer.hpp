@@ -32,8 +32,6 @@ namespace ignite
 
         ~Renderer();
 
-        void CreateShaderContext(ShaderMake::Options *options);
-
         static ShaderMake::Context *GetShaderContext();
         
         static Ref<Texture> GetWhiteTexture();

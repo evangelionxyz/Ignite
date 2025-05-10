@@ -534,8 +534,15 @@ namespace ignite
         m_ViewportData.width = window->Size.x;
         m_ViewportData.height = window->Size.y;
 
-        //m_RenderTarget->width = window->Size.x;
-        //m_RenderTarget->height = window->Size.y;
+        uint32_t vpWidth = static_cast<uint32_t>(m_ViewportData.width);
+        uint32_t vpHeght = static_cast<uint32_t>(m_ViewportData.height);
+
+        // trigger resize
+        if (vpWidth > 0 && vpHeght > 0 && (vpWidth != m_RenderTarget->GetWidth() || vpHeght != m_RenderTarget->GetHeight()))
+        {
+            if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+                m_RenderTarget->Resize(vpWidth, vpHeght);
+        }
 
         m_ViewportCamera->SetSize(window->Size.x, window->Size.y);
 
@@ -709,12 +716,12 @@ namespace ignite
                 {
                     if (Input::IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
                     {
-                        m_CameraData.moveSpeed += dy * 1.0f;
-                        m_CameraData.moveSpeed = glm::clamp(m_CameraData.moveSpeed, 0.1f, m_CameraData.maxMoveSpeed);
+                        m_CameraData.moveSpeed += dy * 0.5f;
+                        m_CameraData.moveSpeed = glm::clamp(m_CameraData.moveSpeed, 0.5f, m_CameraData.maxMoveSpeed);
                     }
                     else
                     {
-                        m_ViewportCamera->position += m_ViewportCamera->GetForwardDirection() * dy * m_CameraData.moveSpeed * 0.1f;
+                        m_ViewportCamera->position += m_ViewportCamera->GetForwardDirection() * dy * m_CameraData.moveSpeed * 0.5f;
                     }
                     break;
                 }

@@ -78,7 +78,7 @@ namespace ignite
 
             // create env
             EnvironmentCreateInfo eci;
-            eci.filepath = "resources/hdr/klippad_sunrise_2_2k.hdr";
+            eci.filepath = "resources/hdr/rogland_clear_night_4k.hdr";
             m_Env = Environment(m_Device, m_CommandList, eci, m_EnvPipeline->GetBindingLayout());
         }
 
@@ -224,8 +224,8 @@ namespace ignite
         uint32_t width = (uint32_t)mainViewport.width();
         uint32_t height = (uint32_t)mainViewport.height();
 
-        // m_ScenePanel->GetRT()->CreateFramebuffers(backBufferCount, backBufferIndex, { width, height });
-        m_ScenePanel->GetRT()->CreateSingleFramebuffer({ width, height });
+        // m_ScenePanel->GetRT()->CreateFramebuffers(backBufferCount, backBufferIndex);
+        m_ScenePanel->GetRT()->CreateSingleFramebuffer();
 
         nvrhi::IFramebuffer *viewportFramebuffer = m_ScenePanel->GetRT()->GetCurrentFramebuffer();
         nvrhi::Viewport viewport = viewportFramebuffer->getFramebufferInfo().getViewport();
