@@ -299,7 +299,7 @@ namespace ignite
             
             static glm::vec2 sunAngles = { 45.0f, 45.0f }; // pitch (elevation), yaw (azimuth)
 
-            if (ImGui::DragFloat2("Sun Angles (Pitch/Yaw)", &sunAngles.x, 0.5f))
+            if (ImGui::DragFloat2("Sun Angles (Pitch/Yaw)", &sunAngles.x, 0.25f))
             {
                 float pitch = glm::radians(sunAngles.x); // elevation
                 float yaw = glm::radians(sunAngles.y); // azimuth
@@ -313,12 +313,12 @@ namespace ignite
             }
 
             ImGui::ColorEdit4("Color", &m_Env.dirLight.color.x);
-            ImGui::DragFloat("Intensity", &m_Env.dirLight.intensity, 0.025f, 0.0f, 100.0f);
-            ImGui::DragFloat("Angular Size", &m_Env.dirLight.angularSize, 0.1f, 0.0f, 100.0f);
-            ImGui::DragFloat("Ambient", &m_Env.dirLight.ambientIntensity, 0.025f, 0.0f, 100.0f);
+            ImGui::DragFloat("Intensity", &m_Env.dirLight.intensity, 0.0005f, 0.01f, 100.0f);
+            ImGui::DragFloat("Angular Size", &m_Env.dirLight.angularSize, 0.1f, 0.1f, 100.0f);
+            ImGui::DragFloat("Ambient", &m_Env.dirLight.ambientIntensity, 0.005f, 0.01f, 100.0f);
             
-            ImGui::DragFloat("Exposure", &m_Env.params.exposure, 0.025f, 0.1f, 10.0f);
-            ImGui::DragFloat("Gamma", &m_Env.params.gamma, 0.025f, 0.1f, 10.0f);
+            ImGui::DragFloat("Exposure", &m_Env.params.exposure, 0.005f, 0.1f, 10.0f);
+            ImGui::DragFloat("Gamma", &m_Env.params.gamma, 0.005f, 0.1f, 10.0f);
 
             if (m_SelectedMaterial)
             {
@@ -326,9 +326,9 @@ namespace ignite
 
                 ImGui::ColorEdit4("Base Color", &m_SelectedMaterial->baseColor.x);
                 ImGui::ColorEdit4("Diffuse Color", &m_SelectedMaterial->diffuseColor.x);
-                ImGui::DragFloat("Metallic", &m_SelectedMaterial->metallic, 0.005f, 0.0f, 1.0f);
-                ImGui::DragFloat("Rougness", &m_SelectedMaterial->roughness, 0.005f, 0.0f, 1.0f);
-                ImGui::DragFloat("Emissive", &m_SelectedMaterial->emissive, 0.005f, 0.0f, 1.0f);
+                ImGui::DragFloat("Metallic", &m_SelectedMaterial->metallic, 0.005f, 0.0f, 100.0f);
+                ImGui::DragFloat("Rougness", &m_SelectedMaterial->roughness, 0.005f, 0.0f, 100.0f);
+                ImGui::DragFloat("Emissive", &m_SelectedMaterial->emissive, 0.005f, 0.0f, 100.0f);
             }
 
             ImGui::End();

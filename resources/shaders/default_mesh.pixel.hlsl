@@ -97,7 +97,7 @@ float4 main(PSInput input) : SV_TARGET
     // Combine material + texture values
     float3 diffuseColor = diffColTex * material.diffuseColor.rgb;
     float3 specularColor = lerp(float3(0.04f, 0.04f, 0.04f), specColTex, material.metallic);
-    float roughness = clamp(material.roughness * roughColTex.r, 0.05f, 1.0f); // prevent 0 roughness
+    float roughness = clamp(material.roughness * roughColTex.r, dirLight.angularSize / 90.0f, 1.0f); // prevent 0 roughness
 
     // ===== AMBIENT =====
     float3 ambient = dirLight.color.rgb * dirLight.ambientIntensity * diffuseColor;
