@@ -10,6 +10,7 @@ namespace ignite
         CompType_ID = 1,
         CompType_Transform,
         CompType_Sprite2D,
+        CompType_Mesh,
         CompType_BoxCollider2D,
         CompType_Rigidbody2D
     };

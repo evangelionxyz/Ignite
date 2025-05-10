@@ -2,6 +2,7 @@
 #include "panels/scene_panel.hpp"
 #include "ignite/graphics/renderer_2d.hpp"
 #include "ignite/graphics/mesh_factory.hpp"
+#include "ignite/core/platform_utils.hpp"
 
 #include <glm/glm.hpp>
 #include <nvrhi/utils.h>
@@ -82,26 +83,8 @@ namespace ignite
             m_Env = Environment(m_Device, m_CommandList, eci, m_EnvPipeline->GetBindingLayout());
         }
 
-        ModelCreateInfo modelCI;
-        modelCI.device = m_Device;
-        modelCI.bindingLayout = m_MeshPipeline->GetBindingLayout();
-        modelCI.cameraBuffer = m_Env.GetCameraBuffer();
-        modelCI.lightBuffer = m_Env.GetDirLightBuffer();
-        modelCI.envBuffer = m_Env.GetParamsBuffer();
-        modelCI.debugBuffer = m_DebugRenderBuffer;
-        modelCI.textures = { ModelInputTexture{ 5, m_Env.GetHDRTexture() } };
-
-        m_Helmet = Model::Create("resources/models/DamagedHelmet.gltf", modelCI);
-        m_Scene = Model::Create("resources/scene.glb", modelCI);
-
         // write buffer with command list
         Renderer2D::InitQuadData(m_Device, m_CommandList);
-
-        m_CommandList->open();
-        m_Helmet->WriteBuffer(m_CommandList);
-        m_Scene->WriteBuffer(m_CommandList);
-        m_CommandList->close();
-        m_Device->executeCommandList(m_CommandList);
 
         m_ScenePanel = CreateRef<ScenePanel>("Scene Panel", this);
         m_ScenePanel->CreateRenderTarget(m_Device);
@@ -119,11 +102,32 @@ namespace ignite
     {
         Layer::OnUpdate(deltaTime);
 
+        for (auto it = m_PendingLoadModels.begin(); it != m_PendingLoadModels.end(); )
+        {
+            std::future<Ref<Model>> &future = *it;
+            if (future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
+            {
+                Ref<Model> model = future.get();
+                m_Models.push_back(model);
+
+                m_CommandList->open();
+                model->WriteBuffer(m_CommandList);
+                m_CommandList->close();
+                m_Device->executeCommandList(m_CommandList);
+
+                it = m_PendingLoadModels.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
         // multi select entity
         m_Data.multiSelect = Input::IsKeyPressed(Key::LeftShift);
 
-        m_Helmet->OnUpdate(deltaTime);
-        m_Scene->OnUpdate(deltaTime);
+        for (auto &model : m_Models)
+            model->OnUpdate(deltaTime);
 
         switch (m_Data.sceneState)
         {
@@ -251,8 +255,8 @@ namespace ignite
         m_Env.Render(m_CommandList, viewportFramebuffer, m_EnvPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
 
         // render objects
-        m_Helmet->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle());
-        m_Scene->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle());
+        for (auto &model : m_Models)
+            model->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle());
 
         m_CommandList->close();
         m_Device->executeCommandList(m_CommandList);
@@ -350,20 +354,30 @@ namespace ignite
 
             ImGui::Begin("Models");
 
-            ImGui::PushID("helmet");
-            for (auto &mesh : m_Helmet->GetMeshes())
+            if (ImGui::Button("Load GLTF/GLB"))
             {
-                TraverseMeshes(m_Helmet.get(), mesh, 0);
+                std::string filepath = FileDialogs::OpenFile("GLTF/GLB Files (*.gltf;*.glb)\0*.gltf;*.glb\0All Files (*.*)\0*.*\0");
+                if (!filepath.empty())
+                {
+                    LoadModel(filepath);
+                }
             }
-            ImGui::PopID();
 
-            ImGui::Separator();
-            ImGui::PushID("scene");
-            for (auto &mesh : m_Scene->GetMeshes())
+            for (size_t i = 0; i < m_Models.size(); ++i)
             {
-                TraverseMeshes(m_Scene.get(), mesh, 0);
+                auto &model = m_Models[i];
+
+                ImGui::PushID(i);
+                ImGui::Text("%zu", i);
+                for (auto &mesh : model->GetMeshes())
+                {
+                    TraverseMeshes(model.get(), mesh, 0);
+                }
+                ImGui::PopID();
+
+                if (i < m_Models.size() - 1)
+                    ImGui::Separator();
             }
-            ImGui::PopID();
 
             ImGui::End();
         }
@@ -439,6 +453,26 @@ namespace ignite
 
             ImGui::TreePop();
         }
+    }
+
+    void EditorLayer::LoadModel(const std::string &filepath)
+    {
+
+        std::future<Ref<Model>> modelFuture = std::async(std::launch::async, [=]()
+        {
+            ModelCreateInfo modelCI;
+            modelCI.device = m_Device;
+            modelCI.bindingLayout = m_MeshPipeline->GetBindingLayout();
+            modelCI.cameraBuffer = m_Env.GetCameraBuffer();
+            modelCI.lightBuffer = m_Env.GetDirLightBuffer();
+            modelCI.envBuffer = m_Env.GetParamsBuffer();
+            modelCI.debugBuffer = m_DebugRenderBuffer;
+            modelCI.textures = { ModelInputTexture{ 5, m_Env.GetHDRTexture() } };
+
+            return Model::Create(filepath, modelCI);
+        });
+        
+        m_PendingLoadModels.push_back(std::move(modelFuture));
     }
 
 }

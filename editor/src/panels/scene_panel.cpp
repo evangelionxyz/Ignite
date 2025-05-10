@@ -679,6 +679,7 @@ namespace ignite
             {
 
             }
+
             if (ImGui::BeginPopup("comp_settings"))
             {
                 if (allowedToRemove && ImGui::MenuItem("Remove")) 

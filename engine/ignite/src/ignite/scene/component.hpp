@@ -11,6 +11,7 @@
 namespace ignite
 {
     class Texture;
+    class Mesh;
 
     enum EntityType : u8
     {
@@ -135,6 +136,14 @@ namespace ignite
 
         static CompType StaticType() { return CompType_Sprite2D; }
         virtual CompType GetType() override { return StaticType(); }
+    };
+
+    class MeshComponent : public IComponent
+    {
+        Ref<Mesh> mesh;
+
+        static CompType StaticType() { return CompType_Mesh; }
+        virtual CompType GetType() { return StaticType(); }
     };
 }
 

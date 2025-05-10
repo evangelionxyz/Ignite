@@ -10,6 +10,10 @@
 
 #include "states.hpp"
 
+#include <mutex>
+#include <thread>
+#include <future>
+
 namespace ignite
 {
     class ShaderFactory;
@@ -54,12 +58,16 @@ namespace ignite
 
         void TraverseMeshes(Model *model, Ref<Mesh> mesh, int traverseIndex = 0);
 
+        // temporary
+        void LoadModel(const std::string &filepath);
+
         Ref<ScenePanel> m_ScenePanel;
         
         Ref<Scene> m_ActiveScene;
         Ref<Scene> m_EditorScene;
-        Ref<Model> m_Helmet;
-        Ref<Model> m_Scene;
+
+        std::vector<Ref<Model>> m_Models;
+        
         Ref<GraphicsPipeline> m_MeshPipeline;
         Ref<GraphicsPipeline> m_EnvPipeline;
 
@@ -67,6 +75,8 @@ namespace ignite
         DebugRenderData m_DebugRenderData;
         Environment m_Env;
         EditorData m_Data;
+
+        std::list<std::future<Ref<Model>>> m_PendingLoadModels;
 
         nvrhi::BufferHandle m_DebugRenderBuffer;
         
