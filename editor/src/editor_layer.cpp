@@ -725,7 +725,7 @@ namespace ignite
         if (mesh->parentID != -1 && traverseIndex == 0)
             return;
 
-        ImGuiTreeNodeFlags flags = (mesh->children.empty()) ? ImGuiTreeNodeFlags_Leaf : 0 | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen
+        /*ImGuiTreeNodeFlags flags = (mesh->children.empty()) ? ImGuiTreeNodeFlags_Leaf : 0 | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen
             | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
 
         bool opened = ImGui::TreeNodeEx(mesh->name.c_str(), flags, mesh->name.c_str());
@@ -739,7 +739,7 @@ namespace ignite
                 TraverseMeshes(model, model->GetMeshes()[child], ++traverseIndex);
 
             ImGui::TreePop();
-        }
+        }*/
     }
 
     void EditorLayer::LoadModel(const std::string &filepath)

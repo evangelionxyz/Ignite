@@ -71,6 +71,16 @@ namespace ignite {
         friend class ModelLoader;
     };
 
+    struct NodeInfo
+    {
+        std::string name;
+        glm::mat4 localTransform;
+        glm::mat4 worldTransform;
+        i32 parentID = -1;
+        std::vector<i32> childrenIDs;
+        std::vector<i32> meshIndices;  // Meshes owned by this node
+    };
+
     struct MeshCreateInfo
     {
         MeshType type = MeshType::Static;
@@ -90,7 +100,6 @@ namespace ignite {
         Ref<Shader> pixelShader;
         
         std::string name;
-        glm::mat4 localTransform;
 
         nvrhi::BufferHandle vertexBuffer;
         nvrhi::BufferHandle indexBuffer;
@@ -99,12 +108,12 @@ namespace ignite {
         nvrhi::BufferHandle objectBuffer;
         nvrhi::BufferHandle materialBuffer;
 
-        // TODO: bone transform
+        glm::mat4 localTransform;
+        glm::mat4 worldTransform;
 
-        i32 meshID;
-        i32 parentID;
+        i32 nodeID = -1;
+        i32 parentID = -1;
 
-        std::vector<i32> children;
         void CreateBuffers();
     };
     
@@ -136,9 +145,7 @@ namespace ignite {
 
         glm::mat4 transform = glm::mat4(1.0f);
         std::vector<Ref<SkeletalAnimation>> animations;
-
     private:
-        
         ModelCreateInfo m_CreateInfo;
         nvrhi::TextureHandle m_EnvironmentTexture;
         std::vector<Ref<Mesh>> m_Meshes;
@@ -147,10 +154,12 @@ namespace ignite {
     class ModelLoader
     {
     public:
-        static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, i32 parentID = -1);
+        static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath,
+            std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, i32 parentNodeID);
         static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes);
         static void LoadMaterial(const aiScene *scene, aiMaterial *material, const std::string &filepath, Ref<Mesh> &mesh);
         static void LoadAnimation(const aiScene *scene, std::vector<Ref<SkeletalAnimation>> &animations);
         static void LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type);
+        static void CalculateWorldTransforms(std::vector<NodeInfo> &nodes, std::vector<Ref<Mesh>> &meshes);
     };
 }

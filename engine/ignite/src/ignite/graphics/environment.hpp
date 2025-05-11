@@ -16,8 +16,8 @@ namespace ignite {
 
     struct EnvironmentParams
     {
-        float exposure = 4.0f;
-        float gamma = 0.6f;
+        float exposure = 1.0f;
+        float gamma = 2.2f;
     };
 
     struct EnvironmentCreateInfo

@@ -20,7 +20,6 @@ namespace ignite {
 
     // Mesh class
     Mesh::Mesh(i32 id)
-        : meshID(id)
     {
     }
 
@@ -76,10 +75,12 @@ namespace ignite {
         {
             // create meshes
             m_Meshes[i] = CreateRef<Mesh>(i); // i = mesh ID
-            m_Meshes[i]->parentID = -1;
         }
 
-        ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), m_Meshes);
+        std::vector<NodeInfo> nodes;
+
+        ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), m_Meshes, nodes, -1);
+        ModelLoader::CalculateWorldTransforms(nodes, m_Meshes);
         textureCache.clear();
 
         if (scene->HasAnimations())
@@ -173,10 +174,13 @@ namespace ignite {
             // write model constant buffer
 
             ObjectBuffer modelPushConstant;
-            if (mesh->parentID != -1)
+
+            modelPushConstant.transformation = transform * mesh->worldTransform;
+
+           /* if (mesh->parentID != -1)
                 modelPushConstant.transformation = transform * m_Meshes[mesh->parentID]->localTransform * mesh->localTransform;
             else
-                modelPushConstant.transformation = transform * mesh->localTransform;
+                modelPushConstant.transformation = transform * mesh->localTransform;*/
 
             glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(modelPushConstant.transformation)));
             modelPushConstant.normal = glm::mat4(normalMat3);
@@ -209,36 +213,41 @@ namespace ignite {
     }
 
     // Mesh loader
-    void ModelLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, i32 parentID)
+
+    void ModelLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, i32 parentNodeID)
     {
-        //glm::mat4 meshTransform = scene->mNumAnimations == 0 ? Math::AssimpToGlmMatrix(node->mTransformation) * transform : glm::mat4(1.0f);
-        glm::mat4 meshTransform = scene->mNumAnimations == 0 ? Math::AssimpToGlmMatrix(node->mTransformation) : glm::mat4(1.0f);
+        // Create a node entry and get its index
+        NodeInfo nodeInfo;
+        nodeInfo.localTransform = Math::AssimpToGlmMatrix(node->mTransformation);
+        nodeInfo.parentID = parentNodeID;
+        nodeInfo.name = node->mName.C_Str();
 
-        // store the starting index for meshes created in this node
-        i32 lastMeshIndexInThisNode = -1;
+        i32 currentNodeID = nodes.size();
+        nodes.push_back(nodeInfo);
 
+        // If parent exists, add this node as a child
+        if (parentNodeID != -1)
+            nodes[parentNodeID].childrenIDs.push_back(currentNodeID);
+
+        // Process meshes in this node
         for (uint32_t i = 0; i < node->mNumMeshes; ++i)
         {
             i32 meshIndex = node->mMeshes[i];
             aiMesh *mesh = scene->mMeshes[meshIndex];
 
-            meshes[meshIndex]->localTransform = meshTransform;
-            meshes[meshIndex]->parentID = parentID;
+            // Link mesh to the node that owns it
+            meshes[meshIndex]->nodeID = currentNodeID;
 
-            if (parentID != -1)
-                meshes[parentID]->children.push_back(meshIndex);
+            // Store mesh index in the node
+            nodes[currentNodeID].meshIndices.push_back(meshIndex);
 
             LoadSingleMesh(scene, meshIndex, mesh, filepath, meshes);
-
-            // update the last mesh index
-            lastMeshIndexInThisNode = meshIndex;
         }
 
-        i32 newParentID = lastMeshIndexInThisNode != -1 ? lastMeshIndexInThisNode : parentID;
-
+        // Process all children with this node as parent
         for (u32 i = 0; i < node->mNumChildren; ++i)
         {
-            ProcessNode(scene, node->mChildren[i], filepath, meshes, newParentID);
+            ProcessNode(scene, node->mChildren[i], filepath, meshes, nodes, currentNodeID);
         }
     }
 
@@ -425,5 +434,35 @@ namespace ignite {
 
         meshMaterial->sampler = Renderer::GetWhiteTexture()->GetSampler();
 
+    }
+
+    void ModelLoader::CalculateWorldTransforms(std::vector<NodeInfo> &nodes, std::vector<Ref<Mesh>> &meshes)
+    {
+        // First pass: calculate world transforms for nodes
+        for (size_t i = 0; i < nodes.size(); i++)
+        {
+            if (nodes[i].parentID == -1)
+            {
+                // Root node
+                nodes[i].worldTransform = nodes[i].localTransform;
+            }
+            else
+            {
+                // Child node
+                nodes[i].worldTransform = nodes[nodes[i].parentID].worldTransform * nodes[i].localTransform;
+                
+            }
+
+            // Apply node's world transform to all its meshes
+            for (i32 meshIdx : nodes[i].meshIndices)
+            {
+                meshes[meshIdx]->worldTransform = nodes[i].worldTransform;
+                
+                if (nodes[i].parentID != -1)
+                {
+                    meshes[meshIdx]->parentID = nodes[i].parentID;
+                }
+            }
+        }
     }
 }
