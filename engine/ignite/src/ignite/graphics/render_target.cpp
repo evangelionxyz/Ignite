@@ -45,17 +45,17 @@ namespace ignite {
             if (isColorAttachment && m_ColorAttachments.empty())
             {
                 // create color attachment texture
-                nvrhi::TextureDesc colorDesc;
-                colorDesc.setWidth(m_Width);
-                colorDesc.setHeight(m_Height);
-                colorDesc.setFormat(attachment.format);
-                colorDesc.setDebugName("Render target color attachment texture");
-                colorDesc.setInitialState(nvrhi::ResourceStates::RenderTarget);
-                colorDesc.setKeepInitialState(true);
-                colorDesc.setIsUAV(false);
-                colorDesc.setIsRenderTarget(true);
-                colorDesc.setIsTypeless(false);
-                colorDesc.setUseClearValue(true);
+                const auto colorDesc = nvrhi::TextureDesc()
+                    .setWidth(m_Width)
+                    .setHeight(m_Height)
+                    .setFormat(attachment.format)
+                    .setDebugName("Render target color attachment texture")
+                    .setInitialState(nvrhi::ResourceStates::RenderTarget)
+                    .setKeepInitialState(true)
+                    .setIsUAV(false)
+                    .setIsRenderTarget(true)
+                    .setIsTypeless(false)
+                    .setUseClearValue(true);
 
                 nvrhi::TextureHandle colorAttachment = m_CreateInfo.device->createTexture(colorDesc);
                 LOG_ASSERT(colorAttachment, "Failed to create render target color attachment texture");
