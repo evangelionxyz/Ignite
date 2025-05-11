@@ -112,7 +112,6 @@ namespace ignite {
         glm::mat4 worldTransform;
 
         i32 nodeID = -1;
-        i32 parentID = -1;
 
         void CreateBuffers();
     };
@@ -145,6 +144,9 @@ namespace ignite {
 
         glm::mat4 transform = glm::mat4(1.0f);
         std::vector<Ref<SkeletalAnimation>> animations;
+
+        std::vector<NodeInfo> nodes;
+
     private:
         ModelCreateInfo m_CreateInfo;
         nvrhi::TextureHandle m_EnvironmentTexture;

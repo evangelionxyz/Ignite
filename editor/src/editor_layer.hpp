@@ -76,7 +76,7 @@ namespace ignite
 
         void SettingsUI();
 
-        void TraverseMeshes(Model *model, Ref<Mesh> mesh, int traverseIndex = 0);
+        void TraverseNodes(Model *model, const NodeInfo &node, int traverseIndex = 0);
 
         // temporary
         void LoadModel(const std::string &filepath);

@@ -408,8 +408,8 @@ namespace ignite
 
                 if (opened)
                 {
-                    for (auto &mesh : model->GetMeshes())
-                        TraverseMeshes(model.get(), mesh, 0);
+                    for (const auto &node : model->nodes)
+                        TraverseNodes(model.get(), node, 0);
                     
                     ImGui::TreePop();
                 }
@@ -720,26 +720,25 @@ namespace ignite
         ImGui::End();
     }
 
-    void EditorLayer::TraverseMeshes(Model *model, Ref<Mesh> mesh, int traverseIndex)
+    void EditorLayer::TraverseNodes(Model *model, const NodeInfo &node, int traverseIndex)
     {
-        if (mesh->parentID != -1 && traverseIndex == 0)
+        if (node.parentID != -1 && traverseIndex == 0)
             return;
 
-        /*ImGuiTreeNodeFlags flags = (mesh->children.empty()) ? ImGuiTreeNodeFlags_Leaf : 0 | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen
+        ImGuiTreeNodeFlags flags = (node.childrenIDs.empty()) ? ImGuiTreeNodeFlags_Leaf : 0 | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen
             | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
 
-        bool opened = ImGui::TreeNodeEx(mesh->name.c_str(), flags, mesh->name.c_str());
-
-        if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-            m_SelectedMaterial = &mesh->material.data;
+        bool opened = ImGui::TreeNodeEx(node.name.c_str(), flags, node.name.c_str());
 
         if (opened)
         {
-            for (i32 child : mesh->children)
-                TraverseMeshes(model, model->GetMeshes()[child], ++traverseIndex);
+            for (i32 child : node.childrenIDs)
+            {
+                TraverseNodes(model, model->nodes[child], ++traverseIndex);
+            }
 
             ImGui::TreePop();
-        }*/
+        }
     }
 
     void EditorLayer::LoadModel(const std::string &filepath)

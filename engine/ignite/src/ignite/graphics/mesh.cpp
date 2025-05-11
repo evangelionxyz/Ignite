@@ -77,8 +77,6 @@ namespace ignite {
             m_Meshes[i] = CreateRef<Mesh>(i); // i = mesh ID
         }
 
-        std::vector<NodeInfo> nodes;
-
         ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), m_Meshes, nodes, -1);
         ModelLoader::CalculateWorldTransforms(nodes, m_Meshes);
         textureCache.clear();
@@ -227,9 +225,10 @@ namespace ignite {
 
         // If parent exists, add this node as a child
         if (parentNodeID != -1)
+        {
             nodes[parentNodeID].childrenIDs.push_back(currentNodeID);
+        }
 
-        // Process meshes in this node
         for (uint32_t i = 0; i < node->mNumMeshes; ++i)
         {
             i32 meshIndex = node->mMeshes[i];
@@ -457,11 +456,6 @@ namespace ignite {
             for (i32 meshIdx : nodes[i].meshIndices)
             {
                 meshes[meshIdx]->worldTransform = nodes[i].worldTransform;
-                
-                if (nodes[i].parentID != -1)
-                {
-                    meshes[meshIdx]->parentID = nodes[i].parentID;
-                }
             }
         }
     }
