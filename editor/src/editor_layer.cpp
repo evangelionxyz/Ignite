@@ -168,8 +168,23 @@ namespace ignite
         bool control = Input::IsKeyPressed(KEY_LEFT_CONTROL);
         bool shift = Input::IsKeyPressed(KEY_LEFT_SHIFT);
 
+        bool imguiWantTextInput = ImGui::GetIO().WantTextInput;
+        if (imguiWantTextInput)
+            return false;
+
         switch (event.GetKeyCode())
         {
+            case Key::S:
+            {
+                if (control)
+                {
+                    if (shift)
+                        SaveSceneAs();
+                    else
+                        SaveScene();
+                }
+                break;
+            }
             case Key::T:
             {
                 if (!Input::IsMouseButtonPressed(Mouse::ButtonRight))
@@ -182,7 +197,7 @@ namespace ignite
                     m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::ROTATE);
                 break;
             }
-            case Key::S:
+            case Key::E:
             {
                 if (!Input::IsMouseButtonPressed(Mouse::ButtonRight))
                     m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::SCALE);
@@ -256,14 +271,14 @@ namespace ignite
         float farDepth = 1.0f; // LessOrEqual
         m_CommandList->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), nvrhi::AllSubresources, true, farDepth, true, 0);
 
-        m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
-
         // render environment
         m_Environment->Render(viewportFramebuffer, m_EnvPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
 
         // render objects
         for (auto &model : m_Models)
             model->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle());
+
+        m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
 
         m_CommandList->close();
         m_Device->executeCommandList(m_CommandList);
@@ -310,7 +325,7 @@ namespace ignite
             }
             else if (ImGui::MenuItem("Save Scene As"))
             {
-                SaveScene();
+                SaveSceneAs();
             }
             else if (ImGui::MenuItem("Open Scene"))
             {
@@ -456,10 +471,13 @@ namespace ignite
 
     void EditorLayer::SaveScene()
     {
-        std::string filepath = FileDialogs::SaveFile("Ignite Scene (*igs)\0*.igs\0");
-        if (!filepath.empty())
+        if (m_CurrentSceneFilePath.empty())
         {
-            SaveScene(filepath);
+            SaveSceneAs();
+        }
+        else
+        {
+            SaveScene(m_CurrentSceneFilePath);
         }
     }
 
@@ -469,13 +487,41 @@ namespace ignite
         return serializer.Serialize(filepath);
     }
 
+    void EditorLayer::SaveSceneAs()
+    {
+        std::string filepath = FileDialogs::SaveFile("Ignite Scene (*igs)\0*.igs\0");
+        if (!filepath.empty())
+        {
+            m_CurrentSceneFilePath = filepath;
+            SaveScene(filepath);
+        }
+    }
+
     void EditorLayer::OpenScene()
     {
-
+        std::string filepath = FileDialogs::OpenFile("Ignite Scene (*igs)\0*.igs\0");
+        if (!filepath.empty())
+        {
+            m_CurrentSceneFilePath = filepath;
+            OpenScene(filepath);
+        }
     }
 
     bool EditorLayer::OpenScene(const std::filesystem::path &filepath)
     {
+        if (m_Data.sceneState == State_ScenePlay)
+            OnSceneStop();
+
+        Ref<Scene> openScene = SceneSerializer::Deserialize(filepath);
+        if (openScene)
+        {
+            m_EditorScene = SceneManager::Copy(openScene);
+            m_ActiveScene = m_EditorScene;
+            m_ScenePanel->SetActiveScene(m_ActiveScene.get());
+
+            m_ScenePanel->ClearMultiSelectEntity();
+        }
+
         return true;
     }
 

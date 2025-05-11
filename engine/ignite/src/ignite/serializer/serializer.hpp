@@ -303,7 +303,7 @@ namespace ignite {
 
         bool Serialize(const std::filesystem::path &filepath);
 
-        Ref<Scene> Deserialize(const std::filesystem::path &filepath);
+        static Ref<Scene> Deserialize(const std::filesystem::path &filepath);
 
     private:
         Ref<Scene> m_Scene;

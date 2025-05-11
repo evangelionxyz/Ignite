@@ -55,7 +55,9 @@ namespace ignite
         void NewScene();
 
         void SaveScene();
+        void SaveSceneAs();
         bool SaveScene(const std::filesystem::path &filepath);
+
 
         void OpenScene();
         bool OpenScene(const std::filesystem::path &filepath);
@@ -70,21 +72,21 @@ namespace ignite
         void LoadModel(const std::string &filepath);
 
         Ref<ScenePanel> m_ScenePanel;
-        
         Ref<Scene> m_ActiveScene;
         Ref<Scene> m_EditorScene;
-
-        std::vector<Ref<Model>> m_Models;
-        
         Ref<GraphicsPipeline> m_MeshPipeline;
         Ref<GraphicsPipeline> m_EnvPipeline;
+        std::vector<Ref<Model>> m_Models;
+        
 
         MaterialData *m_SelectedMaterial = nullptr;
         Model *m_SelectedModel = nullptr;
 
-        DebugRenderData m_DebugRenderData;
         Ref<Environment> m_Environment;
+        DebugRenderData m_DebugRenderData;
         EditorData m_Data;
+
+        std::filesystem::path m_CurrentSceneFilePath;
 
         std::list<std::future<Ref<Model>>> m_PendingLoadModels;
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ignite/core/types.hpp"
+#include "ignite/core/uuid.hpp"
 
 namespace ignite
 {
@@ -18,12 +19,17 @@ namespace ignite
     class IComponent
     {
     public:
+
         template<typename T>
         T *As()
         {
             return static_cast<T *>(this);
         }
 
+        UUID GetCompID() { return m_UUID; }
+
         virtual CompType GetType() { return CompType_Invalid; };
+    private:
+        UUID m_UUID;
     };
 }

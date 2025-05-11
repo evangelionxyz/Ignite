@@ -29,11 +29,20 @@ namespace ignite
         case EntityType_Common: return "Common";
         case EntityType_Camera: return "Camera";
         case EntityType_Mesh: return "Mesh";
-        case EntityType_Prefab: return "Common";
+        case EntityType_Prefab: return "Prefab";
         case EntityType_Invalid:
         default:
             return "Invalid";
         }
+    }
+
+    static EntityType EntityTypeFromString(const std::string &typeStr)
+    {
+        if (typeStr == "Common") return EntityType_Common;
+        else if (typeStr == "Camera") return EntityType_Camera;
+        else if (typeStr == "Mesh") return EntityType_Mesh;
+        else if (typeStr == "Prefab") return EntityType_Prefab;
+        return EntityType_Invalid;
     }
 
     class ID : public IComponent
@@ -84,8 +93,8 @@ namespace ignite
         glm::quat rotation;
 
         // local transforms
-        glm::vec3 local_translation, local_scale;
-        glm::quat local_rotation;
+        glm::vec3 localTranslation, localScale;
+        glm::quat localRotation;
 
         bool visible = true;
 
@@ -95,9 +104,9 @@ namespace ignite
             : translation(_translation)
             , rotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f))
             , scale(glm::vec3(1.0f))
-            , local_translation(_translation)
-            , local_rotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f))
-            , local_scale(glm::vec3(1.0f))
+            , localTranslation(_translation)
+            , localRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f))
+            , localScale(glm::vec3(1.0f))
         {
         }
 
@@ -105,9 +114,9 @@ namespace ignite
             : translation(_translation)
             , rotation(_rot)
             , scale(_size)
-            , local_translation(_translation)
-            , local_rotation(_rot)
-            , local_scale(_size)
+            , localTranslation(_translation)
+            , localRotation(_rot)
+            , localScale(_size)
         {
         }
 
@@ -119,8 +128,8 @@ namespace ignite
 
         glm::mat4 LocalTransform()
         {
-            return glm::translate(glm::mat4(1.0f), local_translation)
-                * glm::toMat4(local_rotation) * glm::scale(glm::mat4(1.0f), local_scale);
+            return glm::translate(glm::mat4(1.0f), localTranslation)
+                * glm::toMat4(localRotation) * glm::scale(glm::mat4(1.0f), localScale);
         }
 
         static CompType StaticType() { return CompType_Transform; }

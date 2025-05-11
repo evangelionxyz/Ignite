@@ -57,9 +57,9 @@ namespace ignite
             }
             else
             {
-                tr.translation = tr.local_translation;
-                tr.rotation = tr.local_rotation;
-                tr.scale = tr.local_scale;
+                tr.translation = tr.localTranslation;
+                tr.rotation = tr.localRotation;
+                tr.scale = tr.localScale;
             }
         }
     }

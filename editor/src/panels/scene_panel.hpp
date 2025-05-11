@@ -60,6 +60,9 @@ namespace ignite
         void RenderSettings();
         void UpdateCameraInput(f32 deltaTime);
         void DestroyEntity(Entity entity);
+        
+        void ClearMultiSelectEntity();
+
         Entity SetSelectedEntity(Entity entity);
         Entity GetSelectedEntity();
         

@@ -319,16 +319,15 @@ namespace ignite
             RenderComponent<Transform>("Transform", m_SelectedEntity, [this]()
             {
                 Transform &comp = m_SelectedEntity.GetComponent<Transform>();
-                ImGui::DragFloat3("Translation", &comp.local_translation.x, 0.025f);
+                ImGui::DragFloat3("Translation", &comp.localTranslation.x, 0.025f);
 
-                glm::vec3 euler = eulerAngles(comp.local_rotation);
+                glm::vec3 euler = eulerAngles(comp.localRotation);
                 if (ImGui::DragFloat3("Rotation", &euler.x, 0.025f))
                 {
-                    comp.local_rotation = glm::quat(euler);
+                    comp.localRotation = glm::quat(euler);
                 }
-                ImGui::DragFloat3("Scale", &comp.local_scale.x, 0.025f);
+                ImGui::DragFloat3("Scale", &comp.localScale.x, 0.025f);
             }, false); // false: not allowed to remove the component
-
 
             auto &comps = m_Scene->registeredComps[m_SelectedEntity];
             for (IComponent *comp : comps)
@@ -449,8 +448,6 @@ namespace ignite
             // add component context
             if (ImGui::BeginPopupContextItem("add_component_context", ImGuiPopupFlags_NoOpenOverExistingPopup))
             {
-                ImGui::Text("Hello world");
-
                 static char buffer[256] = { 0 };
                 static std::string compNameResult;
                 static std::set<std::pair<std::string, CompType>> filteredCompName;
@@ -465,6 +462,17 @@ namespace ignite
                     std::string search = ToLower(compNameResult);
                     for (const auto& [strName, type] : componentsName)
                     {
+                        bool isExists = false;
+                        for (IComponent *comp : comps)
+                        {
+                            if (comp->GetType() == type)
+                            {
+                                isExists = true;
+                                break;
+                            }
+                        }
+                        if (isExists)
+                            continue;
                         std::string nameLower = ToLower(strName);
                         if (nameLower.find(search) != std::string::npos)
                         {
@@ -495,10 +503,23 @@ namespace ignite
                     }
                 };
                 
+
                 if (compNameResult.empty())
                 {
                     for (const auto& [strName, type] : componentsName)
                     {
+                        bool isExists = false;
+                        for (IComponent *comp : comps)
+                        {
+                            if (comp->GetType() == type)
+                            {
+                                isExists = true;
+                                break;
+                            }
+                        }
+                        if (isExists)
+                            continue;
+
                         if (ImGui::Selectable(strName.c_str()))
                         {
                             addCompFunc(Entity {m_SelectedEntity, m_Scene}, type);
@@ -577,9 +598,9 @@ namespace ignite
                 glm::quat orientation;
                 glm::decompose(transformMatrix, scale, orientation, translation, skew, perspective);
 
-                tr.local_translation = translation;
-                tr.local_scale = scale;
-                tr.local_rotation = orientation;
+                tr.localTranslation = translation;
+                tr.localScale = scale;
+                tr.localRotation = orientation;
             }
 
             ImGuizmo::PopID();
@@ -660,14 +681,21 @@ namespace ignite
     template<typename T, typename UIFunction>
     void ScenePanel::RenderComponent(const std::string &name, Entity entity, UIFunction uiFunction, bool allowedToRemove)
     {
+
         constexpr ImGuiTreeNodeFlags treeNdeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth
             | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
 
         if (entity.HasComponent<T>())
         {
+            T &comp = entity.GetComponent<T>();
+            UUID compID = comp.GetCompID();
+
+            ImGui::PushID(compID);
+
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2 { 0.5f, 2.0f });
             ImGui::Separator();
-            const bool open = ImGui::TreeNodeEx(reinterpret_cast<void *>(typeid(T).hash_code()), treeNdeFlags, name.c_str());
+
+            const bool open = ImGui::TreeNodeEx((const char *)(uint32_t *)(uint64_t *)&compID, treeNdeFlags, name.c_str());
             ImGui::PopStyleVar();
 
             ImGui::SameLine(ImGui::GetContentRegionAvail().x - 24.0f);
@@ -695,6 +723,8 @@ namespace ignite
 
             if (componentRemoved)
                 entity.RemoveComponent<T>();
+
+            ImGui::PopID();
         }
     }
 
@@ -863,11 +893,19 @@ namespace ignite
         m_SelectedEntity = {entt::null, nullptr};
     }
 
+    void ScenePanel::ClearMultiSelectEntity()
+    {
+        m_SelectedEntityIDs.clear();
+    }
+
     Entity ScenePanel::SetSelectedEntity(Entity entity)
     {
         if (!entity.IsValid())
         {
             m_SelectedEntityIDs.clear();
+            m_TrackingSelectedEntity = UUID(0);
+            m_SelectedEntity = {};
+            return {};
         }
 
         m_TrackingSelectedEntity = entity.GetUUID();

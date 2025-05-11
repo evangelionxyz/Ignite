@@ -2,6 +2,7 @@
 #include "box2d/types.h"
 #include "ignite/scene/icomponent.hpp"
 
+#include <string>
 #include <glm/glm.hpp>
 
 namespace ignite
@@ -20,6 +21,25 @@ namespace ignite
         case Body2DType_Kinematic: return b2_kinematicBody;
         }
         return b2_staticBody;
+    }
+
+    static std::string BodyTypeToString(Body2DType type)
+    {
+        switch (type)
+        {
+            case ignite::Body2DType_Static: return "Static";
+            case ignite::Body2DType_Dynamic: return "Dynamic";
+            case ignite::Body2DType_Kinematic: return "Kinematic";
+            default: return "Invalid";
+        }
+    }
+
+    static Body2DType BodyTypeFromString(const std::string &typeStr)
+    {
+        if (typeStr == "Static") return Body2DType_Static;
+        else if (typeStr == "Dynamic") return Body2DType_Dynamic;
+        else if (typeStr == "Kinematic") return Body2DType_Kinematic;
+        return Body2DType_Static;
     }
 
     class Rigidbody2D : public IComponent

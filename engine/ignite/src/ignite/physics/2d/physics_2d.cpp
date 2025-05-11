@@ -166,11 +166,11 @@ namespace ignite
             // first, calculate the local transform
             const auto [x, y] = b2Body_GetPosition(rb.bodyId);
             const b2Rot rotation = b2Body_GetRotation(rb.bodyId);
-            tr.local_translation = { x, y, tr.translation.z };
-            tr.local_rotation = glm::quat({ 0.0f, 0.0f, b2Rot_GetAngle(rotation) });
+            tr.localTranslation = { x, y, tr.translation.z };
+            tr.localRotation = glm::quat({ 0.0f, 0.0f, b2Rot_GetAngle(rotation) });
 
-            tr.translation = tr.local_translation;
-            tr.rotation = tr.local_rotation;
+            tr.translation = tr.localTranslation;
+            tr.rotation = tr.localRotation;
         }
     }
 
