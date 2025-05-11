@@ -106,19 +106,11 @@ namespace ignite {
         std::vector<i32> children;
         void CreateBuffers();
     };
-
-    struct ModelInputTexture
-    {
-        int index = -1;
-        nvrhi::TextureHandle texture;
-    };
     
     struct ModelCreateInfo
     {
         nvrhi::IDevice *device;
         nvrhi::IBindingLayout *bindingLayout;
-        std::vector<ModelInputTexture> textures;
-
         nvrhi::BufferHandle cameraBuffer;
         nvrhi::BufferHandle lightBuffer;
         nvrhi::BufferHandle envBuffer;
@@ -130,6 +122,9 @@ namespace ignite {
     public:
         Model() = default;
         Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo);
+
+        void SetEnvironmentTexture(nvrhi::TextureHandle envTexture);
+        void CreateBindingSet();
 
         void WriteBuffer(nvrhi::CommandListHandle commandList);
         void OnUpdate(f32 deltaTime);
@@ -143,6 +138,11 @@ namespace ignite {
         std::vector<Ref<SkeletalAnimation>> animations;
 
     private:
+        
+        ModelCreateInfo m_CreateInfo;
+
+        nvrhi::TextureHandle m_EnvironmentTexture;
+
         std::vector<Ref<Mesh>> m_Meshes;
         nvrhi::IBindingLayout *m_BindingLayout;
     };

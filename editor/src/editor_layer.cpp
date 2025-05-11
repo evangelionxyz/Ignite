@@ -78,10 +78,16 @@ namespace ignite
             m_EnvPipeline = GraphicsPipeline::Create(m_Device, params, pci);
 
             // create env
-            EnvironmentCreateInfo eci;
-            eci.filepath = "resources/hdr/rogland_clear_night_4k.hdr";
-            m_Env = Environment(m_Device, m_CommandList, eci, m_EnvPipeline->GetBindingLayout());
-            m_Env.SetSunDirection(50.0f, -27.0f);
+            EnvironmentCreateInfo envCI;
+            envCI.device = m_Device;
+            envCI.commandList = m_CommandList;
+            envCI.bindingLayout = m_EnvPipeline->GetBindingLayout();
+
+            m_Environment = Environment(envCI);
+            m_Environment.LoadTexture("resources/hdr/rogland_clear_night_4k.hdr");
+            m_Environment.WriteTexture();
+
+            m_Environment.SetSunDirection(50.0f, -27.0f);
         }
 
         // write buffer with command list
@@ -253,7 +259,7 @@ namespace ignite
         m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
 
         // render environment
-        m_Env.Render(m_CommandList, viewportFramebuffer, m_EnvPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
+        m_Environment.Render(viewportFramebuffer, m_EnvPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
 
         // render objects
         for (auto &model : m_Models)
@@ -307,23 +313,42 @@ namespace ignite
             // scene dockspace
             m_ScenePanel->OnGuiRender();
 
-            ImGui::Begin("Lighting & Material");
-            
+            ImGui::Begin("Environment");
+
             static glm::vec2 sunAngles = { 50, -27.0f }; // pitch (elevation), yaw (azimuth)
+
+            if (ImGui::Button("Load HDR"))
+            {
+                std::string filepath = FileDialogs::OpenFile("HDR Files (*.hdr)\0*.hdr\0");
+                if (!filepath.empty())
+                {
+                    m_Environment.LoadTexture(filepath);
+                    m_Environment.WriteTexture();
+
+                    for (auto &model : m_Models)
+                    {
+                        model->SetEnvironmentTexture(m_Environment.GetHDRTexture());
+                        model->CreateBindingSet();
+                    }
+                }
+            }
 
             if (ImGui::DragFloat2("Sun Angles (Pitch/Yaw)", &sunAngles.x, 0.25f))
             {
-                m_Env.SetSunDirection(sunAngles.x, sunAngles.y);
+                m_Environment.SetSunDirection(sunAngles.x, sunAngles.y);
             }
 
-            ImGui::ColorEdit4("Color", &m_Env.dirLight.color.x);
-            ImGui::DragFloat("Intensity", &m_Env.dirLight.intensity, 0.005f, 0.01f, 100.0f);
-            ImGui::DragFloat("Angular Size", &m_Env.dirLight.angularSize, 0.1f, 0.1f, 100.0f);
-            ImGui::DragFloat("Ambient", &m_Env.dirLight.ambientIntensity, 0.005f, 0.01f, 100.0f);
-            
-            ImGui::DragFloat("Exposure", &m_Env.params.exposure, 0.005f, 0.1f, 10.0f);
-            ImGui::DragFloat("Gamma", &m_Env.params.gamma, 0.005f, 0.1f, 10.0f);
+            ImGui::ColorEdit4("Color", &m_Environment.dirLight.color.x);
+            ImGui::DragFloat("Intensity", &m_Environment.dirLight.intensity, 0.005f, 0.01f, 100.0f);
+            ImGui::DragFloat("Angular Size", &m_Environment.dirLight.angularSize, 0.1f, 0.1f, 100.0f);
+            ImGui::DragFloat("Ambient", &m_Environment.dirLight.ambientIntensity, 0.005f, 0.01f, 100.0f);
 
+            ImGui::DragFloat("Exposure", &m_Environment.params.exposure, 0.005f, 0.1f, 10.0f);
+            ImGui::DragFloat("Gamma", &m_Environment.params.gamma, 0.005f, 0.1f, 10.0f);
+
+            ImGui::End();
+
+            ImGui::Begin("Material");
             if (m_SelectedMaterial)
             {
                 ImGui::Separator();
@@ -341,7 +366,6 @@ namespace ignite
                 m_CommandList->close();
                 m_Device->executeCommandList(m_CommandList);
             }
-
             ImGui::End();
 
             ImGui::Begin("Models");
@@ -458,19 +482,20 @@ namespace ignite
 
     void EditorLayer::LoadModel(const std::string &filepath)
     {
-
-        std::future<Ref<Model>> modelFuture = std::async(std::launch::async, [=]()
+        std::future<Ref<Model>> modelFuture = std::async(std::launch::async, [this, filepath]()
         {
             ModelCreateInfo modelCI;
             modelCI.device = m_Device;
             modelCI.bindingLayout = m_MeshPipeline->GetBindingLayout();
-            modelCI.cameraBuffer = m_Env.GetCameraBuffer();
-            modelCI.lightBuffer = m_Env.GetDirLightBuffer();
-            modelCI.envBuffer = m_Env.GetParamsBuffer();
+            modelCI.cameraBuffer = m_Environment.GetCameraBuffer();
+            modelCI.lightBuffer = m_Environment.GetDirLightBuffer();
+            modelCI.envBuffer = m_Environment.GetParamsBuffer();
             modelCI.debugBuffer = m_DebugRenderBuffer;
-            modelCI.textures = { ModelInputTexture{ 5, m_Env.GetHDRTexture() } };
 
-            return Model::Create(filepath, modelCI);
+            Ref<Model> model = Model::Create(filepath, modelCI);
+            model->SetEnvironmentTexture(m_Environment.GetHDRTexture());
+            model->CreateBindingSet();
+            return model;
         });
         
         m_PendingLoadModels.push_back(std::move(modelFuture));

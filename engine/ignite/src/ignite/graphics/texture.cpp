@@ -5,55 +5,76 @@
 
 namespace ignite
 {
-    Texture::Texture(nvrhi::IDevice *device, Buffer buffer, i32 width, i32 height)
-        : m_Buffer(buffer), m_Width(width), m_Height(height)
+    Texture::Texture(Buffer buffer, const TextureCreateInfo &createInfo)
+        : m_CreateInfo(createInfo), m_Data(buffer.Data)
     {
-        const auto textureDesc = nvrhi::TextureDesc()
-            .setDimension(nvrhi::TextureDimension::Texture2D)
-            .setWidth(m_Width)
-            .setHeight(m_Height)
-            .setFormat(nvrhi::Format::RGBA8_UNORM)
+        LOG_ASSERT(m_Data && buffer.Data, "[Texture] Pixel data is null");
+
+        const auto &textureDesc = nvrhi::TextureDesc()
+            .setDimension(m_CreateInfo.dimension)
+            .setWidth(m_CreateInfo.width)
+            .setHeight(m_CreateInfo.height)
+            .setFormat(m_CreateInfo.format)
             .setInitialState(nvrhi::ResourceStates::ShaderResource)
             .setKeepInitialState(true)
-            .setDebugName("Texture");
+            .setDebugName("Geometry Texture");
         
-        m_Handle = device->createTexture(textureDesc);
+        m_Handle = m_CreateInfo.device->createTexture(textureDesc);
         LOG_ASSERT(m_Handle, "Failed to create texture");
 
         const auto samplerDesc = nvrhi::SamplerDesc()
             .setAllAddressModes(nvrhi::SamplerAddressMode::Repeat)
             .setAllFilters(true);
 
-        m_Sampler = device->createSampler(samplerDesc);
+        m_Sampler = m_CreateInfo.device->createSampler(samplerDesc);
         LOG_ASSERT(m_Sampler, "Failed to create texture sampler");
     }
 
-    Texture::Texture(nvrhi::IDevice *device, const std::filesystem::path &filepath)
+    Texture::Texture(const std::string &filepath, const TextureCreateInfo &createInfo)
+        : m_CreateInfo(createInfo)
     {
-        LOG_ASSERT(exists(filepath), "File does not found!");
+        m_WithSTBI = true;
 
-        m_Buffer.Data = stbi_load(filepath.generic_string().c_str(), &m_Width, &m_Height, &m_Channels, 4);
-        LOG_ASSERT(m_Buffer.Data, "Failed to load texture data");
+        LOG_ASSERT(std::filesystem::exists(filepath), "File does not found!");
 
-        m_Buffer.Size = m_Width * m_Height * 4;
+        // always use RGBA
+        i32 channels = 4;
 
-        const auto textureDesc = nvrhi::TextureDesc()
-            .setDimension(nvrhi::TextureDimension::Texture2D)
-            .setWidth(m_Width)
-            .setHeight(m_Height)
-            .setFormat(nvrhi::Format::RGBA8_UNORM)
+        stbi_set_flip_vertically_on_load(m_CreateInfo.flip ? 1 : 0);
+
+        switch (m_CreateInfo.format)
+        {
+            case nvrhi::Format::RGBA8_UNORM:
+            {
+                m_Data = stbi_load(filepath.c_str(), &m_CreateInfo.width, &m_CreateInfo.height, &channels, 4);
+                LOG_ASSERT(m_Data, "Failed to load texture data");
+                break;
+            }
+            case nvrhi::Format::RGBA32_FLOAT:
+            {
+                m_Data = stbi_loadf(filepath.c_str(), &m_CreateInfo.width, &m_CreateInfo.height, &channels, 4);
+                LOG_ASSERT(m_Data, "Failed to load texture data");
+                break;
+            }
+        }
+
+        const auto &textureDesc = nvrhi::TextureDesc()
+            .setDimension(m_CreateInfo.dimension)
+            .setWidth(m_CreateInfo.width)
+            .setHeight(m_CreateInfo.height)
+            .setFormat(m_CreateInfo.format)
             .setInitialState(nvrhi::ResourceStates::ShaderResource)
             .setKeepInitialState(true)
             .setDebugName("Geometry Texture");
 
-        m_Handle = device->createTexture(textureDesc);
+        m_Handle = m_CreateInfo.device->createTexture(textureDesc);
         LOG_ASSERT(m_Handle, "Failed to create texture");
 
         const auto samplerDesc = nvrhi::SamplerDesc()
             .setAllAddressModes(nvrhi::SamplerAddressMode::Repeat)
             .setAllFilters(true);
 
-        m_Sampler = device->createSampler(samplerDesc);
+        m_Sampler = m_CreateInfo.device->createSampler(samplerDesc);
         LOG_ASSERT(m_Sampler, "Failed to create texture sampler");
     }
 
@@ -63,16 +84,42 @@ namespace ignite
 
     void Texture::Write(nvrhi::ICommandList *commandList)
     {
-        commandList->writeTexture(m_Handle, 0, 0, m_Buffer.Data, m_Width * 4);
+        LOG_ASSERT(m_Data, "[Texture] Pixel data is null");
+
+        // Row Pitch   = width * channels
+        // Depth pitch = Row Pitch * height (for 3D TEXTURE)
+
+        const int channels = 4; // always use RGBA
+        int rowPitch = m_CreateInfo.width * channels;
+        int depthPitch = rowPitch * m_CreateInfo.height;
+
+        if (m_CreateInfo.format == nvrhi::Format::RGBA8_UNORM)
+        {
+            // char = 1 byte, 8 bit
+            uint8_t *byteData = static_cast<uint8_t *>(m_Data);
+            commandList->writeTexture(m_Handle, 0, 0, byteData, rowPitch);
+        }
+        else if (m_CreateInfo.format == nvrhi::Format::RGBA32_FLOAT)
+        {
+            // float = 4 bytes, 32 bit, we need to multiply sizeof(float)
+            float *floatData = static_cast<float *>(m_Data);
+            commandList->writeTexture(m_Handle, 0, 0, floatData, rowPitch * sizeof(float), depthPitch * sizeof(float));
+        }
+
+        if (m_Data && m_WithSTBI)
+        {
+            // free if loaded with stbi
+            stbi_image_free(m_Data);
+        }
     }
 
-    Ref<Texture> Texture::Create(nvrhi::IDevice *device, Buffer buffer, i32 width, i32 height)
+    Ref<Texture> Texture::Create(Buffer buffer, const TextureCreateInfo &createInfo)
     {
-        return CreateRef<Texture>(device, buffer, width, height);
+        return CreateRef<Texture>(buffer, createInfo);
     }
 
-    Ref<Texture> Texture::Create(nvrhi::IDevice *device, const std::filesystem::path &filepath)
+    Ref<Texture> Texture::Create(const std::string &filepath, const TextureCreateInfo &createInfo)
     {
-        return CreateRef<Texture>(device, filepath);
+        return CreateRef<Texture>(filepath, createInfo);
     }
 }

@@ -52,6 +52,7 @@ namespace ignite {
 
     // Model class
     Model::Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo)
+        : m_CreateInfo(createInfo)
     {
         LOG_ASSERT(std::filesystem::exists(filepath), "[Model] Filepath does not exists!");
 
@@ -85,49 +86,56 @@ namespace ignite {
             ModelLoader::LoadAnimation(scene, animations);
         }
 
-
-        // create buffers
-        auto constantBufferDesc = nvrhi::BufferDesc()
-            .setIsConstantBuffer(true)
-            .setIsVolatile(true)
-            .setMaxVersions(16)
-            .setInitialState(nvrhi::ResourceStates::ConstantBuffer);
-
+        // create constant buffers
         for (auto &mesh : m_Meshes)
         {
-            // create per mesh binding sets
-            auto bsDesc = nvrhi::BindingSetDesc();
+            // create buffers
+            auto constantBufferDesc = nvrhi::BufferDesc()
+                .setIsConstantBuffer(true)
+                .setIsVolatile(true)
+                .setMaxVersions(16)
+                .setInitialState(nvrhi::ResourceStates::ConstantBuffer);
 
             // create per mesh constant buffers
             constantBufferDesc.setDebugName("Mesh constant buffer");
-            constantBufferDesc.setByteSize(sizeof(PushConstantMesh));
-            mesh->objectBuffer = createInfo.device->createBuffer(constantBufferDesc);
+            constantBufferDesc.setByteSize(sizeof(ObjectBuffer));
+            mesh->objectBuffer = m_CreateInfo.device->createBuffer(constantBufferDesc);
             LOG_ASSERT(mesh->objectBuffer, "[Model] Failed to create object constant buffer");
 
             constantBufferDesc.setDebugName("Material constant buffer");
             constantBufferDesc.setByteSize(sizeof(MaterialData));
-            mesh->materialBuffer = createInfo.device->createBuffer(constantBufferDesc);
+            mesh->materialBuffer = m_CreateInfo.device->createBuffer(constantBufferDesc);
             LOG_ASSERT(mesh->materialBuffer, "[Model] Failed to create material constant buffer");
+        }
+    }
 
-            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, createInfo.cameraBuffer));
-            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, createInfo.lightBuffer));
-            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, createInfo.envBuffer));
-            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, mesh->objectBuffer));
-            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, mesh->materialBuffer));
-            bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(5, createInfo.debugBuffer));
+    void Model::SetEnvironmentTexture(nvrhi::TextureHandle envTexture)
+    {
+        m_EnvironmentTexture = envTexture;
+    }
 
-            bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, mesh->material.textures[aiTextureType_DIFFUSE].handle));
-            bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(1, mesh->material.textures[aiTextureType_SPECULAR].handle));
-            bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, mesh->material.textures[aiTextureType_EMISSIVE].handle));
-            bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, mesh->material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
-            bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(4, mesh->material.textures[aiTextureType_NORMALS].handle));
+    void Model::CreateBindingSet()
+    {
+        for (auto &mesh : m_Meshes)
+        {
+            auto desc = nvrhi::BindingSetDesc();
 
-            for (auto &[index, tex] : createInfo.textures)
-                bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(index, tex));
+            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, m_CreateInfo.cameraBuffer));
+            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, m_CreateInfo.lightBuffer));
+            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, m_CreateInfo.envBuffer));
+            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, mesh->objectBuffer));
+            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, mesh->materialBuffer));
+            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(5, m_CreateInfo.debugBuffer));
 
-            bsDesc.addItem(nvrhi::BindingSetItem::Sampler(0, mesh->material.sampler));
+            desc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, mesh->material.textures[aiTextureType_DIFFUSE].handle));
+            desc.addItem(nvrhi::BindingSetItem::Texture_SRV(1, mesh->material.textures[aiTextureType_SPECULAR].handle));
+            desc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, mesh->material.textures[aiTextureType_EMISSIVE].handle));
+            desc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, mesh->material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
+            desc.addItem(nvrhi::BindingSetItem::Texture_SRV(4, mesh->material.textures[aiTextureType_NORMALS].handle));
+            desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, m_EnvironmentTexture ? m_EnvironmentTexture : Renderer::GetBlackTexture()->GetHandle()));
+            desc.addItem(nvrhi::BindingSetItem::Sampler(0, mesh->material.sampler));
 
-            mesh->bindingSet = createInfo.device->createBindingSet(bsDesc, createInfo.bindingLayout);
+            mesh->bindingSet = m_CreateInfo.device->createBindingSet(desc, m_CreateInfo.bindingLayout);
             LOG_ASSERT(mesh->bindingSet, "Failed to create binding set");
         }
     }
@@ -156,24 +164,22 @@ namespace ignite {
     {
         nvrhi::Viewport viewport = framebuffer->getFramebufferInfo().getViewport();
 
-        for (size_t i = 0; i < m_Meshes.size(); ++i)
+        for (auto &mesh : m_Meshes)
         {
-            auto &mesh = m_Meshes[i];
-
             // write material constant buffer
             commandList->writeBuffer(mesh->materialBuffer, &mesh->material.data, sizeof(mesh->material.data));
 
             // write model constant buffer
 
-            PushConstantMesh modelPushConstant;
+            ObjectBuffer modelPushConstant;
             if (mesh->parentID != -1)
-                modelPushConstant.transformMatrix = transform * m_Meshes[mesh->parentID]->localTransform * mesh->localTransform;
+                modelPushConstant.transformation = transform * m_Meshes[mesh->parentID]->localTransform * mesh->localTransform;
             else
-                modelPushConstant.transformMatrix = transform * mesh->localTransform;
+                modelPushConstant.transformation = transform * mesh->localTransform;
 
-            glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(modelPushConstant.transformMatrix)));
-            modelPushConstant.normalMatrix = glm::mat4(normalMat3);
-            commandList->writeBuffer(mesh->objectBuffer, &modelPushConstant, sizeof(PushConstantMesh));
+            glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(modelPushConstant.transformation)));
+            modelPushConstant.normal = glm::mat4(normalMat3);
+            commandList->writeBuffer(mesh->objectBuffer, &modelPushConstant, sizeof(ObjectBuffer));
 
             // render
             auto meshGraphicsState = nvrhi::GraphicsState();
@@ -379,7 +385,7 @@ namespace ignite {
                             dstData[i * 4 + 0] = srcData[i * 3 + 0]; // R
                             dstData[i * 4 + 1] = srcData[i * 3 + 1]; // G
                             dstData[i * 4 + 2] = srcData[i * 3 + 2]; // B
-                            dstData[i * 4 + 3] = 255;               // A
+                            dstData[i * 4 + 3] = 255;                // A
                         }
 
                         meshMaterial->textures[type].buffer.Data = dstData;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lighting.hpp"
+#include "texture.hpp"
 
 #include <string>
 #include <filesystem>
@@ -20,16 +21,20 @@ namespace ignite {
 
     struct EnvironmentCreateInfo
     {
-        std::filesystem::path filepath;
+        nvrhi::IDevice *device;
+        nvrhi::ICommandList *commandList;
+        nvrhi::IBindingLayout *bindingLayout;
     };
 
     class Environment
     {
     public:
         Environment() = default;
-        Environment(nvrhi::IDevice *device, nvrhi::CommandListHandle commandList, const EnvironmentCreateInfo &createInfo, nvrhi::BindingLayoutHandle bindingLayout);
+        Environment(const EnvironmentCreateInfo &createInfo);
 
-        void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline, Camera *camera);
+        void Render(nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline, Camera *camera);
+        void LoadTexture(const std::string &filepath);
+        void WriteTexture();
 
         void SetSunDirection(float pitch, float yaw);
 
@@ -39,14 +44,16 @@ namespace ignite {
         EnvironmentParams params;
         DirLight dirLight;
 
-        nvrhi::TextureHandle GetHDRTexture() { return m_HDRTexture; }
+        nvrhi::TextureHandle GetHDRTexture() { return m_HDRTexture->GetHandle(); }
 
         nvrhi::BufferHandle GetParamsBuffer() { return m_ParamsConstantBuffer; }
         nvrhi::BufferHandle GetDirLightBuffer() { return m_DirLightConstantBuffer; }
         nvrhi::BufferHandle GetCameraBuffer() { return m_CameraConstantBuffer; }
 
     private:
-        void CreateLightingBuffer(nvrhi::IDevice *device);
+        void CreateLightingBuffer();
+
+        EnvironmentCreateInfo m_CreateInfo;
 
         nvrhi::BufferHandle m_VertexBuffer;
         nvrhi::BufferHandle m_IndexBuffer;
@@ -57,8 +64,6 @@ namespace ignite {
 
         nvrhi::BindingSetHandle m_BindingSet;
 
-        nvrhi::TextureHandle m_HDRTexture;
-        nvrhi::SamplerHandle m_Sampler;
-
+        Ref<Texture> m_HDRTexture;
     };
 }

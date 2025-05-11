@@ -17,8 +17,11 @@ namespace ignite
 
         if (m_CreateInfo.cmdLineArgs.count > 1)
         {
-            if (strcmp(createInfo.cmdLineArgs.args[1], "-dx12") == 0)
-                m_CreateInfo.graphicsApi = nvrhi::GraphicsAPI::D3D12;
+            for (i32 i = 0; i < m_CreateInfo.cmdLineArgs.count; ++i)
+            {
+                if (strcmp(createInfo.cmdLineArgs.args[i], "-dx12") == 0)
+                    m_CreateInfo.graphicsApi = nvrhi::GraphicsAPI::D3D12;
+            }
         }
 
         m_CommandManager = CreateScope<CommandManager>();

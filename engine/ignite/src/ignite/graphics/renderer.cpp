@@ -24,11 +24,20 @@ namespace ignite
         nvrhi::CommandListHandle commandList = device->createCommandList();
 
         {
+            TextureCreateInfo textureCI;
+            textureCI.device = device;
+            textureCI.format = nvrhi::Format::RGBA8_UNORM;
+            textureCI.dimension = nvrhi::TextureDimension::Texture2D;
+            textureCI.samplerMode = nvrhi::SamplerAddressMode::ClampToBorder;
+            textureCI.width = 1;
+            textureCI.height = 1;
+            textureCI.flip = false;
+
             u32 white = 0xFFFFFFFF;
-            m_WhiteTexture = Texture::Create(device, Buffer(&white, sizeof(u32)));
+            m_WhiteTexture = Texture::Create(Buffer(&white, sizeof(u32)), textureCI);
 
             u32 black = 0x00000000;
-            m_BlackTexture = Texture::Create(device, Buffer(&black, sizeof(u32)));
+            m_BlackTexture = Texture::Create(Buffer(&black, sizeof(u32)), textureCI);
             
             commandList->open();
             m_WhiteTexture->Write(commandList);

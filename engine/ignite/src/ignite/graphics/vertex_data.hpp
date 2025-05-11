@@ -7,16 +7,18 @@
 
 namespace ignite
 {
-    struct PushConstantGlobal
+#define MAX_BONES 4
+
+    struct CameraBuffer
     {
         glm::mat4 viewProjection;
-        glm::vec4 cameraPosition;
+        glm::vec4 position;
     };
 
-    struct PushConstantMesh
+    struct ObjectBuffer
     {
-        glm::mat4 transformMatrix;
-        glm::mat4 normalMatrix;
+        glm::mat4 transformation;
+        glm::mat4 normal;
     };
 
     struct VertexMesh
@@ -26,6 +28,8 @@ namespace ignite
         glm::vec2 texCoord;
         glm::vec2 tilingFactor;
         glm::vec4 color;
+        //uint32_t boneIDs[MAX_BONES] = { 0 };
+        //uint32_t weights[MAX_BONES] = { 0.0f };
 
         static std::array<nvrhi::VertexAttributeDesc, 5> GetAttributes()
         {
@@ -56,6 +60,16 @@ namespace ignite
                     .setFormat(nvrhi::Format::RGBA32_FLOAT)
                     .setOffset(offsetof(VertexMesh, color))
                     .setElementStride(sizeof(VertexMesh))
+                //nvrhi::VertexAttributeDesc()
+                //    .setName("BONEIDS")
+                //    .setFormat(nvrhi::Format::RGBA32_UINT)
+                //    .setOffset(offsetof(VertexMesh, boneIDs))
+                //    .setElementStride(sizeof(VertexMesh)),
+                //nvrhi::VertexAttributeDesc()
+                //    .setName("WEIGHTS")
+                //    .setFormat(nvrhi::Format::RGBA32_UINT)
+                //    .setOffset(offsetof(VertexMesh, boneIDs))
+                //    .setElementStride(sizeof(VertexMesh))
             };
         }
 

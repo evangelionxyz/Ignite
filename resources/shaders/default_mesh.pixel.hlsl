@@ -95,7 +95,7 @@ float4 main(PSInput input) : SV_TARGET
     float roughColTex = roughnessTex.Sample(sampler0, input.uv).r;
     float3 normalColTex = normalTex.Sample(sampler0, input.uv).rgb;
 
-    float3 normal = normalize(input.normal);
+    float3 normal = normalize(input.normal * normalColTex);
     float3 viewDir = normalize(camera.position.xyz - input.worldPos);
     float3 lightDir = normalize(dirLight.direction.xyz);
 
@@ -146,7 +146,7 @@ float4 main(PSInput input) : SV_TARGET
             return float4(lighting, 1.0f);
         }
         case 1:
-            return float4(normal * 0.5 + 0.5, 1.0);
+            return float4((normal * 0.5 + 0.5) * normalColTex, 1.0);
         case 2:
             // Debug view for roughness
             return float4(finalRoughness, finalRoughness, finalRoughness, 1.0);
