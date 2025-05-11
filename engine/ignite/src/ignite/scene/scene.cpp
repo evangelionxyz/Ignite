@@ -74,6 +74,11 @@ namespace ignite
         // TODO: render with camera component
     }
 
+    Ref<Scene> Scene::Create(const std::string &name)
+    {
+        return CreateRef<Scene>(name);
+    }
+
     void Scene::OnRenderRuntimeSimulate(Camera *camera, nvrhi::IFramebuffer *framebuffer)
     {
         Renderer2D::Begin(camera, framebuffer);

@@ -34,6 +34,7 @@ includedirs {
     "%{IncludeDir.VULKAN_SDK}",
     "%{IncludeDir.SHADERMAKE}",
     "%{IncludeDir.ASSIMP}",
+    "%{IncludeDir.YAMLCPP}",
 }
 
 defines {

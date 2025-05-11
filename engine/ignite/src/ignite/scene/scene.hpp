@@ -46,6 +46,8 @@ namespace ignite
         Scope<Physics2D> physics2D;
 
         bool IsPlaying() const { return m_Playing; }
+
+        static Ref<Scene> Create(const std::string &name);
     
     private:
         bool m_Playing = false;

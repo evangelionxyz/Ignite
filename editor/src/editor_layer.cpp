@@ -105,7 +105,7 @@ namespace ignite
         m_CommandList = nullptr;
     }
 
-    void EditorLayer::OnUpdate(const f32 deltaTime)
+    void EditorLayer::OnUpdate(f32 deltaTime)
     {
         Layer::OnUpdate(deltaTime);
 
@@ -271,7 +271,7 @@ namespace ignite
 
     void EditorLayer::OnGuiRender()
     {
-        constexpr f32 TITLE_BAR_HEIGHT = 45.0f;
+        constexpr f32 TITLE_BAR_HEIGHT = 60.0f;
 
         constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse
             | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
@@ -293,12 +293,42 @@ namespace ignite
         draw_list->AddRectFilled(minPos, maxPos, IM_COL32(30, 30, 30, 255));
 
         // play stop and simulate button
-        ImVec2 buttonSize = {40.0f, 25.0f};
-        ImVec2 buttonCursorPos = { viewport->Pos.x, totalTitlebarHeight / 2.0f - buttonSize.y / 2.0f};
-        ImGui::SetCursorScreenPos(buttonCursorPos);
+
+        // =========== Menubar ===========
+        const ImVec2 menuBarButtonSize = { 40.0f, 20.0f};
+        ImVec2 menubarBTCursorPos = { viewport->Pos.x, viewport->Pos.y };
+        if (ImGui::Button("File"))
+        {
+            ImGui::OpenPopup("MenuBar_File");
+        }
+
+        if (ImGui::BeginPopup("MenuBar_File"))
+        {
+            if (ImGui::MenuItem("Save Scene"))
+            {
+                SaveScene();
+            }
+            else if (ImGui::MenuItem("Save Scene As"))
+            {
+                SaveScene();
+            }
+            else if (ImGui::MenuItem("Open Scene"))
+            {
+                OpenScene();
+            }
+
+            ImGui::EndPopup();
+        }
+
+
+        // =========== Toolbar ===========
+        const ImVec2 toolbarButtonSize = { 40.0f, 25.0f };
+        f32 buttonMiddle = totalTitlebarHeight / 2.0f - toolbarButtonSize.y / 2.0f;
+        ImVec2 toolbarBTCursorPos = { viewport->Pos.x, buttonMiddle + (totalTitlebarHeight / 4.0f)};
+        ImGui::SetCursorScreenPos(toolbarBTCursorPos);
 
         bool sceneStatePlaying = m_Data.sceneState == State_ScenePlay;
-        if (ImGui::Button(sceneStatePlaying ? "Stop" : "Play", buttonSize))
+        if (ImGui::Button(sceneStatePlaying ? "Stop" : "Play", toolbarButtonSize))
         {
             if (sceneStatePlaying)
                 OnSceneStop();
@@ -422,6 +452,31 @@ namespace ignite
         // pass to active scene
         m_ActiveScene = m_EditorScene;
         m_ScenePanel->SetActiveScene(m_ActiveScene.get(), true); // reset selected entity
+    }
+
+    void EditorLayer::SaveScene()
+    {
+        std::string filepath = FileDialogs::SaveFile("Ignite Scene (*igs)\0*.igs\0");
+        if (!filepath.empty())
+        {
+            SaveScene(filepath);
+        }
+    }
+
+    bool EditorLayer::SaveScene(const std::filesystem::path &filepath)
+    {
+        SceneSerializer serializer(m_ActiveScene);
+        return serializer.Serialize(filepath);
+    }
+
+    void EditorLayer::OpenScene()
+    {
+
+    }
+
+    bool EditorLayer::OpenScene(const std::filesystem::path &filepath)
+    {
+        return true;
     }
 
     void EditorLayer::OnScenePlay()

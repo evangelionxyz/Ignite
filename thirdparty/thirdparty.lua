@@ -15,6 +15,7 @@ IncludeDir["VULKAN_SDK"] = "%{VULKAN_SDK_PATH}/Include"
 IncludeDir["NVRHI_VULKAN_HPP"] = "%{THIRDPARTY_DIR}/NVRHI/thirdparty/Vulkan-Headers/include"
 IncludeDir["SHADERMAKE"] = "%{THIRDPARTY_DIR}/ShaderMake/ShaderMake/include"
 IncludeDir["ASSIMP"] = "%{THIRDPARTY_DIR}/ASSIMP/include"
+IncludeDir["YAMLCPP"] = "%{THIRDPARTY_DIR}/YAML/include"
 
 --library dirs
 LibraryDir = {}
@@ -52,6 +53,7 @@ include "spdlog.lua"
 include "imgui.lua"
 include "stb.lua"
 include "assimp.lua"
+include "yaml-cpp.lua"
 group ""
 
 group "NVIDIA"

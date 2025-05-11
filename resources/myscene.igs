@@ -1,0 +1,94 @@
+Scene:
+  Title: test scene
+  Version: 1.0
+  Entities:
+    - ID: ENTITY_ID
+      Type: ENTITY_TYPE
+      Parent: PARENT_ID
+      Component A:
+        Var A: value
+        Var B: value
+        List Var:
+          - List Var A: value
+            List Var B: value
+    - ID: ENTITY_ID
+      Type: ENTITY_TYPE
+      Parent: PARENT_ID
+      Component A:
+        Var A: value
+        Var B: value
+        List Var:
+          - List Var A: value
+            List Var B: value
+    - ID: ENTITY_ID
+      Type: ENTITY_TYPE
+      Parent: PARENT_ID
+      Component A:
+        Var A: value
+        Var B: value
+        List Var:
+          - List Var A: value
+            List Var B: value
+    - ID: ENTITY_ID
+      Type: ENTITY_TYPE
+      Parent: PARENT_ID
+      Component A:
+        Var A: value
+        Var B: value
+        List Var:
+          - List Var A: value
+            List Var B: value
+    - ID: ENTITY_ID
+      Type: ENTITY_TYPE
+      Parent: PARENT_ID
+      Component A:
+        Var A: value
+        Var B: value
+        List Var:
+          - List Var A: value
+            List Var B: value
+    - ID: ENTITY_ID
+      Type: ENTITY_TYPE
+      Parent: PARENT_ID
+      Component A:
+        Var A: value
+        Var B: value
+        List Var:
+          - List Var A: value
+            List Var B: value
+    - ID: ENTITY_ID
+      Type: ENTITY_TYPE
+      Parent: PARENT_ID
+      Component A:
+        Var A: value
+        Var B: value
+        List Var:
+          - List Var A: value
+            List Var B: value
+    - ID: ENTITY_ID
+      Type: ENTITY_TYPE
+      Parent: PARENT_ID
+      Component A:
+        Var A: value
+        Var B: value
+        List Var:
+          - List Var A: value
+            List Var B: value
+    - ID: ENTITY_ID
+      Type: ENTITY_TYPE
+      Parent: PARENT_ID
+      Component A:
+        Var A: value
+        Var B: value
+        List Var:
+          - List Var A: value
+            List Var B: value
+    - ID: ENTITY_ID
+      Type: ENTITY_TYPE
+      Parent: PARENT_ID
+      Component A:
+        Var A: value
+        Var B: value
+        List Var:
+          - List Var A: value
+            List Var B: value

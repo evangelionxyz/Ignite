@@ -7,6 +7,7 @@
 #include "ignite/graphics/graphics_pipeline.hpp"
 #include "ignite/graphics/environment.hpp"
 #include "ignite/graphics/lighting.hpp"
+#include "ignite/serializer/serializer.hpp"
 
 #include "states.hpp"
 
@@ -52,6 +53,13 @@ namespace ignite
 
     private:
         void NewScene();
+
+        void SaveScene();
+        bool SaveScene(const std::filesystem::path &filepath);
+
+        void OpenScene();
+        bool OpenScene(const std::filesystem::path &filepath);
+
         void OnScenePlay();
         void OnSceneStop();
         void OnSceneSimulate();

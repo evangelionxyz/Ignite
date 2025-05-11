@@ -16,3 +16,6 @@
 [submodule "thirdparty/ShaderMake"]
 	path = thirdparty/ShaderMake
 	url = https://github.com/evangelionxyz/ShaderMake.git
+[submodule "thirdparty/YAML"]
+	path = thirdparty/YAML
+	url = https://github.com/jbeder/yaml-cpp.git

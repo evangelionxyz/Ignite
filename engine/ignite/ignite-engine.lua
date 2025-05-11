@@ -27,6 +27,7 @@ includedirs {
     "%{IncludeDir.VULKAN_SDK}",
     "%{IncludeDir.SHADERMAKE}",
     "%{IncludeDir.ASSIMP}",
+    "%{IncludeDir.YAMLCPP}",
 }
 
 links {
@@ -39,10 +40,12 @@ links {
     "ASSIMP",
     "NVRHI",
     "NVRHI_VULKAN",
+    "YAMLCPP",
 }
 
 defines {
-    "SHADERMAKE_COLORS"
+    "SHADERMAKE_COLORS",
+    "YAML_CPP_STATIC_DEFINE"
 }
 
 --linux
