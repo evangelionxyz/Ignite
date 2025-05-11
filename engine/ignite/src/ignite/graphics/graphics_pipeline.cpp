@@ -12,7 +12,7 @@ namespace ignite {
         CreateShaders(device);
 
         m_InputLayout = device->createInputLayout(createInfo.attributes, createInfo.attributeCount, nullptr); // vertex buffer is only for DX11
-        LOG_ASSERT(m_InputLayout, "[Graphics Pipeline] Failed to create input layout");
+        LOG_ASSERT(m_InputLayout, "[Graphics Pipeline] Failed to create binding layout");
 
         m_BindingLayout = device->createBindingLayout(createInfo.bindingLayoutDesc);
         LOG_ASSERT(m_BindingLayout, "[Graphics Pipeline] Failed to create binding layout");

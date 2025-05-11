@@ -8,7 +8,6 @@
 #include "ignite/graphics/environment.hpp"
 #include "ignite/graphics/lighting.hpp"
 #include "ignite/serializer/serializer.hpp"
-#include "ignite/math/frustum.hpp"
 
 #include "states.hpp"
 
