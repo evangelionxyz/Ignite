@@ -17,6 +17,7 @@ namespace ignite {
     class Shader;
     class Camera;
     class Environment;
+    class GraphicsPipeline;
 
     enum class MeshType
     {
@@ -110,7 +111,6 @@ namespace ignite {
     struct ModelCreateInfo
     {
         nvrhi::IDevice *device;
-        nvrhi::IBindingLayout *bindingLayout;
         nvrhi::BufferHandle cameraBuffer;
         nvrhi::BufferHandle lightBuffer;
         nvrhi::BufferHandle envBuffer;
@@ -124,11 +124,11 @@ namespace ignite {
         Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo);
 
         void SetEnvironmentTexture(nvrhi::TextureHandle envTexture);
-        void CreateBindingSet();
+        void CreateBindingSet(nvrhi::BindingLayoutHandle bindingLayout);
 
         void WriteBuffer(nvrhi::CommandListHandle commandList);
         void OnUpdate(f32 deltaTime);
-        void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline);
+        void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline);
 
         std::vector<Ref<Mesh>> &GetMeshes() { return m_Meshes; }
 
@@ -140,11 +140,8 @@ namespace ignite {
     private:
         
         ModelCreateInfo m_CreateInfo;
-
         nvrhi::TextureHandle m_EnvironmentTexture;
-
         std::vector<Ref<Mesh>> m_Meshes;
-        nvrhi::IBindingLayout *m_BindingLayout;
     };
 
     class ModelLoader

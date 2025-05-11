@@ -80,10 +80,9 @@ namespace ignite
             EnvironmentCreateInfo envCI;
             envCI.device = m_Device;
             envCI.commandList = m_CommandList;
-            envCI.bindingLayout = m_EnvPipeline->GetBindingLayout();
 
             m_Environment = Environment::Create(envCI);
-            m_Environment->LoadTexture("resources/hdr/rogland_clear_night_4k.hdr");
+            m_Environment->LoadTexture("resources/hdr/rogland_clear_night_4k.hdr", m_EnvPipeline->GetBindingLayout());
             m_Environment->WriteTexture();
 
             m_Environment->SetSunDirection(50.0f, -27.0f);
@@ -273,12 +272,12 @@ namespace ignite
         m_CommandList->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), nvrhi::AllSubresources, true, farDepth, true, 0);
 
         // render environment
-        m_Environment->Render(viewportFramebuffer, m_EnvPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
+        m_Environment->Render(viewportFramebuffer, m_EnvPipeline, m_ScenePanel->GetViewportCamera());
 
         // render objects
         for (auto &model : m_Models)
         {
-            model->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle());
+            model->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline);
         }
 
         m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
@@ -681,13 +680,13 @@ namespace ignite
                 std::string filepath = FileDialogs::OpenFile("HDR Files (*.hdr)\0*.hdr\0");
                 if (!filepath.empty())
                 {
-                    m_Environment->LoadTexture(filepath);
+                    m_Environment->LoadTexture(filepath, m_EnvPipeline->GetBindingLayout());
                     m_Environment->WriteTexture();
 
                     for (auto &model : m_Models)
                     {
                         model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
-                        model->CreateBindingSet();
+                        model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
                     }
                 }
             }
@@ -749,7 +748,6 @@ namespace ignite
         {
             ModelCreateInfo modelCI;
             modelCI.device = m_Device;
-            modelCI.bindingLayout = m_MeshPipeline->GetBindingLayout();
             modelCI.cameraBuffer = m_Environment->GetCameraBuffer();
             modelCI.lightBuffer = m_Environment->GetDirLightBuffer();
             modelCI.envBuffer = m_Environment->GetParamsBuffer();
@@ -757,7 +755,7 @@ namespace ignite
 
             Ref<Model> model = Model::Create(filepath, modelCI);
             model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
-            model->CreateBindingSet();
+            model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
             return model;
         });
         

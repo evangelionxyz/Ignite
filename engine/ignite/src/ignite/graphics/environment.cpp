@@ -3,6 +3,8 @@
 #include "ignite/scene/camera.hpp"
 #include "vertex_data.hpp"
 
+#include "graphics_pipeline.hpp"
+
 #include <stb_image.h>
 
 namespace ignite {
@@ -125,7 +127,7 @@ namespace ignite {
         m_CreateInfo.device->executeCommandList(m_CreateInfo.commandList);
     }
 
-    void Environment::Render(nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline, Camera *camera)
+    void Environment::Render(nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline, Camera *camera)
     {
         CameraBuffer camPushConstant;
         camPushConstant.viewProjection = camera->GetViewProjectionMatrix();
@@ -138,7 +140,7 @@ namespace ignite {
 
         // render
         auto state = nvrhi::GraphicsState();
-        state.pipeline = pipeline;
+        state.pipeline = pipeline->GetHandle();
         state.framebuffer = framebuffer;
         state.viewport = nvrhi::ViewportState().addViewportAndScissorRect(framebuffer->getFramebufferInfo().getViewport());
         state.addVertexBuffer({ m_VertexBuffer, 0, 0 });
@@ -156,7 +158,7 @@ namespace ignite {
         m_CreateInfo.commandList->drawIndexed(args);
     }
 
-    void Environment::LoadTexture(const std::string &filepath)
+    void Environment::LoadTexture(const std::string &filepath, nvrhi::BindingLayoutHandle bindingLayout)
     {
         TextureCreateInfo textureCI;
         textureCI.device = m_CreateInfo.device;
@@ -173,7 +175,7 @@ namespace ignite {
         bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, m_HDRTexture->GetHandle()));
         bsDesc.addItem(nvrhi::BindingSetItem::Sampler(0, m_HDRTexture->GetSampler()));
 
-        m_BindingSet = m_CreateInfo.device->createBindingSet(bsDesc, m_CreateInfo.bindingLayout);
+        m_BindingSet = m_CreateInfo.device->createBindingSet(bsDesc, bindingLayout);
         LOG_ASSERT(m_BindingSet, "Failed to create binding set");
     }
 

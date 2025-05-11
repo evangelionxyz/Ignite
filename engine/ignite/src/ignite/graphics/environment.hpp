@@ -12,6 +12,7 @@
 namespace ignite {
 
     class Camera;
+    class GraphicsPipeline;
 
     struct EnvironmentParams
     {
@@ -23,7 +24,6 @@ namespace ignite {
     {
         nvrhi::IDevice *device;
         nvrhi::ICommandList *commandList;
-        nvrhi::IBindingLayout *bindingLayout;
     };
 
     class Environment
@@ -32,8 +32,8 @@ namespace ignite {
         Environment() = default;
         Environment(const EnvironmentCreateInfo &createInfo);
 
-        void Render(nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline, Camera *camera);
-        void LoadTexture(const std::string &filepath);
+        void Render(nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline, Camera *camera);
+        void LoadTexture(const std::string &filepath, nvrhi::BindingLayoutHandle bindingLayout);
         void WriteTexture();
 
         void SetSunDirection(float pitch, float yaw);

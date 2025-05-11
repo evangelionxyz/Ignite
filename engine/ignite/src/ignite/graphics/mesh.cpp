@@ -8,6 +8,7 @@
 #include "ignite/core/application.hpp"
 #include "ignite/scene/camera.hpp"
 #include "ignite/graphics/environment.hpp"
+#include "ignite/graphics/graphics_pipeline.hpp"
 
 #include <stb_image.h>
 
@@ -114,7 +115,7 @@ namespace ignite {
         m_EnvironmentTexture = envTexture;
     }
 
-    void Model::CreateBindingSet()
+    void Model::CreateBindingSet(nvrhi::BindingLayoutHandle bindingLayout)
     {
         for (auto &mesh : m_Meshes)
         {
@@ -135,7 +136,7 @@ namespace ignite {
             desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, m_EnvironmentTexture ? m_EnvironmentTexture : Renderer::GetBlackTexture()->GetHandle()));
             desc.addItem(nvrhi::BindingSetItem::Sampler(0, mesh->material.sampler));
 
-            mesh->bindingSet = m_CreateInfo.device->createBindingSet(desc, m_CreateInfo.bindingLayout);
+            mesh->bindingSet = m_CreateInfo.device->createBindingSet(desc, bindingLayout);
             LOG_ASSERT(mesh->bindingSet, "Failed to create binding set");
         }
     }
@@ -160,7 +161,7 @@ namespace ignite {
 
     }
 
-    void Model::Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, nvrhi::GraphicsPipelineHandle pipeline)
+    void Model::Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline)
     {
         nvrhi::Viewport viewport = framebuffer->getFramebufferInfo().getViewport();
 
@@ -183,7 +184,7 @@ namespace ignite {
 
             // render
             auto meshGraphicsState = nvrhi::GraphicsState();
-            meshGraphicsState.pipeline = pipeline;
+            meshGraphicsState.pipeline = pipeline->GetHandle();
             meshGraphicsState.framebuffer = framebuffer;
             meshGraphicsState.viewport = nvrhi::ViewportState().addViewportAndScissorRect(viewport);
             meshGraphicsState.addVertexBuffer({ mesh->vertexBuffer, 0, 0 });
