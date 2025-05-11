@@ -83,11 +83,11 @@ namespace ignite
             envCI.commandList = m_CommandList;
             envCI.bindingLayout = m_EnvPipeline->GetBindingLayout();
 
-            m_Environment = Environment(envCI);
-            m_Environment.LoadTexture("resources/hdr/rogland_clear_night_4k.hdr");
-            m_Environment.WriteTexture();
+            m_Environment = Environment::Create(envCI);
+            m_Environment->LoadTexture("resources/hdr/rogland_clear_night_4k.hdr");
+            m_Environment->WriteTexture();
 
-            m_Environment.SetSunDirection(50.0f, -27.0f);
+            m_Environment->SetSunDirection(50.0f, -27.0f);
         }
 
         // write buffer with command list
@@ -259,7 +259,7 @@ namespace ignite
         m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
 
         // render environment
-        m_Environment.Render(viewportFramebuffer, m_EnvPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
+        m_Environment->Render(viewportFramebuffer, m_EnvPipeline->GetHandle(), m_ScenePanel->GetViewportCamera());
 
         // render objects
         for (auto &model : m_Models)
@@ -322,12 +322,12 @@ namespace ignite
                 std::string filepath = FileDialogs::OpenFile("HDR Files (*.hdr)\0*.hdr\0");
                 if (!filepath.empty())
                 {
-                    m_Environment.LoadTexture(filepath);
-                    m_Environment.WriteTexture();
+                    m_Environment->LoadTexture(filepath);
+                    m_Environment->WriteTexture();
 
                     for (auto &model : m_Models)
                     {
-                        model->SetEnvironmentTexture(m_Environment.GetHDRTexture());
+                        model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
                         model->CreateBindingSet();
                     }
                 }
@@ -335,16 +335,16 @@ namespace ignite
 
             if (ImGui::DragFloat2("Sun Angles (Pitch/Yaw)", &sunAngles.x, 0.25f))
             {
-                m_Environment.SetSunDirection(sunAngles.x, sunAngles.y);
+                m_Environment->SetSunDirection(sunAngles.x, sunAngles.y);
             }
 
-            ImGui::ColorEdit4("Color", &m_Environment.dirLight.color.x);
-            ImGui::DragFloat("Intensity", &m_Environment.dirLight.intensity, 0.005f, 0.01f, 100.0f);
-            ImGui::DragFloat("Angular Size", &m_Environment.dirLight.angularSize, 0.1f, 0.1f, 100.0f);
-            ImGui::DragFloat("Ambient", &m_Environment.dirLight.ambientIntensity, 0.005f, 0.01f, 100.0f);
+            ImGui::ColorEdit4("Color", &m_Environment->dirLight.color.x);
+            ImGui::DragFloat("Intensity", &m_Environment->dirLight.intensity, 0.005f, 0.01f, 100.0f);
+            ImGui::DragFloat("Angular Size", &m_Environment->dirLight.angularSize, 0.1f, 0.1f, 100.0f);
+            ImGui::DragFloat("Ambient", &m_Environment->dirLight.ambientIntensity, 0.005f, 0.01f, 100.0f);
 
-            ImGui::DragFloat("Exposure", &m_Environment.params.exposure, 0.005f, 0.1f, 10.0f);
-            ImGui::DragFloat("Gamma", &m_Environment.params.gamma, 0.005f, 0.1f, 10.0f);
+            ImGui::DragFloat("Exposure", &m_Environment->params.exposure, 0.005f, 0.1f, 10.0f);
+            ImGui::DragFloat("Gamma", &m_Environment->params.gamma, 0.005f, 0.1f, 10.0f);
 
             ImGui::End();
 
@@ -487,13 +487,13 @@ namespace ignite
             ModelCreateInfo modelCI;
             modelCI.device = m_Device;
             modelCI.bindingLayout = m_MeshPipeline->GetBindingLayout();
-            modelCI.cameraBuffer = m_Environment.GetCameraBuffer();
-            modelCI.lightBuffer = m_Environment.GetDirLightBuffer();
-            modelCI.envBuffer = m_Environment.GetParamsBuffer();
+            modelCI.cameraBuffer = m_Environment->GetCameraBuffer();
+            modelCI.lightBuffer = m_Environment->GetDirLightBuffer();
+            modelCI.envBuffer = m_Environment->GetParamsBuffer();
             modelCI.debugBuffer = m_DebugRenderBuffer;
 
             Ref<Model> model = Model::Create(filepath, modelCI);
-            model->SetEnvironmentTexture(m_Environment.GetHDRTexture());
+            model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
             model->CreateBindingSet();
             return model;
         });

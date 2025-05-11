@@ -38,6 +38,8 @@ namespace ignite {
 
         void SetSunDirection(float pitch, float yaw);
 
+        static Ref<Environment> Create(const EnvironmentCreateInfo &createInfo);
+
         static nvrhi::VertexAttributeDesc GetAttribute();
         static nvrhi::BindingLayoutDesc GetBindingLayoutDesc();
 

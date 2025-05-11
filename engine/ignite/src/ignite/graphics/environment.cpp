@@ -198,6 +198,11 @@ namespace ignite {
         dirLight.direction = glm::vec4(glm::normalize(dir), 0.0f);
     }
 
+    Ref<Environment> Environment::Create(const EnvironmentCreateInfo &createInfo)
+    {
+        return CreateRef<Environment>(createInfo);
+    }
+
     nvrhi::VertexAttributeDesc Environment::GetAttribute()
     {
         return nvrhi::VertexAttributeDesc()

@@ -75,7 +75,7 @@ namespace ignite
         Model *m_SelectedModel = nullptr;
 
         DebugRenderData m_DebugRenderData;
-        Environment m_Environment;
+        Ref<Environment> m_Environment;
         EditorData m_Data;
 
         std::list<std::future<Ref<Model>>> m_PendingLoadModels;
