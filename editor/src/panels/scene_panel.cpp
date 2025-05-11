@@ -7,6 +7,7 @@
 #include "ignite/core/input/mouse_event.hpp"
 #include "ignite/graphics/texture.hpp"
 #include "ignite/scene/icomponent.hpp"
+#include "ignite/core/platform_utils.hpp"
 #include "editor_layer.hpp"
 #include "entt/entt.hpp"
 
@@ -223,6 +224,8 @@ namespace ignite
                 {
                     DestroyEntity(entity);
                     isDeleting = true;
+
+                    m_SelectedEntityIDs.clear();
                 }
 
                 ImGui::EndPopup();
@@ -343,6 +346,49 @@ namespace ignite
                     RenderComponent<Sprite2D>("Sprite 2D", m_SelectedEntity, [entity = m_SelectedEntity, comp]()
                     {
                         Sprite2D *c = comp->As<Sprite2D>();
+
+                        std::string imageButtonLabel = "Load Texture";
+                        if (c->texture)
+                        {
+                            imageButtonLabel = "Loaded";
+                        }
+
+                        if (ImGui::Button(imageButtonLabel.c_str()))
+                        {
+                            std::filesystem::path filepath = FileDialogs::OpenFile("JPG/JPEG (*.jpg;*jpeg)\0*.jpg;*jpeg\0PNG (*.png)\0*.png\0All Files (*.)\0*.*");
+                            if (!filepath.empty())
+                            {
+                                TextureCreateInfo texCI;
+                                texCI.device = Application::GetInstance()->GetDeviceManager()->GetDevice();
+                                texCI.flip = false;
+                                texCI.format = nvrhi::Format::RGBA8_UNORM;
+                                texCI.dimension = nvrhi::TextureDimension::Texture2D;
+                                texCI.samplerMode = nvrhi::SamplerAddressMode::ClampToEdge;
+
+                                c->texture = Texture::Create(filepath.generic_string(), texCI);
+                            }
+                        }
+
+                        bool textureRemoved = false;
+
+                        if (c->texture)
+                        {
+                            ImGui::SameLine();
+
+                            if (ImGui::Button("X"))
+                            {
+                                c->texture.reset();
+                                textureRemoved = true;
+                            }
+
+                            if (!textureRemoved)
+                            {
+                                ImGui::SameLine();
+                                const std::filesystem::path &displayFilepath = c->texture->GetFilepath().filename();
+                                ImGui::Text(displayFilepath.generic_string().c_str());
+                            }
+                        }
+
                         ImGui::ColorEdit4("Color", &c->color.x);
                         ImGui::DragFloat2("Tiling", &c->tilingFactor.x, 0.025f);
                     });

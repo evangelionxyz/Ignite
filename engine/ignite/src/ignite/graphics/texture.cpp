@@ -30,8 +30,8 @@ namespace ignite
         LOG_ASSERT(m_Sampler, "Failed to create texture sampler");
     }
 
-    Texture::Texture(const std::string &filepath, const TextureCreateInfo &createInfo)
-        : m_CreateInfo(createInfo)
+    Texture::Texture(const std::filesystem::path &filepath, const TextureCreateInfo &createInfo)
+        : m_CreateInfo(createInfo), m_Filepath(filepath)
     {
         m_WithSTBI = true;
 
@@ -46,15 +46,20 @@ namespace ignite
         {
             case nvrhi::Format::RGBA8_UNORM:
             {
-                m_Data = stbi_load(filepath.c_str(), &m_CreateInfo.width, &m_CreateInfo.height, &channels, 4);
+                m_Data = stbi_load(filepath.generic_string().c_str(), &m_CreateInfo.width, &m_CreateInfo.height, &channels, 4);
                 LOG_ASSERT(m_Data, "Failed to load texture data");
                 break;
             }
             case nvrhi::Format::RGBA32_FLOAT:
             {
-                m_Data = stbi_loadf(filepath.c_str(), &m_CreateInfo.width, &m_CreateInfo.height, &channels, 4);
+                m_Data = stbi_loadf(filepath.generic_string().c_str(), &m_CreateInfo.width, &m_CreateInfo.height, &channels, 4);
                 LOG_ASSERT(m_Data, "Failed to load texture data");
                 break;
+            }
+            default:
+            {
+                LOG_ASSERT(false, "[Texture] Please specify format explicitly!");
+                return;
             }
         }
 
@@ -118,7 +123,7 @@ namespace ignite
         return CreateRef<Texture>(buffer, createInfo);
     }
 
-    Ref<Texture> Texture::Create(const std::string &filepath, const TextureCreateInfo &createInfo)
+    Ref<Texture> Texture::Create(const std::filesystem::path &filepath, const TextureCreateInfo &createInfo)
     {
         return CreateRef<Texture>(filepath, createInfo);
     }
