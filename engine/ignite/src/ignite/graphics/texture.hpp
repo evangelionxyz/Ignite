@@ -29,14 +29,14 @@ namespace ignite
         Texture() = default;
 
         Texture(Buffer buffer, const TextureCreateInfo &createInfo);
-        Texture(const std::string &filepath, const TextureCreateInfo &createInfo);
+        Texture(const std::filesystem::path &filepath, const TextureCreateInfo &createInfo);
 
         ~Texture();
 
         void Write(nvrhi::ICommandList *commandList);
 
         static Ref<Texture> Create(Buffer buffer, const TextureCreateInfo &createInfo);
-        static Ref<Texture> Create(const std::string &filepath, const TextureCreateInfo &createInfo);
+        static Ref<Texture> Create(const std::filesystem::path &filepath, const TextureCreateInfo &createInfo);
 
         nvrhi::TextureHandle GetHandle() { return m_Handle; }
         nvrhi::SamplerHandle GetSampler() { return m_Sampler; }
@@ -44,6 +44,8 @@ namespace ignite
         i32 GetWidth() const { return m_CreateInfo.width; }
         i32 GetHeight() const { return m_CreateInfo.height; }
         i32 GetChannels() const { return 4; }
+
+        const std::filesystem::path &GetFilepath() { return m_Filepath; }
 
         bool operator ==(const Texture &other) const 
         { 
@@ -58,6 +60,7 @@ namespace ignite
         bool m_WithSTBI = false;
 
         TextureCreateInfo m_CreateInfo;
+        std::filesystem::path m_Filepath;
 
         nvrhi::TextureHandle m_Handle;
         nvrhi::SamplerHandle m_Sampler;

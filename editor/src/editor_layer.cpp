@@ -41,7 +41,6 @@ namespace ignite
             params.enableBlend = true;
             params.depthWrite = true;
             params.depthTest = true;
-            params.recompileShader = true;
             params.fillMode = nvrhi::RasterFillMode::Solid;
             params.cullMode = nvrhi::RasterCullMode::Front;
             params.vertexShaderFilepath = "default_mesh.vertex.hlsl";
@@ -62,7 +61,6 @@ namespace ignite
             params.enableBlend = true;
             params.depthWrite = true;
             params.depthTest = true;
-            params.recompileShader = true;
             params.cullMode = nvrhi::RasterCullMode::Front;
             params.comparison = nvrhi::ComparisonFunc::Always;
             params.vertexShaderFilepath = "skybox.vertex.hlsl";

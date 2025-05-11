@@ -198,7 +198,7 @@ namespace ignite
                 .setDepthFunc(nvrhi::ComparisonFunc::LessOrEqual); // use 1.0 for far depth
 
             auto rasterState = nvrhi::RasterState()
-                .setCullFront();
+                .setCullNone();
 
             auto renderState = nvrhi::RenderState()
                 .setRasterState(rasterState)
@@ -286,6 +286,9 @@ namespace ignite
                 Flush();
                 return s_r2d->quadBatch.maxTextureCount;
             }
+
+            // command list already open in editor layer
+            texture->Write(s_r2d->commandList);
             
             textureIndex = s_r2d->quadBatch.textureSlotIndex;
             s_r2d->quadBatch.textureSlots[s_r2d->quadBatch.textureSlotIndex] = texture;
