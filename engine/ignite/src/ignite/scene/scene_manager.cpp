@@ -75,6 +75,8 @@ namespace ignite
 
     Entity SceneManager::CreateEntity(Scene *scene, const std::string &name, EntityType type, UUID uuid)
     {
+        scene->SetDirtyFlag(true);
+
         Entity entity = Entity { scene->registry->create(), scene };
         std::string uniqueName = GenerateUniqueName(name, scene->entityNames, scene->entityNamesMapCounter);
         entity.AddComponent<ID>(uniqueName, type, uuid);
@@ -125,6 +127,8 @@ namespace ignite
 
     void SceneManager::RenameEntity(Scene *scene, Entity entity, const std::string &newName)
     {
+        scene->SetDirtyFlag(true);
+
         if (newName.empty())
             return;
 
@@ -146,6 +150,8 @@ namespace ignite
 
     void SceneManager::DestroyEntity(Scene *scene, Entity entity)
     {
+        scene->SetDirtyFlag(true);
+
         if (!scene || !scene->registry->valid(entity))
             return;
 
@@ -193,6 +199,8 @@ namespace ignite
 
     Entity SceneManager::DuplicateEntity(Scene *scene, Entity entity, bool addToParent)
     {
+        scene->SetDirtyFlag(true);
+
         // first, get current entity's ID Component
         ID &idComp = entity.GetComponent<ID>();
 
@@ -248,6 +256,8 @@ namespace ignite
 
     void SceneManager::AddChild(Scene *scene, Entity destination, Entity source)
     {
+        scene->SetDirtyFlag(true);
+
         ID &destIDComp = destination.GetComponent<ID>();
         ID &sourceIDComp = source.GetComponent<ID>();
 

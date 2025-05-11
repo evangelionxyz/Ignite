@@ -1,11 +1,11 @@
 #pragma once
 
-namespace ignite
-{
-    enum State
+namespace ignite {
+    enum class State
     {
-        State_SceneEdit, 
-        State_ScenePlay, 
-        State_SceneSimulate
+        SceneEdit,
+        ScenePlay,
+        SceneSimulate
     };
+
 }

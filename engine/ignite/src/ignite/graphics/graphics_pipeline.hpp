@@ -21,6 +21,7 @@ namespace ignite {
         nvrhi::RasterCullMode cullMode = nvrhi::RasterCullMode::Front;
         nvrhi::ComparisonFunc comparison = nvrhi::ComparisonFunc::LessOrEqual;
         nvrhi::PrimitiveType primitiveType = nvrhi::PrimitiveType::TriangleList;
+        nvrhi::RasterFillMode fillMode = nvrhi::RasterFillMode::Solid;
 
         bool enableBlend = true;
         bool depthWrite = false;
@@ -35,6 +36,7 @@ namespace ignite {
         GraphicsPipeline(nvrhi::IDevice *device, const GraphicsPipelineParams &params, const GraphicsPiplineCreateInfo &createInfo);
 
         void Create(nvrhi::IDevice *device, nvrhi::IFramebuffer *framebuffer);
+        void ResetHandle();
 
         nvrhi::GraphicsPipelineHandle GetHandle() { return m_Handle; }
         nvrhi::ShaderHandle GetVertexShader() { return m_VertexShader; }
@@ -43,6 +45,8 @@ namespace ignite {
         nvrhi::BindingLayoutHandle GetBindingLayout() { return m_BindingLayout; }
 
         static Ref<GraphicsPipeline> Create(nvrhi::IDevice *device, const GraphicsPipelineParams &params, const GraphicsPiplineCreateInfo &createInfo);
+
+        GraphicsPipelineParams &GetParams() { return m_Params; }
 
     private:
 

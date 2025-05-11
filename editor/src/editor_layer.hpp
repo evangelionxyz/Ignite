@@ -34,7 +34,11 @@ namespace ignite
             bool debugMode = false;
             bool developerMode = false;
             bool multiSelect = false;
-            State sceneState = State_SceneEdit;
+            bool settingsWindow = false;
+
+            State sceneState = State::SceneEdit;
+            nvrhi::RasterFillMode rasterFillMode = nvrhi::RasterFillMode::Solid;
+            nvrhi::RasterCullMode rasterCullMode = nvrhi::RasterCullMode::Front;
         };
 
     public:
@@ -53,18 +57,24 @@ namespace ignite
 
     private:
         void NewScene();
-
         void SaveScene();
         void SaveSceneAs();
         bool SaveScene(const std::filesystem::path &filepath);
-
-
         void OpenScene();
         bool OpenScene(const std::filesystem::path &filepath);
+        
+        void NewProject();
+        void SaveProject();
+        void SaveProject(const std::filesystem::path &filepath);
+        void SaveProjectAs();
+        void OpenProject();
+        void OpenProject(const std::filesystem::path &filepath);
 
         void OnScenePlay();
         void OnSceneStop();
         void OnSceneSimulate();
+
+        void SettingsUI();
 
         void TraverseMeshes(Model *model, Ref<Mesh> mesh, int traverseIndex = 0);
 
@@ -74,10 +84,11 @@ namespace ignite
         Ref<ScenePanel> m_ScenePanel;
         Ref<Scene> m_ActiveScene;
         Ref<Scene> m_EditorScene;
+        
         Ref<GraphicsPipeline> m_MeshPipeline;
+
         Ref<GraphicsPipeline> m_EnvPipeline;
         std::vector<Ref<Model>> m_Models;
-        
 
         MaterialData *m_SelectedMaterial = nullptr;
         Model *m_SelectedModel = nullptr;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ignite/core/uuid.hpp"
+
 #include <string>
 #include <filesystem>
 
@@ -16,6 +18,8 @@ namespace ignite
     {
     public:
         Project();
+
+
         
     private:
         ProjectInfo m_Info;

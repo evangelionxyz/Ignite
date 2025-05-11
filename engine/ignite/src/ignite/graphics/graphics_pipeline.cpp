@@ -16,7 +16,6 @@ namespace ignite {
 
         m_BindingLayout = device->createBindingLayout(createInfo.bindingLayoutDesc);
         LOG_ASSERT(m_BindingLayout, "[Graphics Pipeline] Failed to create binding layout");
-
     }
 
     void GraphicsPipeline::Create(nvrhi::IDevice *device, nvrhi::IFramebuffer *framebuffer)
@@ -34,6 +33,7 @@ namespace ignite {
 
             nvrhi::RasterState rasterState;
             rasterState.cullMode = m_Params.cullMode;
+            rasterState.fillMode = m_Params.fillMode;
             rasterState.setFrontCounterClockwise(false);
             rasterState.setMultisampleEnable(false);
 
@@ -55,6 +55,11 @@ namespace ignite {
             m_Handle = device->createGraphicsPipeline(pipelineDesc, framebuffer);
             LOG_ASSERT(m_Handle, "Failed to create graphics pipeline");
         }
+    }
+
+    void GraphicsPipeline::ResetHandle()
+    {
+        m_Handle.Reset();
     }
 
     void GraphicsPipeline::CreateShaders(nvrhi::IDevice *device)

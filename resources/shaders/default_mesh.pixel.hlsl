@@ -89,6 +89,7 @@ float4 main(PSInput input) : SV_TARGET
 {
     float3 lighting = float3(0.0f, 0.0f, 0.0f);
 
+    // ===== TEXTURES =====
     float3 diffColTex = diffuseTex.Sample(sampler0, input.uv).rgb;
     float3 specColTex = specularTex.Sample(sampler0, input.uv).rgb;
     float3 emissiveCol = emissiveTex.Sample(sampler0, input.uv).rgb;
@@ -99,22 +100,31 @@ float4 main(PSInput input) : SV_TARGET
     float3 viewDir = normalize(camera.position.xyz - input.worldPos);
     float3 lightDir = normalize(dirLight.direction.xyz);
 
-    float finalRoughness = max(material.roughness * roughColTex, 0.01f);
-    float finalMetallic = clamp(material.metallic, 0.0f, 1.0f);
+    // ===== SUN =====
+    float sunAngularRadius = dirLight.angularSize * 0.5f;
+    float sunSolidAngle = 2.0f * M_PI * (1.0f - cos(sunAngularRadius)); // Steradians
+    
+    // ===== ROUGHNESS =====
+    float minRoughness = saturate(sqrt(sunSolidAngle / M_PI)); // Convert to minimum roughness
+    float filteredRoughness = max(material.roughness * roughColTex, minRoughness);
 
+    float finalMetallic = clamp(material.metallic, 0.0f, 1.0f);
     float3 albedo = diffColTex * material.baseColor.rgb;
     float3 diffuseColor = albedo * (1.0f - finalMetallic);
     float3 specularColor = lerp(float3(0.04f, 0.04f, 0.04f), albedo, finalMetallic);
-
+    
     float3 reflectDir = reflect(-viewDir, normal);
-    float mipLevel = finalRoughness * 5.0f;
+    float mipLevel = filteredRoughness * 5.0f;
     float3 reflectRadiance = SampleSphericalMap(environTex, sampler0, reflectDir);
+    reflectRadiance = reflectRadiance / (reflectRadiance + 1.0f); // soft clamp (ACES-like)
 
     float reflectionStrength = lerp(0.001f, 1.0f, finalMetallic);
-    reflectionStrength *= (1.0f - finalRoughness);
+    reflectionStrength *= (1.0f - filteredRoughness);
 
+    float3 F = SchlickFresnel(viewDir, normal, specularColor);
+    float NdotR = saturate(dot(normal, reflectDir));
     float3 reflectedSpecular = GGXReflect(normal, viewDir, reflectDir, reflectRadiance, specularColor, material.roughness);
-    reflectedSpecular *= reflectionStrength;
+    reflectedSpecular *= reflectionStrength * dirLight.intensity * NdotR * F;
 
     float3 ambient = dirLight.color.rgb * dirLight.ambientIntensity * diffuseColor;
     float3 irradiance = dirLight.color.rgb * dirLight.intensity;
@@ -149,7 +159,7 @@ float4 main(PSInput input) : SV_TARGET
             return float4((normal * 0.5 + 0.5) * normalColTex, 1.0);
         case 2:
             // Debug view for roughness
-            return float4(finalRoughness, finalRoughness, finalRoughness, 1.0);
+            return float4(filteredRoughness, filteredRoughness, filteredRoughness, 1.0);
         case 3:
             // Debug view for metallic
             return float4(finalMetallic, finalMetallic, finalMetallic, 1.0);

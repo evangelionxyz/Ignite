@@ -50,6 +50,9 @@ namespace ignite
             return m_Sampler.Get() == other.m_Sampler.Get() && m_Handle.Get() == other.m_Handle.Get();
         }
 
+        static AssetType GetStaticType() { return AssetType::Texture; }
+        virtual AssetType GetType() override { return GetStaticType(); }
+
     private:
         void *m_Data = nullptr;
         bool m_WithSTBI = false;

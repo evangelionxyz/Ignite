@@ -57,7 +57,7 @@ namespace ignite
         
         void RenderInspector();
 
-        void RenderSettings();
+        void CameraSettingsUI();
         void UpdateCameraInput(f32 deltaTime);
         void DestroyEntity(Entity entity);
         

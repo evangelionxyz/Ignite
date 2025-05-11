@@ -8,6 +8,8 @@
 #include "ignite/core/types.hpp"
 #include "ignite/core/uuid.hpp"
 
+#include "ignite/asset/asset.hpp"
+
 namespace ignite
 {
     class Camera;
@@ -18,7 +20,7 @@ namespace ignite
     using EntityComponents = std::unordered_map<entt::entity, std::vector<IComponent *>>;
     using StringCounterMap = std::unordered_map<std::string, i32>;
 
-    class Scene
+    class Scene : public Asset
     {
     public:
         Scene() = default;
@@ -48,6 +50,9 @@ namespace ignite
         bool IsPlaying() const { return m_Playing; }
 
         static Ref<Scene> Create(const std::string &name);
+
+        static AssetType GetStaticType() { return AssetType::Scene; }
+        virtual AssetType GetType() override { return GetStaticType(); }
     
     private:
         bool m_Playing = false;

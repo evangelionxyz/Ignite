@@ -3,10 +3,8 @@
 #include "ignite/graphics/renderer_2d.hpp"
 #include "ignite/graphics/mesh_factory.hpp"
 #include "ignite/core/platform_utils.hpp"
-
 #include <glm/glm.hpp>
 #include <nvrhi/utils.h>
-
 #include "ignite/core/command.hpp"
 #include "ignite/scene/camera.hpp"
 #include "ignite/graphics/texture.hpp"
@@ -44,6 +42,7 @@ namespace ignite
             params.depthWrite = true;
             params.depthTest = true;
             params.recompileShader = true;
+            params.fillMode = nvrhi::RasterFillMode::Solid;
             params.cullMode = nvrhi::RasterCullMode::Front;
             params.vertexShaderFilepath = "default_mesh.vertex.hlsl";
             params.pixelShaderFilepath = "default_mesh.pixel.hlsl";
@@ -138,12 +137,12 @@ namespace ignite
 
         switch (m_Data.sceneState)
         {
-            case State_ScenePlay:
+            case State::ScenePlay:
             {
                 m_ActiveScene->OnUpdateRuntimeSimulate(deltaTime);
                 break;
             }
-            case State_SceneEdit:
+            case State::SceneEdit:
             {
                 m_ActiveScene->OnUpdateEdit(deltaTime);
                 break;
@@ -205,7 +204,7 @@ namespace ignite
             }
             case Key::F5:
             {
-                (m_Data.sceneState == State_SceneEdit || m_Data.sceneState == State_SceneSimulate)
+                (m_Data.sceneState == State::SceneEdit || m_Data.sceneState == State::SceneSimulate)
                     ? OnScenePlay()
                     : OnSceneStop();
 
@@ -213,7 +212,7 @@ namespace ignite
             }
             case Key::F6:
             {
-                (m_Data.sceneState == State_SceneEdit || m_Data.sceneState == State_ScenePlay)
+                (m_Data.sceneState == State::SceneEdit || m_Data.sceneState == State::ScenePlay)
                     ? OnScenePlay()
                     : OnSceneStop();
                 break;
@@ -258,7 +257,9 @@ namespace ignite
 
         // create pipelines
         m_EnvPipeline->Create(m_Device, viewportFramebuffer);
+
         m_MeshPipeline->Create(m_Device, viewportFramebuffer);
+
 
         // main scene rendering
         m_CommandList->open();
@@ -276,7 +277,9 @@ namespace ignite
 
         // render objects
         for (auto &model : m_Models)
+        {
             model->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline->GetHandle());
+        }
 
         m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
 
@@ -319,6 +322,14 @@ namespace ignite
 
         if (ImGui::BeginPopup("MenuBar_File"))
         {
+            if (ImGui::MenuItem("New Scene"))
+            {
+                NewScene();
+            }
+            else if (ImGui::MenuItem("Open Scene"))
+            {
+                OpenScene();
+            }
             if (ImGui::MenuItem("Save Scene"))
             {
                 SaveScene();
@@ -327,14 +338,34 @@ namespace ignite
             {
                 SaveSceneAs();
             }
-            else if (ImGui::MenuItem("Open Scene"))
+            
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("New Project"))
             {
-                OpenScene();
+
+            }
+            else if (ImGui::MenuItem("Save Project"))
+            {
+
+            }
+            else if (ImGui::MenuItem("Save Project As"))
+            {
+
+            }
+            else if (ImGui::MenuItem("Close Project"))
+            {
+
             }
 
             ImGui::EndPopup();
         }
 
+        menubarBTCursorPos = { viewport->Pos.x + menuBarButtonSize.x, viewport->Pos.y };
+        if (ImGui::Button("View"))
+        {
+            ImGui::OpenPopup("MenuBar_View");
+        }
 
         // =========== Toolbar ===========
         const ImVec2 toolbarButtonSize = { 40.0f, 25.0f };
@@ -342,7 +373,7 @@ namespace ignite
         ImVec2 toolbarBTCursorPos = { viewport->Pos.x, buttonMiddle + (totalTitlebarHeight / 4.0f)};
         ImGui::SetCursorScreenPos(toolbarBTCursorPos);
 
-        bool sceneStatePlaying = m_Data.sceneState == State_ScenePlay;
+        bool sceneStatePlaying = m_Data.sceneState == State::ScenePlay;
         if (ImGui::Button(sceneStatePlaying ? "Stop" : "Play", toolbarButtonSize))
         {
             if (sceneStatePlaying)
@@ -357,62 +388,6 @@ namespace ignite
         {
             // scene dockspace
             m_ScenePanel->OnGuiRender();
-
-            ImGui::Begin("Environment");
-
-            static glm::vec2 sunAngles = { 50, -27.0f }; // pitch (elevation), yaw (azimuth)
-
-            if (ImGui::Button("Load HDR"))
-            {
-                std::string filepath = FileDialogs::OpenFile("HDR Files (*.hdr)\0*.hdr\0");
-                if (!filepath.empty())
-                {
-                    m_Environment->LoadTexture(filepath);
-                    m_Environment->WriteTexture();
-
-                    for (auto &model : m_Models)
-                    {
-                        model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
-                        model->CreateBindingSet();
-                    }
-                }
-            }
-
-            if (ImGui::DragFloat2("Sun Angles (Pitch/Yaw)", &sunAngles.x, 0.25f))
-            {
-                m_Environment->SetSunDirection(sunAngles.x, sunAngles.y);
-            }
-
-            ImGui::ColorEdit4("Color", &m_Environment->dirLight.color.x);
-            ImGui::DragFloat("Intensity", &m_Environment->dirLight.intensity, 0.005f, 0.01f, 100.0f);
-            ImGui::DragFloat("Angular Size", &m_Environment->dirLight.angularSize, 0.1f, 0.1f, 100.0f);
-            ImGui::DragFloat("Ambient", &m_Environment->dirLight.ambientIntensity, 0.005f, 0.01f, 100.0f);
-
-            ImGui::DragFloat("Exposure", &m_Environment->params.exposure, 0.005f, 0.1f, 10.0f);
-            ImGui::DragFloat("Gamma", &m_Environment->params.gamma, 0.005f, 0.1f, 10.0f);
-
-            ImGui::End();
-
-            ImGui::Begin("Material");
-            if (m_SelectedMaterial)
-            {
-                ImGui::Separator();
-
-                ImGui::ColorEdit4("Base Color", &m_SelectedMaterial->baseColor.x);
-                ImGui::DragFloat("Metallic", &m_SelectedMaterial->metallic, 0.005f, 0.0f, 1.0f);
-                ImGui::DragFloat("Rougness", &m_SelectedMaterial->roughness, 0.005f, 0.0f, 1.0f);
-                ImGui::DragFloat("Emissive", &m_SelectedMaterial->emissive, 0.005f, 0.0f, 1000.0f);
-            }
-
-            if (ImGui::DragInt("Render Target", &m_DebugRenderData.renderIndex, 0.05f, 0, 4))
-            {
-                m_CommandList->open();
-                m_CommandList->writeBuffer(m_DebugRenderBuffer, &m_DebugRenderData, sizeof(DebugRenderData));
-                m_CommandList->close();
-                m_Device->executeCommandList(m_CommandList);
-            }
-            ImGui::End();
-
             ImGui::Begin("Models");
 
             if (ImGui::Button("Load GLTF/GLB"))
@@ -428,7 +403,7 @@ namespace ignite
             {
                 auto &model = m_Models[i];
 
-                bool opened = ImGui::TreeNodeEx((void *)(uint64_t *) &model, ImGuiTreeNodeFlags_OpenOnDoubleClick, "Model %zu", i);
+                bool opened = ImGui::TreeNodeEx((void *)(uint64_t *) &model, 0, "Model %zu", i);
                 if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
                     m_SelectedModel = model.get();
 
@@ -441,7 +416,7 @@ namespace ignite
                 }
             }
 
-            if(m_SelectedModel && ImGui::TreeNode("Animation"))
+            if(m_SelectedModel && !m_SelectedModel->animations.empty() && ImGui::TreeNode("Animation"))
             {
                 for (auto &anim : m_SelectedModel->animations)
                 {
@@ -453,16 +428,31 @@ namespace ignite
                 }
                 ImGui::TreePop();
             }
-            ImGui::End();
-        }
 
+            if (m_SelectedMaterial)
+            {
+                ImGui::Separator();
+
+                ImGui::ColorEdit4("Base Color", &m_SelectedMaterial->baseColor.x);
+                ImGui::DragFloat("Metallic", &m_SelectedMaterial->metallic, 0.005f, 0.0f, 1.0f);
+                ImGui::DragFloat("Rougness", &m_SelectedMaterial->roughness, 0.005f, 0.0f, 1.0f);
+                ImGui::DragFloat("Emissive", &m_SelectedMaterial->emissive, 0.005f, 0.0f, 1000.0f);
+            }
+
+            ImGui::End();
+
+            // Render GUI
+            SettingsUI();
+        }
         ImGui::End(); // end dockspace
     }
 
     void EditorLayer::NewScene()
     {
+        m_CurrentSceneFilePath.clear();
+
         // create editor scene
-        m_EditorScene = CreateRef<Scene>("test scene");
+        m_EditorScene = CreateRef<Scene>("New Scene");
 
         // pass to active scene
         m_ActiveScene = m_EditorScene;
@@ -509,30 +499,60 @@ namespace ignite
 
     bool EditorLayer::OpenScene(const std::filesystem::path &filepath)
     {
-        if (m_Data.sceneState == State_ScenePlay)
+        if (m_Data.sceneState == State::ScenePlay)
             OnSceneStop();
 
         Ref<Scene> openScene = SceneSerializer::Deserialize(filepath);
         if (openScene)
         {
             m_EditorScene = SceneManager::Copy(openScene);
-            m_ActiveScene = m_EditorScene;
-            m_ScenePanel->SetActiveScene(m_ActiveScene.get());
+            m_EditorScene->SetDirtyFlag(false);
 
-            m_ScenePanel->ClearMultiSelectEntity();
+            m_ActiveScene = m_EditorScene;
+            m_ScenePanel->SetActiveScene(m_ActiveScene.get(), true);
         }
 
         return true;
+    }
+
+    void EditorLayer::NewProject()
+    {
+
+    }
+
+    void EditorLayer::SaveProject()
+    {
+
+    }
+
+    void EditorLayer::SaveProject(const std::filesystem::path &filepath)
+    {
+
+    }
+
+    void EditorLayer::SaveProjectAs()
+    {
+
+    }
+
+    void EditorLayer::OpenProject()
+    {
+
+    }
+
+    void EditorLayer::OpenProject(const std::filesystem::path &filepath)
+    {
+
     }
 
     void EditorLayer::OnScenePlay()
     {
         m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::NONE);
 
-        if (m_Data.sceneState != State_SceneEdit)
+        if (m_Data.sceneState != State::SceneEdit)
             OnSceneStop();
 
-        m_Data.sceneState = State_ScenePlay;
+        m_Data.sceneState = State::ScenePlay;
 
         // copy initial components to new scene
         m_ActiveScene = SceneManager::Copy(m_EditorScene);
@@ -543,7 +563,7 @@ namespace ignite
 
     void EditorLayer::OnSceneStop()
     {
-        m_Data.sceneState = State_SceneEdit;
+        m_Data.sceneState = State::SceneEdit;
         
         m_ActiveScene->OnStop();
         m_ActiveScene = m_EditorScene;
@@ -553,10 +573,152 @@ namespace ignite
 
     void  EditorLayer::OnSceneSimulate()
     {
-        if (m_Data.sceneState != State_SceneEdit)
+        if (m_Data.sceneState != State::SceneEdit)
             OnSceneStop();
 
-        m_Data.sceneState = State_SceneSimulate;
+        m_Data.sceneState = State::SceneSimulate;
+    }
+
+    void EditorLayer::SettingsUI()
+    {
+        ImGui::Begin("Settings", &m_Data.settingsWindow);
+
+         ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+
+        // Camera
+        if (ImGui::TreeNodeEx("Camera", treeFlags))
+        {
+            m_ScenePanel->CameraSettingsUI();
+
+            static const char *debugRenderView[] = { "None", "Normals", "Roughness", "Metallic", "Reflection" };
+            const char *currentDebugRenderView = debugRenderView[m_DebugRenderData.renderIndex];
+
+            if (ImGui::BeginCombo("Debug View", currentDebugRenderView))
+            {
+                for (size_t i = 0; i < std::size(debugRenderView); ++i)
+                {
+                    bool isSelected = strcmp(currentDebugRenderView, debugRenderView[i]) == 0;
+                    if (ImGui::Selectable(debugRenderView[i], isSelected))
+                    {
+                        currentDebugRenderView = debugRenderView[i];
+                        m_DebugRenderData.renderIndex = i;
+
+                        m_CommandList->open();
+                        m_CommandList->writeBuffer(m_DebugRenderBuffer, &m_DebugRenderData, sizeof(DebugRenderData));
+                        m_CommandList->close();
+                        m_Device->executeCommandList(m_CommandList);
+                    }
+
+                    if (isSelected)
+                    {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            static const char *renderFillMode[] = { "Solid", "Wireframe" };
+            const char *currentRenderFillMode = renderFillMode[(int)m_Data.rasterFillMode];
+
+            if (ImGui::BeginCombo("Fill Mode", currentRenderFillMode))
+            {
+                for (size_t i = 0; i < std::size(renderFillMode); ++i)
+                {
+                    bool isSelected = strcmp(currentRenderFillMode, renderFillMode[i]) == 0;
+                    
+                    if (ImGui::Selectable(renderFillMode[i], isSelected))
+                    {
+                        m_Data.rasterFillMode = (nvrhi::RasterFillMode)i;
+                        m_MeshPipeline->GetParams().fillMode = m_Data.rasterFillMode;
+                        m_MeshPipeline->ResetHandle();
+                    }
+                    
+                    if (isSelected)
+                    {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            static const char *rasterCullMode[] = { "Back", "Front", "None" };
+            const char *currentRasterCullMode = rasterCullMode[(int)m_Data.rasterCullMode];
+
+            if (ImGui::BeginCombo("Cull Mode", currentRasterCullMode))
+            {
+                for (size_t i = 0; i < std::size(rasterCullMode); ++i)
+                {
+                    bool isSelected = strcmp(currentRasterCullMode, rasterCullMode[i]) == 0;
+
+                    if (ImGui::Selectable(rasterCullMode[i], isSelected))
+                    {
+                        m_Data.rasterCullMode = (nvrhi::RasterCullMode)i;
+                        m_MeshPipeline->GetParams().cullMode = m_Data.rasterCullMode;
+
+                        m_MeshPipeline->ResetHandle();
+                    }
+
+                    if (isSelected)
+                    {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            ImGui::TreePop();
+        }
+
+        ImGui::Separator();
+
+        // Environment
+        if (ImGui::TreeNodeEx("Environment", treeFlags))
+        {
+            static glm::vec2 sunAngles = { 50, -27.0f }; // pitch (elevation), yaw (azimuth)
+
+            if (ImGui::Button("Load HDR Texture"))
+            {
+                std::string filepath = FileDialogs::OpenFile("HDR Files (*.hdr)\0*.hdr\0");
+                if (!filepath.empty())
+                {
+                    m_Environment->LoadTexture(filepath);
+                    m_Environment->WriteTexture();
+
+                    for (auto &model : m_Models)
+                    {
+                        model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
+                        model->CreateBindingSet();
+                    }
+                }
+            }
+
+            ImGui::Separator();
+            
+            ImGui::Text("Sun Angles");
+
+            if (ImGui::SliderFloat("Elevation", &sunAngles.x, 0.0f, 180.0f))
+                m_Environment->SetSunDirection(sunAngles.x, sunAngles.y);
+            if (ImGui::SliderFloat("Azimuth", &sunAngles.y, -180.0f, 180.0f))
+                m_Environment->SetSunDirection(sunAngles.x, sunAngles.y);
+
+            ImGui::Separator();
+            ImGui::ColorEdit4("Color", &m_Environment->dirLight.color.x);
+            ImGui::SliderFloat("Intensity", &m_Environment->dirLight.intensity, 0.01f, 1.0f);
+
+            float angularSize = glm::degrees(m_Environment->dirLight.angularSize);
+            if (ImGui::SliderFloat("Angular Size", &angularSize, 0.1f, 90.0f))
+            {
+                m_Environment->dirLight.angularSize = glm::radians(angularSize);
+            }
+
+            ImGui::DragFloat("Ambient", &m_Environment->dirLight.ambientIntensity, 0.005f, 0.01f, 100.0f);
+            ImGui::DragFloat("Exposure", &m_Environment->params.exposure, 0.005f, 0.1f, 10.0f);
+            ImGui::DragFloat("Gamma", &m_Environment->params.gamma, 0.005f, 0.1f, 10.0f);
+        
+            ImGui::TreePop();
+        }
+
+        ImGui::End();
     }
 
     void EditorLayer::TraverseMeshes(Model *model, Ref<Mesh> mesh, int traverseIndex)

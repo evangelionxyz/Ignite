@@ -48,6 +48,11 @@ namespace ignite
 
     void ScenePanel::SetActiveScene(Scene *scene, bool reset)
     {
+        if (reset)
+        {
+            m_SelectedEntityIDs.clear();
+        }
+
         m_Scene = scene;
         m_SelectedEntity = SceneManager::GetEntity(m_Scene, m_TrackingSelectedEntity);
     }
@@ -77,7 +82,6 @@ namespace ignite
         RenderHierarchy();
         RenderInspector();
         RenderViewport();
-        RenderSettings();
     }
 
     void ScenePanel::OnUpdate(f32 deltaTime)
@@ -612,70 +616,59 @@ namespace ignite
         ImGui::End();
     }
 
-    void ScenePanel::RenderSettings()
+    void ScenePanel::CameraSettingsUI()
     {
-        ImGui::Begin("Settings", &m_Data.settingsWindow);
-
         // =================================
         // Camera settings
-        if (ImGui::TreeNodeEx("Camera", ImGuiTreeNodeFlags_DefaultOpen))
+
+        static const char *cameraModeStr[2] = { "Orthographic", "Perspective" };
+        const char *currentCameraModeStr = cameraModeStr[static_cast<i32>(m_ViewportCamera->projectionType)];
+        if (ImGui::BeginCombo("Mode", currentCameraModeStr))
         {
-            static const char *cameraModeStr[2] = { "Orthographic", "Perspective" };
-            const char *currentCameraModeStr = cameraModeStr[static_cast<i32>(m_ViewportCamera->projectionType)];
-            if (ImGui::BeginCombo("Mode", currentCameraModeStr))
+            for (size_t i = 0; i < std::size(cameraModeStr); ++i)
             {
-                for (i32 i = 0; i < std::size(cameraModeStr); ++i)
+                bool isSelected = strcmp(currentCameraModeStr, cameraModeStr[i]) == 0;
+                if (ImGui::Selectable(cameraModeStr[i], isSelected))
                 {
-                    bool isSelected = (strcmp(currentCameraModeStr, cameraModeStr[i]) == 0);
-                    if (ImGui::Selectable(cameraModeStr[i], isSelected))
+                    currentCameraModeStr = cameraModeStr[i];
+                    m_ViewportCamera->projectionType = static_cast<Camera::Type>(i);
+
+                    if (m_ViewportCamera->projectionType == Camera::Type::Orthographic)
                     {
-                        currentCameraModeStr = cameraModeStr[i];
-                        m_ViewportCamera->projectionType = static_cast<Camera::Type>(i);
+                        m_CameraData.lastPosition = m_ViewportCamera->position;
 
-                        if (m_ViewportCamera->projectionType == Camera::Type::Orthographic)
-                        {
-                            m_CameraData.lastPosition = m_ViewportCamera->position;
-
-                            m_ViewportCamera->position = { 0.0f, 0.0f, 1.0f };
-                            m_ViewportCamera->zoom = 20.0f;
-                        }
-                        else
-                        {
-                            m_ViewportCamera->position = m_CameraData.lastPosition;
-                        }
+                        m_ViewportCamera->position = { 0.0f, 0.0f, 1.0f };
+                        m_ViewportCamera->zoom = 20.0f;
                     }
-
-                    if (isSelected)
+                    else
                     {
-                        ImGui::SetItemDefaultFocus();
+                        m_ViewportCamera->position = m_CameraData.lastPosition;
                     }
                 }
-                ImGui::EndCombo();
-            }
 
-            ImGui::DragFloat3("Position", &m_ViewportCamera->position[0], 0.025f);
-
-            if (m_ViewportCamera->projectionType == Camera::Type::Perspective)
-            {
-                glm::vec2 yawPitch = { m_ViewportCamera->yaw, m_ViewportCamera->pitch };
-                if (ImGui::DragFloat2("Yaw/Pitch", &yawPitch.x, 0.025f))
+                if (isSelected)
                 {
-                    m_ViewportCamera->yaw = yawPitch.x;
-                    m_ViewportCamera->pitch = yawPitch.y;
+                    ImGui::SetItemDefaultFocus();
                 }
             }
-            else if (m_ViewportCamera->projectionType == Camera::Type::Orthographic)
-            {
-                ImGui::DragFloat("Zoom", &m_ViewportCamera->zoom, 0.025f);
-            }
-            
-            ImGui::Separator();
-            //ImGui::ColorEdit3("Clear color", &m_RenderTarget->clearColor[0]);
-
-            ImGui::TreePop();
+            ImGui::EndCombo();
         }
 
-        ImGui::End();
+        ImGui::DragFloat3("Position", &m_ViewportCamera->position[0], 0.025f);
+
+        if (m_ViewportCamera->projectionType == Camera::Type::Perspective)
+        {
+            glm::vec2 yawPitch = { m_ViewportCamera->yaw, m_ViewportCamera->pitch };
+            if (ImGui::DragFloat2("Yaw/Pitch", &yawPitch.x, 0.025f))
+            {
+                m_ViewportCamera->yaw = yawPitch.x;
+                m_ViewportCamera->pitch = yawPitch.y;
+            }
+        }
+        else if (m_ViewportCamera->projectionType == Camera::Type::Orthographic)
+        {
+            ImGui::DragFloat("Zoom", &m_ViewportCamera->zoom, 0.025f);
+        }
     }
 
     template<typename T, typename UIFunction>

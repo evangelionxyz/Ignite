@@ -19,7 +19,7 @@ namespace ignite
         ApplicationCreateInfo createInfo;
         createInfo.cmdLineArgs = args;
         createInfo.width = 1640;
-        createInfo.height = 1080;
+        createInfo.height = 940;
         createInfo.useGui = true;
 
         // vulkan by default

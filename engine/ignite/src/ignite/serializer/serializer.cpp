@@ -229,6 +229,9 @@ namespace ignite {
 #endif
         sr.Serialize();
 
+        // Scene should be not dirty
+        m_Scene->SetDirtyFlag(false);
+
         return true;
     }
 
@@ -304,7 +307,6 @@ namespace ignite {
                 comp.density = node["Density"].as<float>();
                 comp.isSensor = node["IsSensor"].as<bool>();
             }
-
         }
 
         return desScene;
