@@ -15,5 +15,10 @@ SamplerState samplerState : register(s0);
 float4 main(PSInput input) : SV_TARGET
 {
     float4 texColor = textures[input.texIndex].Sample(samplerState, input.texCoord * input.tilingFactor);
-    return input.color * texColor;
+    float4 finalColor = input.color * texColor;
+    
+    // Discard pixel if alpha is zero
+    clip(finalColor.a == 0.0f ? -1.0f : 1.0f);
+
+    return finalColor;
 }
