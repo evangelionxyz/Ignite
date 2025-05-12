@@ -1,7 +1,7 @@
 #include "include/binding_helpers.hlsli"
 
 #define VERTEX_MAX_BONES 4 // bone influences
-#define MAX_BONES 150
+#define MAX_BONES 200
 
 struct Camera
 {

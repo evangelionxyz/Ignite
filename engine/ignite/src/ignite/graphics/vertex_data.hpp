@@ -8,7 +8,7 @@
 namespace ignite
 {
 #define VERTEX_MAX_BONES 4
-#define MAX_BONES 150
+#define MAX_BONES 200
 
     struct CameraBuffer
     {
@@ -71,7 +71,7 @@ namespace ignite
                 nvrhi::VertexAttributeDesc()
                     .setName("WEIGHTS")
                     .setFormat(nvrhi::Format::RGBA32_FLOAT)
-                    .setOffset(offsetof(VertexMesh, boneIDs))
+                    .setOffset(offsetof(VertexMesh, weights))
                     .setArraySize(VERTEX_MAX_BONES)
                     .setElementStride(sizeof(VertexMesh))
             };
