@@ -15,13 +15,18 @@ struct Object
 cbuffer CameraBuffer : register(b0) { Camera camera; }
 cbuffer ObjectBuffer : register(b3) { Object object; }
 
+#define VERTEX_MAX_BONES 4 // bone influences
+#define MAX_BONES 200
+
 struct VSInput
 {
-    float3 position     : POSITION;
-    float3 normal       : NORMAL;
-    float2 UV           : TEXCOORD;
-    float2 tilingFactor : TILINGFACTOR;
-    float4 color        : COLOR;
+    float3 position          : POSITION;
+    float3 normal            : NORMAL;
+    float2 UV                : TEXCOORD;
+    float2 tilingFactor      : TILINGFACTOR;
+    float4 color             : COLOR;
+    uint boneIDs[VERTEX_MAX_BONES]  : BONEIDS;
+    float weights[VERTEX_MAX_BONES] : WEIGHTS;
 };
 
 struct PSInput

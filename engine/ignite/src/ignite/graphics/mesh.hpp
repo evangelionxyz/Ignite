@@ -71,6 +71,22 @@ namespace ignite {
         friend class ModelLoader;
     };
 
+    struct Joint
+    {
+        std::string name;
+        i32 id; // index in joints array
+        i32 parentJointId; // parent in skeleton hierarchy (-1 for root)
+        glm::mat4 inverseBindPose; // inverse bind pose matrix
+        glm::mat4 localTransform; // current local transform
+        glm::mat4 globalTransform; // current global transform
+    };
+
+    struct Skeleton
+    {
+        std::vector<Joint> joints;
+        std::unordered_map<std::string, i32> nameToJointMap; // for fast lookup by name
+    };
+
     struct NodeInfo
     {
         std::string name;
@@ -145,15 +161,13 @@ namespace ignite {
 
         glm::mat4 transform = glm::mat4(1.0f);
         std::vector<Ref<SkeletalAnimation>> animations;
-
         std::vector<NodeInfo> nodes;
+        Skeleton skeleton;
 
     private:
         ModelCreateInfo m_CreateInfo;
         nvrhi::TextureHandle m_EnvironmentTexture;
-        
         std::filesystem::path m_Filepath;
-
         std::vector<Ref<Mesh>> m_Meshes;
     };
 
@@ -163,6 +177,9 @@ namespace ignite {
         static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath,
             std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, i32 parentNodeID);
         static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes);
+        static void ExtractSkeleton(const aiScene *scene, Skeleton &skeleton);
+        static void ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Skeleton &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices);
+        static void SortJointsHierchically(Skeleton &skeleton);
         static void LoadMaterial(const aiScene *scene, aiMaterial *material, const std::string &filepath, Ref<Mesh> &mesh);
         static void LoadAnimation(const aiScene *scene, std::vector<Ref<SkeletalAnimation>> &animations);
         static void LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type);

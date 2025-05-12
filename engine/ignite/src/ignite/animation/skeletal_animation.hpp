@@ -9,11 +9,6 @@
 
 namespace ignite {
     
-    struct Joint
-    {
-
-    };
-
     class AnimationNode
     {
     public:

@@ -10,6 +10,7 @@
 #include "ignite/graphics/environment.hpp"
 #include "ignite/graphics/graphics_pipeline.hpp"
 
+#include <queue>
 #include <stb_image.h>
 
 #define ASSIMP_IMPORTER_FLAGS (aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices)
@@ -84,6 +85,10 @@ namespace ignite {
         if (scene->HasAnimations())
         {
             ModelLoader::LoadAnimation(scene, animations);
+
+            // Process Skeleton
+            ModelLoader::ExtractSkeleton(scene, skeleton);
+            ModelLoader::SortJointsHierchically(skeleton);
         }
 
         // create constant buffers
@@ -293,6 +298,130 @@ namespace ignite {
         }
 
         meshes[meshIndex]->CreateBuffers();
+    }
+
+    void ModelLoader::ExtractSkeleton(const aiScene *scene, Skeleton &skeleton)
+    {
+        // count the number of bones
+        std::unordered_set<std::string> uniqueBoneNames;
+        for (uint32_t m = 0; m < scene->mNumMeshes; ++m)
+        {
+            aiMesh *mesh = scene->mMeshes[m];
+            for (uint32_t b = 0; b < mesh->mNumBones; ++b)
+            {
+                uniqueBoneNames.insert(mesh->mBones[b]->mName.C_Str());
+            }
+        }
+
+        skeleton.joints.reserve(uniqueBoneNames.size());
+
+        // create joints map and collect inverse bind matrices
+        std::unordered_map<std::string, glm::mat4> inverseBindMatrices;
+        for (uint32_t m = 0; m < scene->mNumMeshes; ++m)
+        {
+            aiMesh *mesh = scene->mMeshes[m];
+            for (uint32_t b = 0; b < mesh->mNumBones; ++b)
+            {
+                aiBone *bone = mesh->mBones[b];
+                std::string boneName = bone->mName.C_Str();
+                inverseBindMatrices[boneName] = Math::AssimpToGlmMatrix(bone->mOffsetMatrix);
+            }
+        }
+
+        // Find all nodes related to the skeleton
+        ExtractSkeletonRecursive(scene->mRootNode, -1, skeleton, inverseBindMatrices);
+        
+    }
+
+    void ModelLoader::ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Skeleton &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices)
+    {
+        std::string nodeName = node->mName.C_Str();
+        bool isJoint = inverseBindMatrices.contains(nodeName);
+
+        i32 currentJointId = -1;
+
+        if (isJoint)
+        {
+            // Add this node as a joint
+            Joint joint;
+            joint.name = nodeName;
+            joint.id = skeleton.joints.size();
+            joint.parentJointId = parentJointId;
+            joint.inverseBindPose = inverseBindMatrices.at(nodeName);
+            joint.localTransform = Math::AssimpToGlmMatrix(node->mTransformation);
+
+            currentJointId = joint.id;
+            skeleton.nameToJointMap[nodeName] = currentJointId;
+            skeleton.joints.push_back(joint);
+        }
+
+        // process childe (use parent id if this node is not a joint)
+        i32 childParentId = isJoint ? currentJointId : parentJointId;
+        for (uint32_t i = 0; i < node->mNumChildren; ++i)
+        {
+            ExtractSkeletonRecursive(node->mChildren[i], childParentId, skeleton, inverseBindMatrices);
+        }
+    }
+
+    void ModelLoader::SortJointsHierchically(Skeleton &skeleton)
+    {
+        std::vector<Joint> sortedJoints;
+        sortedJoints.reserve(skeleton.joints.size());
+
+        // use a queue to process joints level by level
+        std::queue<i32> queue;
+
+        // start with root joints
+        for (size_t i = 0; i < skeleton.joints.size(); ++i)
+        {
+            if (skeleton.joints[i].parentJointId == -1)
+                queue.push(i);
+        }
+
+        // BFS traversal to ensure parents are processed before children
+        while (!queue.empty())
+        {
+            i32 jointIdx = queue.front();
+            queue.pop();
+
+            sortedJoints.push_back(skeleton.joints[jointIdx]);
+            i32 newIdx = sortedJoints.size() - 1;
+
+            // Update joint indices in the new array
+            if (sortedJoints[newIdx].parentJointId != -1)
+            {
+                // Find new parent index
+                std::string parentName = skeleton.joints[sortedJoints[newIdx].parentJointId].name;
+                for (size_t j = 0; j < newIdx; ++j)
+                {
+                    if (sortedJoints[j].name == parentName)
+                    {
+                        sortedJoints[newIdx].parentJointId = j;
+                        break;
+                    }
+                }
+            }
+
+            // Add children to queue
+            for (size_t i = 0; i < skeleton.joints.size(); ++i)
+            {
+                if (skeleton.joints[i].parentJointId == jointIdx)
+                {
+                    queue.push(i);
+                }
+            }
+        }
+
+        // Update name to joint name
+        skeleton.nameToJointMap.clear();
+        for (size_t i = 0; i < sortedJoints.size(); ++i)
+        {
+            sortedJoints[i].id = i;
+            skeleton.nameToJointMap[sortedJoints[i].name] = i;
+        }
+
+        skeleton.joints = std::move(sortedJoints);
+
     }
 
     void ModelLoader::LoadMaterial(const aiScene *scene, aiMaterial *material, const std::string &filepath, Ref<Mesh> &mesh)

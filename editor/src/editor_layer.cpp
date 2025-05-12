@@ -70,7 +70,7 @@ namespace ignite
             params.enableBlend = true;
             params.depthWrite = true;
             params.depthTest = true;
-            params.recompileShader = true;
+            params.recompileShader = false;
             params.cullMode = nvrhi::RasterCullMode::Front;
             params.comparison = nvrhi::ComparisonFunc::Always;
             params.vertexShaderFilepath = "skybox.vertex.hlsl";
@@ -485,6 +485,40 @@ namespace ignite
                             }
                             ImGui::TreePop();
                         }
+
+                        if (ImGui::TreeNode("Skeleton"))
+                        {
+                            for (auto &joint : model->skeleton.joints)
+                            {
+                                if (ImGui::TreeNodeEx(joint.name.c_str(), ImGuiTreeNodeFlags_None, "%s: %d", joint.name.c_str(), joint.id))
+                                {
+                                    ImGui::Text("Parent: %d", joint.parentJointId);
+
+                                    ImGui::Text("Inv Bind Pose");
+                                    ImGui::InputFloat4("BP 0", &joint.inverseBindPose[0].x);
+                                    ImGui::InputFloat4("BP 1", &joint.inverseBindPose[1].x);
+                                    ImGui::InputFloat4("BP 2", &joint.inverseBindPose[2].x);
+                                    ImGui::InputFloat4("BP 3", &joint.inverseBindPose[3].x);
+
+                                    ImGui::Text("Local Transform");
+                                    ImGui::InputFloat4("LT 0", &joint.localTransform[0].x);
+                                    ImGui::InputFloat4("LT 1", &joint.localTransform[1].x);
+                                    ImGui::InputFloat4("LT 2", &joint.localTransform[2].x);
+                                    ImGui::InputFloat4("LT 3", &joint.localTransform[3].x);
+
+                                    ImGui::Text("World Transform");
+                                    ImGui::InputFloat4("WT 0", &joint.globalTransform[0].x);
+                                    ImGui::InputFloat4("WT 1", &joint.globalTransform[1].x);
+                                    ImGui::InputFloat4("WT 2", &joint.globalTransform[2].x);
+                                    ImGui::InputFloat4("WT 3", &joint.globalTransform[3].x);
+
+                                    ImGui::TreePop();
+                                }
+                            }
+
+                            ImGui::TreePop();
+                        }
+
                     }
                     ImGui::TreePop();
                 }
