@@ -70,12 +70,12 @@ namespace ignite {
         // load animation here
 
         // count vertices and indices
-        m_Meshes.resize(scene->mNumMeshes);
+        meshes.resize(scene->mNumMeshes);
 
-        for (size_t i = 0; i < m_Meshes.size(); ++i)
+        for (size_t i = 0; i < meshes.size(); ++i)
         {
             // create meshes
-            m_Meshes[i] = CreateRef<Mesh>(i); // i = mesh ID
+            meshes[i] = CreateRef<Mesh>(i); // i = mesh ID
         }
 
         if (scene->HasAnimations())
@@ -87,12 +87,13 @@ namespace ignite {
             ModelLoader::SortJointsHierchically(skeleton);
         }
 
-        ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), m_Meshes, nodes, skeleton, -1);
-        ModelLoader::CalculateWorldTransforms(nodes, m_Meshes);
+        ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), meshes, nodes, skeleton, -1);
+        ModelLoader::CalculateWorldTransforms(nodes, meshes);
+
         textureCache.clear();
 
         // create constant buffers
-        for (auto &mesh : m_Meshes)
+        for (auto &mesh : meshes)
         {
             // create buffers
             auto constantBufferDesc = nvrhi::BufferDesc()
@@ -121,7 +122,7 @@ namespace ignite {
 
     void Model::CreateBindingSet(nvrhi::BindingLayoutHandle bindingLayout)
     {
-        for (auto &mesh : m_Meshes)
+        for (auto &mesh : meshes)
         {
             auto desc = nvrhi::BindingSetDesc();
 
@@ -147,7 +148,7 @@ namespace ignite {
 
     void Model::WriteBuffer(nvrhi::CommandListHandle commandList)
     {
-        for (auto &mesh : m_Meshes)
+        for (auto &mesh : meshes)
         {
             commandList->writeBuffer(mesh->vertexBuffer, mesh->vertices.data(), sizeof(VertexMesh) * mesh->vertices.size());
             commandList->writeBuffer(mesh->indexBuffer, mesh->indices.data(), sizeof(uint32_t) * mesh->indices.size());
@@ -162,28 +163,42 @@ namespace ignite {
 
     void Model::OnUpdate(f32 deltaTime)
     {
-
     }
 
     void Model::Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline)
     {
         nvrhi::Viewport viewport = framebuffer->getFramebufferInfo().getViewport();
 
-        for (auto &mesh : m_Meshes)
+        for (auto &mesh : meshes)
         {
             // write material constant buffer
             commandList->writeBuffer(mesh->materialBuffer, &mesh->material.data, sizeof(mesh->material.data));
 
             // write model constant buffer
 
-            size_t numBones = std::min(finalTransforms.size(), static_cast<size_t>(MAX_BONES));
-            
             ObjectBuffer modelPushConstant;
-            modelPushConstant.transformation = transform * mesh->worldTransform;
 
+            glm::mat4 meshTransform;
+            if (!mesh->attachedNode.empty())
+            {
+                auto it = skeleton.nameToJointMap.find(mesh->attachedNode);
+                if (it != skeleton.nameToJointMap.end())
+                {
+                    Joint &joint = skeleton.joints[it->second];
+                    meshTransform = joint.globalTransform * joint.inverseBindPose * mesh->worldTransform;
+                }
+            }
+            else
+            {
+                meshTransform = mesh->worldTransform;
+            }
+
+            modelPushConstant.transformation = transform * meshTransform;
+
+            size_t numBones = std::min(boneTransforms.size(), static_cast<size_t>(MAX_BONES));
             for (size_t i = 0; i < numBones; ++i)
             {
-                modelPushConstant.boneTransforms[i] = finalTransforms[i];
+                modelPushConstant.boneTransforms[i] = boneTransforms[i];
             }
 
             // Set remaining transforms to identity
@@ -191,11 +206,6 @@ namespace ignite {
             {
                 modelPushConstant.boneTransforms[i] = glm::mat4(1.0f);
             }
-
-           /* if (mesh->parentID != -1)
-                modelPushConstant.transformation = transform * m_Meshes[mesh->parentID]->localTransform * mesh->localTransform;
-            else
-                modelPushConstant.transformation = transform * mesh->localTransform;*/
 
             glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(modelPushConstant.transformation)));
             modelPushConstant.normal = glm::mat4(normalMat3);
@@ -240,6 +250,7 @@ namespace ignite {
         i32 currentNodeID = nodes.size();
         nodes.push_back(nodeInfo);
 
+
         // If parent exists, add this node as a child
         if (parentNodeID != -1)
         {
@@ -266,7 +277,7 @@ namespace ignite {
             ProcessNode(scene, node->mChildren[i], filepath, meshes, nodes, skeleton, currentNodeID);
         }
     }
-
+    
     void ModelLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, const Skeleton &skeleton)
     {
         meshes[meshIndex]->name = mesh->mName.C_Str();

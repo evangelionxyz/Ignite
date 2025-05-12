@@ -87,9 +87,20 @@ namespace ignite {
         std::unordered_map<std::string, i32> nameToJointMap; // for fast lookup by name
     };
 
+    enum class NodeType
+    {
+        Empty,
+        Mesh,
+        Bone,
+        Skeleton
+    };
+
     struct NodeInfo
     {
         std::string name;
+        
+        NodeType type;
+
         glm::mat4 localTransform;
         glm::mat4 worldTransform;
         i32 parentID = -1;
@@ -128,6 +139,7 @@ namespace ignite {
         glm::mat4 worldTransform;
 
         i32 nodeID = -1;
+        std::string attachedNode;     // ID of the bone this mesh is attached to
 
         void CreateBuffers();
     };
@@ -154,7 +166,6 @@ namespace ignite {
         void OnUpdate(f32 deltaTime);
         void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline);
 
-        std::vector<Ref<Mesh>> &GetMeshes() { return m_Meshes; }
         const std::filesystem::path &GetFilepath() const { return m_Filepath; }
 
         static Ref<Model> Create(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo);
@@ -162,14 +173,14 @@ namespace ignite {
         glm::mat4 transform = glm::mat4(1.0f);
         std::vector<Ref<SkeletalAnimation>> animations;
         std::vector<NodeInfo> nodes;
-        std::vector<glm::mat4> finalTransforms;
+        std::vector<glm::mat4> boneTransforms;
         Skeleton skeleton;
+        std::vector<Ref<Mesh>> meshes;
 
     private:
         ModelCreateInfo m_CreateInfo;
         nvrhi::TextureHandle m_EnvironmentTexture;
         std::filesystem::path m_Filepath;
-        std::vector<Ref<Mesh>> m_Meshes;
     };
 
     class ModelLoader

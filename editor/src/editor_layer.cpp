@@ -122,7 +122,9 @@ namespace ignite
             if (future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
             {
                 Ref<ModelTask> modelTask = future.get();
-                m_Models.push_back(modelTask->model);
+
+                if (modelTask->index == -1)
+                    m_Models.push_back(modelTask->model);
 
                 m_CommandList->open();
                 modelTask->model->WriteBuffer(m_CommandList);
@@ -146,7 +148,7 @@ namespace ignite
             {
                 float timeInSeconds = static_cast<float>(glfwGetTime());
                 AnimationSystem::UpdateSkeleton(model->skeleton, *model->animations[m_SelectedAnimation].get(), timeInSeconds);
-                model->finalTransforms = AnimationSystem::GetFinalJointTransforms(model->skeleton);
+                model->boneTransforms = AnimationSystem::GetFinalJointTransforms(model->skeleton);
             }
 
             model->OnUpdate(deltaTime);
@@ -477,6 +479,32 @@ namespace ignite
                 {
                     if (!requestToDelete)
                     {
+                        if (ImGui::TreeNode("Meshes"))
+                        {
+                            for (const Ref<Mesh> &mesh : model->meshes)
+                            {
+                                bool opened = ImGui::TreeNode(mesh->name.c_str());
+
+                                if (ImGui::BeginDragDropSource())
+                                {
+                                    ImGui::SetDragDropPayload("MESH_ITEM", &mesh, sizeof(Ref<Mesh>));
+                                    ImGui::EndDragDropSource();
+                                }
+
+                                if (!mesh->attachedNode.empty())
+                                {
+                                    ImGui::Text("Attached to: %s", mesh->attachedNode.c_str());
+                                }
+
+                                if (opened)
+                                {
+                                    ImGui::TreePop();
+                                }
+                            }
+
+                            ImGui::TreePop();
+                        }
+
                         if (ImGui::TreeNode("Nodes"))
                         {
                             for (const auto &node : model->nodes)
@@ -858,6 +886,18 @@ namespace ignite
             | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
 
         bool opened = ImGui::TreeNodeEx(node.name.c_str(), flags, node.name.c_str());
+
+        if (ImGui::BeginDragDropTarget())
+        {
+            if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("MESH_ITEM"))
+            {
+                LOG_ASSERT(payload->DataSize == sizeof(Ref<Mesh>), "Wrong mesh item");
+
+                Ref<Mesh> mesh = *static_cast<Ref<Mesh> *>(payload->Data);
+                mesh->attachedNode = node.name;
+            }
+            ImGui::EndDragDropTarget();
+        }
 
         if (opened)
         {
