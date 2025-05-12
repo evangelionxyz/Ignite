@@ -52,7 +52,7 @@ namespace ignite {
 
     // Model class
     Model::Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo)
-        : m_CreateInfo(createInfo)
+        : m_Filepath(filepath), m_CreateInfo(createInfo)
     {
         LOG_ASSERT(std::filesystem::exists(filepath), "[Model] Filepath does not exists!");
 

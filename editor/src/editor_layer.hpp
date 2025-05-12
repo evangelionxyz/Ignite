@@ -79,7 +79,7 @@ namespace ignite
         void TraverseNodes(Model *model, const NodeInfo &node, int traverseIndex = 0);
 
         // temporary
-        void LoadModel(const std::string &filepath);
+        void LoadModel(const std::string &filepath, int index = -1);
 
         Ref<ScenePanel> m_ScenePanel;
         Ref<Scene> m_ActiveScene;
@@ -91,7 +91,6 @@ namespace ignite
         std::vector<Ref<Model>> m_Models;
 
         MaterialData *m_SelectedMaterial = nullptr;
-        Model *m_SelectedModel = nullptr;
 
         Ref<Environment> m_Environment;
         DebugRenderData m_DebugRenderData;
@@ -99,7 +98,13 @@ namespace ignite
 
         std::filesystem::path m_CurrentSceneFilePath;
 
-        std::list<std::future<Ref<Model>>> m_PendingLoadModels;
+        struct ModelTask
+        {
+            int index = -1;
+            Ref<Model> model;
+        };
+
+        std::list<std::future<Ref<ModelTask>>> m_PendingLoadModels;
 
         nvrhi::BufferHandle m_DebugRenderBuffer;
         

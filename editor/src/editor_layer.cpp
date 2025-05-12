@@ -9,6 +9,12 @@
 #include "ignite/scene/camera.hpp"
 #include "ignite/graphics/texture.hpp"
 
+#ifdef _WIN32
+#   include <dwmapi.h>
+#   include <ShellScalingApi.h>
+#endif
+
+
 #include "ignite/imgui/gui_function.hpp"
 
 namespace ignite
@@ -111,14 +117,14 @@ namespace ignite
 
         for (auto it = m_PendingLoadModels.begin(); it != m_PendingLoadModels.end(); )
         {
-            std::future<Ref<Model>> &future = *it;
+            std::future<Ref<ModelTask>> &future = *it;
             if (future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
             {
-                Ref<Model> model = future.get();
-                m_Models.push_back(model);
+                Ref<ModelTask> modelTask = future.get();
+                m_Models.push_back(modelTask->model);
 
                 m_CommandList->open();
-                model->WriteBuffer(m_CommandList);
+                modelTask->model->WriteBuffer(m_CommandList);
                 m_CommandList->close();
                 m_Device->executeCommandList(m_CommandList);
 
@@ -354,9 +360,23 @@ namespace ignite
             .Outline(toolbarOutlineColor, toolbarOutlineHoverColor)), menuBarButtonSize, { 12.0f, 2.0f }, Margin(40.0f, 3.0f, 0.0f, 3.0f)))
         {
             if (sceneStatePlaying)
+            {
                 OnSceneStop();
+#if _WIN32
+                HWND hwnd = glfwGetWin32Window(Application::GetInstance()->GetDeviceManager()->GetWindow());
+                COLORREF rgbRed = 0x00E86071;
+                DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
+#endif
+            }
             else
+            {
                 OnScenePlay();
+#if _WIN32
+                HWND hwnd = glfwGetWin32Window(Application::GetInstance()->GetDeviceManager()->GetWindow());
+                COLORREF rgbRed = 0x000000AB;
+                DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
+#endif
+            }
         }
 
         if (UI::DrawButton(UIButton("Simulate", decorateBt), menuBarButtonSize, {12.0f, 2.0f }, Margin(3.0f, 0.0f)))
@@ -413,7 +433,7 @@ namespace ignite
             m_ScenePanel->OnGuiRender();
             ImGui::Begin("Models");
 
-            if (ImGui::Button("Load GLTF/GLB"))
+            if (ImGui::Button("Add GLTF/GLB"))
             {
                 std::string filepath = FileDialogs::OpenFile("GLTF/GLB Files (*.gltf;*.glb)\0*.gltf;*.glb\0All Files (*.*)\0*.*\0");
                 if (!filepath.empty())
@@ -422,34 +442,71 @@ namespace ignite
                 }
             }
 
-            for (size_t i = 0; i < m_Models.size(); ++i)
+            int replacingIndex = -1;
+            int index = 0;
+            for (auto it = m_Models.begin(); it != m_Models.end(); )
             {
-                auto &model = m_Models[i];
+                auto &model = *it;
+                bool requestToDelete = false;
 
-                bool opened = ImGui::TreeNodeEx((void *)(uint64_t *) &model, 0, "Model %zu", i);
-                if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-                    m_SelectedModel = model.get();
+                const std::string modelName = model->GetFilepath().stem().generic_string();
+                bool opened = ImGui::TreeNodeEx((void *)(uint64_t *) &model, 0, "%s", modelName.c_str());
+
+                if (ImGui::BeginPopupContextItem(modelName.c_str()))
+                {
+                    if (ImGui::MenuItem("Replace"))
+                        replacingIndex = index;
+
+                    if (ImGui::MenuItem("Delete"))
+                        requestToDelete = true;
+
+                    ImGui::EndPopup();
+                }
 
                 if (opened)
                 {
-                    for (const auto &node : model->nodes)
-                        TraverseNodes(model.get(), node, 0);
-                    
+                    if (!requestToDelete)
+                    {
+                        if (ImGui::TreeNode("Nodes"))
+                        {
+                            for (const auto &node : model->nodes)
+                                TraverseNodes(model.get(), node, 0);
+                            ImGui::TreePop();
+                        }
+
+                        if (!model->animations.empty() && ImGui::TreeNode("Animation"))
+                        {
+                            for (auto &anim : model->animations)
+                            {
+                                if (ImGui::TreeNodeEx(anim->GetName().c_str(), ImGuiTreeNodeFlags_Leaf, "%s", anim->GetName().c_str()))
+                                {
+                                    ImGui::TreePop();
+                                }
+                            }
+                            ImGui::TreePop();
+                        }
+                    }
                     ImGui::TreePop();
+                }
+
+                if (requestToDelete)
+                {
+                    it = m_Models.erase(it);
+                }
+                else
+                {
+                    ++it;
+                    ++index;
                 }
             }
 
-            if(m_SelectedModel && !m_SelectedModel->animations.empty() && ImGui::TreeNode("Animation"))
+            if (replacingIndex != -1)
             {
-                for (auto &anim : m_SelectedModel->animations)
+                std::string filepath = FileDialogs::OpenFile("GLTF/GLB Files (*.gltf;*.glb)\0*.gltf;*.glb\0All Files (*.*)\0*.*\0");
+                if (!filepath.empty())
                 {
-                    bool opened = ImGui::TreeNodeEx(anim->GetName().c_str(), ImGuiTreeNodeFlags_Leaf, "%s", anim->GetName().c_str());
-                    if (opened)
-                    {
-                        ImGui::TreePop();
-                    }
+                    LoadModel(filepath, replacingIndex);
                 }
-                ImGui::TreePop();
             }
 
             if (m_SelectedMaterial)
@@ -765,10 +822,16 @@ namespace ignite
         }
     }
 
-    void EditorLayer::LoadModel(const std::string &filepath)
+    void EditorLayer::LoadModel(const std::string &filepath, int index)
     {
-        std::future<Ref<Model>> modelFuture = std::async(std::launch::async, [this, filepath]()
+        if (index >= 0 && index < m_Models.size() - 1)
+            return;
+
+        std::future<Ref<ModelTask>> modelFuture = std::async(std::launch::async, [this, filepath, index]()
         {
+            Ref<ModelTask> modelTask = CreateRef<ModelTask>();
+            modelTask->index = index;
+
             ModelCreateInfo modelCI;
             modelCI.device = m_Device;
             modelCI.cameraBuffer = m_Environment->GetCameraBuffer();
@@ -776,10 +839,11 @@ namespace ignite
             modelCI.envBuffer = m_Environment->GetParamsBuffer();
             modelCI.debugBuffer = m_DebugRenderBuffer;
 
-            Ref<Model> model = Model::Create(filepath, modelCI);
-            model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
-            model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
-            return model;
+            modelTask->model = Model::Create(filepath, modelCI);
+            modelTask->model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
+            modelTask->model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
+
+            return modelTask;
         });
         
         m_PendingLoadModels.push_back(std::move(modelFuture));

@@ -139,6 +139,7 @@ namespace ignite {
         void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline);
 
         std::vector<Ref<Mesh>> &GetMeshes() { return m_Meshes; }
+        const std::filesystem::path &GetFilepath() const { return m_Filepath; }
 
         static Ref<Model> Create(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo);
 
@@ -150,6 +151,9 @@ namespace ignite {
     private:
         ModelCreateInfo m_CreateInfo;
         nvrhi::TextureHandle m_EnvironmentTexture;
+        
+        std::filesystem::path m_Filepath;
+
         std::vector<Ref<Mesh>> m_Meshes;
     };
 

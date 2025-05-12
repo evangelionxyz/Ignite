@@ -141,8 +141,8 @@ namespace ignite
         COLORREF rgbRed = 0x00E86071;
         DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
 
-        // DWM_WINDOW_CORNER_PREFERENCE preference = DWMWCP_DONOTROUND;
-        // DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &preference, sizeof(preference));
+        // DWM_WINDOW_CORNER_PREFERENCE cornerPreference = DWMWCP_ROUNDSMALL;
+        // DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference, sizeof(cornerPreference));
 #endif
 
         result = m_DeviceManager->CreateDevice();
