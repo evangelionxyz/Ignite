@@ -90,6 +90,8 @@ namespace ignite
         Ref<GraphicsPipeline> m_EnvPipeline;
         std::vector<Ref<Model>> m_Models;
 
+        Model *m_SelectedModel = nullptr;
+
         MaterialData *m_SelectedMaterial = nullptr;
 
         Ref<Environment> m_Environment;

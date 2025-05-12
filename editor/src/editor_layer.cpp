@@ -127,7 +127,10 @@ namespace ignite
                     m_Models.push_back(modelTask->model);
 
                 m_CommandList->open();
-                modelTask->model->WriteBuffer(m_CommandList);
+                if (modelTask->index >= 0)
+                    m_Models[modelTask->index]->WriteBuffer(m_CommandList);
+                else
+                    modelTask->model->WriteBuffer(m_CommandList);
                 m_CommandList->close();
                 m_Device->executeCommandList(m_CommandList);
 
@@ -144,7 +147,7 @@ namespace ignite
 
         for (auto &model : m_Models)
         {
-            if (m_SelectedAnimation >= 0)
+            if (!model->animations.empty() && m_SelectedAnimation >= 0)
             {
                 float timeInSeconds = static_cast<float>(glfwGetTime());
                 AnimationSystem::UpdateSkeleton(model->skeleton, *model->animations[m_SelectedAnimation].get(), timeInSeconds);
@@ -454,7 +457,6 @@ namespace ignite
                 }
             }
 
-            int replacingIndex = -1;
             int index = 0;
             for (auto it = m_Models.begin(); it != m_Models.end(); )
             {
@@ -464,13 +466,18 @@ namespace ignite
                 const std::string modelName = model->GetFilepath().stem().generic_string();
                 bool opened = ImGui::TreeNodeEx((void *)(uint64_t *) &model, 0, "%s", modelName.c_str());
 
+                if (ImGui::IsItemClicked())
+                {
+                    m_SelectedModel = model.get();
+                }
+
                 if (ImGui::BeginPopupContextItem(modelName.c_str()))
                 {
-                    if (ImGui::MenuItem("Replace"))
-                        replacingIndex = index;
-
                     if (ImGui::MenuItem("Delete"))
+                    {
                         requestToDelete = true;
+                        m_SelectedModel = nullptr;
+                    }
 
                     ImGui::EndPopup();
                 }
@@ -502,13 +509,6 @@ namespace ignite
                                 }
                             }
 
-                            ImGui::TreePop();
-                        }
-
-                        if (ImGui::TreeNode("Nodes"))
-                        {
-                            for (const auto &node : model->nodes)
-                                TraverseNodes(model.get(), node, 0);
                             ImGui::TreePop();
                         }
 
@@ -576,15 +576,7 @@ namespace ignite
                 }
             }
 
-            if (replacingIndex != -1)
-            {
-                std::string filepath = FileDialogs::OpenFile("GLTF/GLB Files (*.gltf;*.glb)\0*.gltf;*.glb\0All Files (*.*)\0*.*\0");
-                if (!filepath.empty())
-                {
-                    LoadModel(filepath, replacingIndex);
-                }
-            }
-
+            
             if (m_SelectedMaterial)
             {
                 ImGui::Separator();
@@ -595,6 +587,14 @@ namespace ignite
                 ImGui::DragFloat("Emissive", &m_SelectedMaterial->emissive, 0.005f, 0.0f, 1000.0f);
             }
 
+            ImGui::End();
+
+            ImGui::Begin("Model Nodes");
+            if (m_SelectedModel)
+            {
+                for (const auto &node : m_SelectedModel->nodes)
+                    TraverseNodes(m_SelectedModel, node, 0);
+            }
             ImGui::End();
 
             // Render GUI
