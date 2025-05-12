@@ -78,10 +78,6 @@ namespace ignite {
             m_Meshes[i] = CreateRef<Mesh>(i); // i = mesh ID
         }
 
-        ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), m_Meshes, nodes, -1);
-        ModelLoader::CalculateWorldTransforms(nodes, m_Meshes);
-        textureCache.clear();
-
         if (scene->HasAnimations())
         {
             ModelLoader::LoadAnimation(scene, animations);
@@ -90,6 +86,10 @@ namespace ignite {
             ModelLoader::ExtractSkeleton(scene, skeleton);
             ModelLoader::SortJointsHierchically(skeleton);
         }
+
+        ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), m_Meshes, nodes, skeleton, -1);
+        ModelLoader::CalculateWorldTransforms(nodes, m_Meshes);
+        textureCache.clear();
 
         // create constant buffers
         for (auto &mesh : m_Meshes)
@@ -176,9 +176,21 @@ namespace ignite {
 
             // write model constant buffer
 
+            size_t numBones = std::min(finalTransforms.size(), static_cast<size_t>(MAX_BONES));
+            
             ObjectBuffer modelPushConstant;
-
             modelPushConstant.transformation = transform * mesh->worldTransform;
+
+            for (size_t i = 0; i < numBones; ++i)
+            {
+                modelPushConstant.boneTransforms[i] = finalTransforms[i];
+            }
+
+            // Set remaining transforms to identity
+            for (size_t i = numBones; i < MAX_BONES; ++i)
+            {
+                modelPushConstant.boneTransforms[i] = glm::mat4(1.0f);
+            }
 
            /* if (mesh->parentID != -1)
                 modelPushConstant.transformation = transform * m_Meshes[mesh->parentID]->localTransform * mesh->localTransform;
@@ -217,7 +229,7 @@ namespace ignite {
 
     // Mesh loader
 
-    void ModelLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, i32 parentNodeID)
+    void ModelLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID)
     {
         // Create a node entry and get its index
         NodeInfo nodeInfo;
@@ -245,17 +257,17 @@ namespace ignite {
             // Store mesh index in the node
             nodes[currentNodeID].meshIndices.push_back(meshIndex);
 
-            LoadSingleMesh(scene, meshIndex, mesh, filepath, meshes);
+            LoadSingleMesh(scene, meshIndex, mesh, filepath, meshes, skeleton);
         }
 
         // Process all children with this node as parent
         for (u32 i = 0; i < node->mNumChildren; ++i)
         {
-            ProcessNode(scene, node->mChildren[i], filepath, meshes, nodes, currentNodeID);
+            ProcessNode(scene, node->mChildren[i], filepath, meshes, nodes, skeleton, currentNodeID);
         }
     }
 
-    void ModelLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes)
+    void ModelLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, const Skeleton &skeleton)
     {
         meshes[meshIndex]->name = mesh->mName.C_Str();
 
@@ -278,6 +290,13 @@ namespace ignite {
             else
                 vertex.texCoord = { 0.0f, 0.0f };
 
+            // Initialize boneIDs and weights to default values
+            for (int j = 0; j < VERTEX_MAX_BONES; ++j)
+            {
+                vertex.boneIDs[j] = 0;
+                vertex.weights[j] = 0.0f;
+            }
+
             meshes[meshIndex]->vertices[i] = vertex;
         }
 
@@ -290,6 +309,12 @@ namespace ignite {
             meshes[meshIndex]->indices.push_back(face.mIndices[2]);
         }
 
+        // Load bones
+        if (mesh->HasBones())
+        {
+            ProcessBodeWeights(mesh, meshes[meshIndex]->vertices, skeleton);
+        }
+
         if (mesh->mMaterialIndex >= 0)
         {
             // TODO: Load material here
@@ -298,6 +323,61 @@ namespace ignite {
         }
 
         meshes[meshIndex]->CreateBuffers();
+    }
+
+    void ModelLoader::ProcessBodeWeights(aiMesh *mesh, std::vector<VertexMesh> &vertices, const Skeleton &skeleton)
+    {
+        for (uint32_t boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex)
+        {
+            aiBone *bone = mesh->mBones[boneIndex];
+            std::string boneName = bone->mName.C_Str();
+
+            // Get bone ID from skeleton
+            auto it = skeleton.nameToJointMap.find(boneName);
+            if (it == skeleton.nameToJointMap.end())
+            {
+                LOG_WARN("[Model Loader]: Bone {} not found in skeleton!", boneName);
+                continue;
+            }
+
+            uint32_t boneId = it->second;
+
+            // Each vertex can be affected by multimple bones
+            for (uint32_t weightIndex = 0; weightIndex < bone->mNumWeights; ++weightIndex)
+            {
+                uint32_t vertexId = bone->mWeights[weightIndex].mVertexId;
+                float weight = bone->mWeights[weightIndex].mWeight;
+
+                // Find the first empty slot in this vertex's bone array
+                for (uint32_t j = 0; j < VERTEX_MAX_BONES; ++j)
+                {
+                    if (vertices[vertexId].weights[j] < 0.00001f)
+                    {
+                        vertices[vertexId].boneIDs[j] = boneId;
+                        vertices[vertexId].weights[j] = weight;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Normalize weights to ensure the sume to 1.0
+        for (auto &vertex : vertices)
+        {
+            float totalWeight = 0.0f;
+            for (uint32_t i = 0; i < VERTEX_MAX_BONES; ++i)
+            {
+                totalWeight += vertex.weights[i];
+            }
+
+            if (totalWeight > 0.0f)
+            {
+                for (int i = 0; i < VERTEX_MAX_BONES; ++i)
+                {
+                    vertex.weights[i] /= totalWeight;
+                }
+            }
+        }
     }
 
     void ModelLoader::ExtractSkeleton(const aiScene *scene, Skeleton &skeleton)

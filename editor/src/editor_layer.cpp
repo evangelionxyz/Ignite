@@ -9,11 +9,12 @@
 #include "ignite/scene/camera.hpp"
 #include "ignite/graphics/texture.hpp"
 
+#include "ignite/animation/animation_system.hpp"
+
 #ifdef _WIN32
 #   include <dwmapi.h>
 #   include <ShellScalingApi.h>
 #endif
-
 
 #include "ignite/imgui/gui_function.hpp"
 
@@ -140,7 +141,16 @@ namespace ignite
         m_Data.multiSelect = Input::IsKeyPressed(Key::LeftShift);
 
         for (auto &model : m_Models)
+        {
+            if (m_SelectedAnimation >= 0)
+            {
+                float timeInSeconds = static_cast<float>(glfwGetTime());
+                AnimationSystem::UpdateSkeleton(model->skeleton, *model->animations[m_SelectedAnimation].get(), timeInSeconds);
+                model->finalTransforms = AnimationSystem::GetFinalJointTransforms(model->skeleton);
+            }
+
             model->OnUpdate(deltaTime);
+        }
 
         switch (m_Data.sceneState)
         {
@@ -476,10 +486,14 @@ namespace ignite
 
                         if (!model->animations.empty() && ImGui::TreeNode("Animation"))
                         {
-                            for (auto &anim : model->animations)
+                            for (size_t animIdx = 0; animIdx < model->animations.size(); ++animIdx)
                             {
-                                if (ImGui::TreeNodeEx(anim->GetName().c_str(), ImGuiTreeNodeFlags_Leaf, "%s", anim->GetName().c_str()))
+                                const Ref<SkeletalAnimation> &anim = model->animations[animIdx];
+                                if (ImGui::TreeNodeEx(anim->name.c_str(), ImGuiTreeNodeFlags_Leaf, "%s", anim->name.c_str()))
                                 {
+                                    if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                                        m_SelectedAnimation = static_cast<i32>(animIdx);
+
                                     ImGui::TreePop();
                                 }
                             }

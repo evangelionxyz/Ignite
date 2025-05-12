@@ -96,6 +96,8 @@ namespace ignite
         DebugRenderData m_DebugRenderData;
         EditorData m_Data;
 
+        int m_SelectedAnimation = -1;
+
         std::filesystem::path m_CurrentSceneFilePath;
 
         struct ModelTask

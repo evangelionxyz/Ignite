@@ -8,6 +8,7 @@
 namespace ignite
 {
 #define VERTEX_MAX_BONES 4
+#define MAX_BONES 150
 
     struct CameraBuffer
     {
@@ -19,6 +20,7 @@ namespace ignite
     {
         glm::mat4 transformation;
         glm::mat4 normal;
+        glm::mat4 boneTransforms[MAX_BONES];
     };
 
     struct VertexMesh

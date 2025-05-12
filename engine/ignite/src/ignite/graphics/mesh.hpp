@@ -162,6 +162,7 @@ namespace ignite {
         glm::mat4 transform = glm::mat4(1.0f);
         std::vector<Ref<SkeletalAnimation>> animations;
         std::vector<NodeInfo> nodes;
+        std::vector<glm::mat4> finalTransforms;
         Skeleton skeleton;
 
     private:
@@ -175,8 +176,9 @@ namespace ignite {
     {
     public:
         static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath,
-            std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, i32 parentNodeID);
-        static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes);
+            std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID);
+        static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, const Skeleton &skeleton);
+        static void ProcessBodeWeights(aiMesh *mesh, std::vector<VertexMesh> &vertices, const Skeleton &skeleton);
         static void ExtractSkeleton(const aiScene *scene, Skeleton &skeleton);
         static void ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Skeleton &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices);
         static void SortJointsHierchically(Skeleton &skeleton);
