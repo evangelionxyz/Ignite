@@ -9,6 +9,8 @@
 #include "ignite/scene/camera.hpp"
 #include "ignite/graphics/texture.hpp"
 
+#include "ignite/imgui/gui_function.hpp"
+
 namespace ignite
 {
     EditorLayer::EditorLayer(const std::string &name)
@@ -304,20 +306,89 @@ namespace ignite
         ImGuiWindow *window = ImGui::GetCurrentWindow();
         window->DC.LayoutType = ImGuiLayoutType_Horizontal;
         window->DC.NavLayerCurrent = ImGuiNavLayer_Menu;
-        ImDrawList *draw_list = ImGui::GetWindowDrawList();
+        ImDrawList *drawList = ImGui::GetWindowDrawList();
         const ImVec2 minPos = viewport->Pos;
         const ImVec2 maxPos = ImVec2(viewport->Pos.x + viewport->Size.x, totalTitlebarHeight);
-        draw_list->AddRectFilled(minPos, maxPos, IM_COL32(30, 30, 30, 255));
-
-        // play stop and simulate button
+        drawList->AddRectFilled(minPos, maxPos, IM_COL32(30, 30, 30, 255));
 
         // =========== Menubar ===========
-        const ImVec2 menuBarButtonSize = { 40.0f, 20.0f};
+        const ImVec2 menuBarButtonSize = { 45.0f, 20.0f };
         ImVec2 menubarBTCursorPos = { viewport->Pos.x, viewport->Pos.y };
-        if (ImGui::Button("File"))
+        ImVec2 menubarBTPos = menubarBTCursorPos + menuBarButtonSize;
+
+        //                                                       Text,         OpenPopup
+        static std::function<void(const ImVec2 &buttonSize, std::vector<UIButton> buttons, const float &gap, const ImVec2 &padding, const ImVec2 &margin)>
+            menubarAction = [](const ImVec2 &buttonSize, std::vector<UIButton> buttons, const float &gap, const ImVec2 &padding, const ImVec2 &margin)
         {
-            ImGui::OpenPopup("MenuBar_File");
-        }
+            const ImGuiWindow *currentWindow = ImGui::GetCurrentWindow();
+            ImDrawList *drawList = ImGui::GetWindowDrawList();
+
+            // add margin
+            ImVec2 startPosition = currentWindow->DC.CursorPos; // use cursor pos (not position)
+            startPosition += margin;
+
+            // update screen pos
+            ImGui::SetCursorScreenPos(startPosition);
+
+            for (auto &[text, decorate, onClick, isHovered, isClicked] : buttons)
+            {
+                // Create an invisible button (captures input and sets hovered / clicked state)
+                ImGui::InvisibleButton(text.c_str(), buttonSize + padding);
+
+                if (ImGui::IsItemHovered())
+                    isHovered = true;
+
+                // Handle click
+                if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                {
+                    isClicked = true;
+                    onClick();
+                }
+
+                const ImVec2 paddedSize = buttonSize + padding;
+
+                glm::vec4 glmFillColor = decorate.fillColor.GetColor(isHovered);
+                glm::vec4 glmOutlineColor = decorate.outlineColor.GetColor(isHovered);
+
+                ImColor fillColor = { glmFillColor.r, glmFillColor.g, glmFillColor.b, glmFillColor.w };
+                ImColor outlineColor = { glmOutlineColor.r, glmOutlineColor.g, glmOutlineColor.b, glmOutlineColor.w };
+
+                // Draw background rectangle
+                drawList->AddRectFilled(startPosition, startPosition + paddedSize, fillColor); // fill
+                drawList->AddRect(startPosition, startPosition + paddedSize, outlineColor); // outline
+
+                // Draw the text centered
+                ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
+                ImVec2 textStartPos = (paddedSize - textSize) * 0.5f;
+
+                drawList->AddText({ startPosition + textStartPos }, IM_COL32(255, 255, 255, 255), text.c_str());
+
+                // increment Position
+                startPosition.x += buttonSize.x + gap;
+                startPosition.x += padding.x; // only add x (Horizontally growing)
+                startPosition.x += margin.x; // only add x (Horizontally growing)
+
+                // update screen pos
+                ImGui::SetCursorScreenPos(startPosition);
+            }
+        };
+
+        const auto decorateBt = UIButtonDecorate()
+            .Fill( { 0.32f, 0.0f, 0.0f, 1.0f }, { 0.62f, 0.0f, 0.0f, 1.0f })
+            .Outline( { 0.62f, 0.0f, 0.0f, 1.0f }, { 0.92f, 0.0f, 0.0f, 1.0f });
+
+        menubarAction(
+            menuBarButtonSize,
+            { 
+                UIButton("File", decorateBt, []() { ImGui::OpenPopup("MenuBar_File"); }),
+                 UIButton("Edit", decorateBt, []() { ImGui::OpenPopup("MenuBar_Edit"); }),
+                UIButton("View", decorateBt, []() {  ImGui::OpenPopup("MenuBar_View"); })
+            },
+            2.0f, // GAP
+            ImVec2{ 12.0f, 2.0f }, // Padding
+            ImVec2{ 3.0f, 3.0f } // Margin
+        );
+        
 
         if (ImGui::BeginPopup("MenuBar_File"))
         {
@@ -360,25 +431,32 @@ namespace ignite
             ImGui::EndPopup();
         }
 
-        menubarBTCursorPos = { viewport->Pos.x + menuBarButtonSize.x, viewport->Pos.y };
+        menubarBTCursorPos.x += menuBarButtonSize.x;
+        /*ImGui::SetCursorScreenPos(menubarBTCursorPos);
         if (ImGui::Button("View"))
         {
             ImGui::OpenPopup("MenuBar_View");
-        }
+        }*/
 
         // =========== Toolbar ===========
-        const ImVec2 toolbarButtonSize = { 40.0f, 25.0f };
-        f32 buttonMiddle = totalTitlebarHeight / 2.0f - toolbarButtonSize.y / 2.0f;
-        ImVec2 toolbarBTCursorPos = { viewport->Pos.x, buttonMiddle + (totalTitlebarHeight / 4.0f)};
-        ImGui::SetCursorScreenPos(toolbarBTCursorPos);
+        // f32 buttonMiddle = totalTitlebarHeight / 2.0f - toolbarButtonSize.y / 2.0f;
+        // ImVec2 toolbarBTCursorPos = { menubarBTCursorPos.x, buttonMiddle + (totalTitlebarHeight / 4.0f)};
 
+        //menubarBTCursorPos.x += menuBarButtonSize.x + 5.0f; // 5.0f spacing
+        //ImVec2 toolbarBTCursorPos = { menubarBTCursorPos.x, viewport->Pos.y };
+        //ImGui::SetCursorScreenPos(toolbarBTCursorPos);
         bool sceneStatePlaying = m_Data.sceneState == State::ScenePlay;
-        if (ImGui::Button(sceneStatePlaying ? "Stop" : "Play", toolbarButtonSize))
+        if (ImGui::Button(sceneStatePlaying ? "Stop" : "Play", menuBarButtonSize))
         {
             if (sceneStatePlaying)
                 OnSceneStop();
             else 
                 OnScenePlay();
+        }
+
+        if (ImGui::Button("Simulate"))
+        {
+
         }
 
         // dockspace

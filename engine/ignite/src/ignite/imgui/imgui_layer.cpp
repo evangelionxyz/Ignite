@@ -126,26 +126,37 @@ namespace ignite
         colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.20f, 0.20f, 0.20f, 0.20f);
         colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.20f, 0.20f, 0.20f, 0.45f);
 
-        style.WindowPadding = ImVec2{ 0.0f, 0.0f };
-        style.FramePadding = ImVec2{ 6.0f, 3.0f };
-        style.CellPadding = ImVec2{ 7.0f, 3.0f };
-        style.ItemSpacing = ImVec2{ 4.0f, 3.0f };
+        style.WindowPadding = ImVec2{ 5.0f, 5.0f };
+        style.FramePadding = ImVec2{ 3.0f, 5.0f };
+        style.ItemSpacing = ImVec2{ 5.0f, 5.0f };
         style.ItemInnerSpacing = ImVec2{ 6.0f, 3.0f };
+        style.CellPadding = ImVec2{ 2.0f, 4.0f };
         style.TouchExtraPadding = ImVec2{ 0.0f, 0.0f };
-        style.IndentSpacing = 8;
-        style.ScrollbarSize = 16.0f;
-        style.GrabMinSize = 13;
-        style.WindowBorderSize = 0;
+        style.WindowTitleAlign = ImVec2 { 0.5f, 0.5f };
+        style.WindowBorderHoverPadding = 10.0f;
+        style.WindowBorderSize = 1;
         style.ChildBorderSize = 1;
         style.PopupBorderSize = 1;
-        style.FrameBorderSize = 0;
-        style.TabBorderSize = 0;
-        style.WindowRounding = 0;
-        style.TabRounding = 0;
-        style.ChildRounding = 0;
-        style.FrameRounding = 0;
-        style.PopupRounding = 0;
-        style.ScrollbarRounding = 0;
+
+        style.IndentSpacing = 8;
+        style.ScrollbarSize = 16.0f;
+        style.GrabMinSize = 15.0f;
+        style.FrameBorderSize = 0.0f;
+        style.WindowRounding = 6.0f;
+        style.TabRounding = 0.0f;
+        style.ChildRounding = 6.0f;
+        style.FrameRounding = 3.0f;
+        style.PopupRounding = 4.0f;
+        style.GrabRounding = 4.0f;
+        style.ScrollbarRounding = 4.0f;
+        style.TabBorderSize = 1.0f;
+        style.TabBarBorderSize = 1.0f;
+        style.TabBarOverlineSize = 2.0f;
+        style.TabCloseButtonMinWidthSelected = 1.0f;
+        style.TabCloseButtonMinWidthUnselected = 1.0f;
+        style.DockingSeparatorSize = 1.0f;
+
+
         style.WindowMenuButtonPosition = ImGuiDir_Right;
         style.ColorButtonPosition = ImGuiDir_Right;
         style.AntiAliasedFill = true;
