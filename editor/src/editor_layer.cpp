@@ -120,21 +120,17 @@ namespace ignite
 
         for (auto it = m_PendingLoadModels.begin(); it != m_PendingLoadModels.end(); )
         {
-            std::future<Ref<ModelTask>> &future = *it;
+            std::future<Ref<Model>> &future = *it;
             if (future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
             {
-                Ref<ModelTask> modelTask = future.get();
-
-                if (modelTask->index == -1)
-                    m_Models.push_back(modelTask->model);
+                Ref<Model> model = future.get();
 
                 m_CommandList->open();
-                if (modelTask->index >= 0)
-                    m_Models[modelTask->index]->WriteBuffer(m_CommandList);
-                else
-                    modelTask->model->WriteBuffer(m_CommandList);
+                model->WriteBuffer(m_CommandList);
                 m_CommandList->close();
                 m_Device->executeCommandList(m_CommandList);
+
+                m_Models.push_back(model);
 
                 it = m_PendingLoadModels.erase(it);
             }
@@ -150,7 +146,7 @@ namespace ignite
         for (auto &model : m_Models)
         {
             AnimationSystem::UpdateAnimation(model, timeInSeconds);
-            model->OnUpdate(deltaTime);
+            // model->OnUpdate(deltaTime);
         }
 
         switch (m_Data.sceneState)
@@ -460,7 +456,7 @@ namespace ignite
                 bool requestToDelete = false;
 
                 const std::string modelName = model->GetFilepath().stem().generic_string();
-                bool opened = ImGui::TreeNodeEx((void *)(uint64_t *) &model, 0, "%s", modelName.c_str());
+                bool opened = ImGui::TreeNodeEx((void *)(uint64_t *) &model, ImGuiTreeNodeFlags_OpenOnArrow, "%s", modelName.c_str());
 
                 if (ImGui::IsItemClicked())
                 {
@@ -480,6 +476,21 @@ namespace ignite
 
                 if (opened)
                 {
+                    glm::vec3 scale, translation, skew;
+                    glm::vec4 perspective;
+                    glm::quat orientation;
+                    glm::decompose(model->transform, scale, orientation, translation, skew, perspective);
+
+                    ImGui::DragFloat3("Translation", &translation.x, 0.025f);
+
+                    glm::vec3 eulerAngle = glm::degrees(glm::eulerAngles(orientation));
+                    if (ImGui::DragFloat3("Rotation", &eulerAngle.x, 0.025f))
+                        orientation = glm::radians(eulerAngle);
+
+                    ImGui::DragFloat3("Scale", &scale.x, 0.025f);
+
+                    model->transform = glm::recompose(scale, orientation, translation, skew, perspective);
+
                     if (!requestToDelete)
                     {
                         if (ImGui::TreeNode("Meshes"))
@@ -554,6 +565,7 @@ namespace ignite
                         }
 
                     }
+
                     ImGui::TreePop();
                 }
 
@@ -568,24 +580,23 @@ namespace ignite
                 }
             }
 
-            
-            if (m_SelectedMaterial)
-            {
-                ImGui::Separator();
-
-                ImGui::ColorEdit4("Base Color", &m_SelectedMaterial->baseColor.x);
-                ImGui::DragFloat("Metallic", &m_SelectedMaterial->metallic, 0.005f, 0.0f, 1.0f);
-                ImGui::DragFloat("Rougness", &m_SelectedMaterial->roughness, 0.005f, 0.0f, 1.0f);
-                ImGui::DragFloat("Emissive", &m_SelectedMaterial->emissive, 0.005f, 0.0f, 1000.0f);
-            }
-
             ImGui::End();
 
-            ImGui::Begin("Model Nodes");
+            ImGui::Begin("Model Hierarchy");
             if (m_SelectedModel)
             {
                 for (const auto &node : m_SelectedModel->nodes)
                     TraverseNodes(m_SelectedModel, node, 0);
+            }
+            ImGui::End();
+
+            ImGui::Begin("Material");
+            if (m_SelectedMaterial)
+            {
+                ImGui::ColorEdit4("Base Color", &m_SelectedMaterial->baseColor.x);
+                ImGui::DragFloat("Metallic", &m_SelectedMaterial->metallic, 0.005f, 0.0f, 1.0f);
+                ImGui::DragFloat("Rougness", &m_SelectedMaterial->roughness, 0.005f, 0.0f, 1.0f);
+                ImGui::DragFloat("Emissive", &m_SelectedMaterial->emissive, 0.005f, 0.0f, 1000.0f);
             }
             ImGui::End();
 
@@ -902,7 +913,7 @@ namespace ignite
             {
                 Ref<Mesh> mesh = model->meshes[meshIndex];
 
-                bool opened = ImGui::TreeNodeEx(mesh->name.c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", mesh->name.c_str());
+                bool opened = ImGui::TreeNodeEx(mesh->name.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow, "%s", mesh->name.c_str());
 
                 if (ImGui::BeginDragDropSource())
                 {
@@ -933,11 +944,8 @@ namespace ignite
         if (index >= 0 && index < m_Models.size() - 1)
             return;
 
-        std::future<Ref<ModelTask>> modelFuture = std::async(std::launch::async, [this, filepath, index]()
+        std::future<Ref<Model>> modelFuture = std::async(std::launch::async, [this, filepath, index]()
         {
-            Ref<ModelTask> modelTask = CreateRef<ModelTask>();
-            modelTask->index = index;
-
             ModelCreateInfo modelCI;
             modelCI.device = m_Device;
             modelCI.cameraBuffer = m_Environment->GetCameraBuffer();
@@ -945,11 +953,11 @@ namespace ignite
             modelCI.envBuffer = m_Environment->GetParamsBuffer();
             modelCI.debugBuffer = m_DebugRenderBuffer;
 
-            modelTask->model = Model::Create(filepath, modelCI);
-            modelTask->model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
-            modelTask->model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
+            Ref<Model> model = Model::Create(filepath, modelCI);
+            model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
+            model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
 
-            return modelTask;
+            return model;
         });
         
         m_PendingLoadModels.push_back(std::move(modelFuture));

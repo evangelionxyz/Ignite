@@ -12,6 +12,7 @@ namespace ignite
 {
     class Texture;
     class Mesh;
+    class Model;
 
     enum EntityType : u8
     {
@@ -150,6 +151,15 @@ namespace ignite
     class MeshComponent : public IComponent
     {
         Ref<Mesh> mesh;
+
+        static CompType StaticType() { return CompType_Mesh; }
+        virtual CompType GetType() { return StaticType(); }
+    };
+
+    class ModelComponent : public IComponent
+    {
+    public:
+        Ref<Model> model;
 
         static CompType StaticType() { return CompType_Mesh; }
         virtual CompType GetType() { return StaticType(); }

@@ -9,7 +9,9 @@
 #include "ignite/scene/icomponent.hpp"
 #include "ignite/core/platform_utils.hpp"
 #include "editor_layer.hpp"
+#include "ignite/graphics/mesh.hpp"
 #include "entt/entt.hpp"
+
 
 #include <set>
 #include <unordered_map>
@@ -22,7 +24,9 @@ namespace ignite
     {
         { "Rigidbody2D", CompType_Rigidbody2D },
         { "Sprite2D", CompType_Sprite2D},
-        { "BoxCollider2D", CompType_BoxCollider2D }
+        { "BoxCollider2D", CompType_BoxCollider2D },
+        { "Mesh", CompType_Mesh },
+        { "Model", CompType_Model },
     };
 
     static std::string ToLower(const std::string &str)
@@ -485,6 +489,23 @@ namespace ignite
                         ImGui::Checkbox("Is Sensor", &c->isSensor);
                     });
 
+                    break;
+                }
+                case CompType_Model:
+                {
+                    RenderComponent<ModelComponent>("Model", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
+                    {
+                        ModelComponent *c = comp->As<ModelComponent>();
+
+                        if (ImGui::Button("Add GLTF/GLB"))
+                        {
+                            std::string filepath = FileDialogs::OpenFile("GLTF/GLB Files (*.gltf;*.glb)\0*.gltf;*.glb\0All Files (*.*)\0*.*\0");
+                            if (!filepath.empty())
+                            {
+                                // c->model = Model::Create(filepath);
+                            }
+                        }
+                    });
                     break;
                 }
                 }

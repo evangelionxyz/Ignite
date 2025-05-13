@@ -88,6 +88,7 @@ namespace ignite
         Ref<GraphicsPipeline> m_MeshPipeline;
 
         Ref<GraphicsPipeline> m_EnvPipeline;
+
         std::vector<Ref<Model>> m_Models;
 
         Model *m_SelectedModel = nullptr;
@@ -100,13 +101,7 @@ namespace ignite
 
         std::filesystem::path m_CurrentSceneFilePath;
 
-        struct ModelTask
-        {
-            int index = -1;
-            Ref<Model> model;
-        };
-
-        std::list<std::future<Ref<ModelTask>>> m_PendingLoadModels;
+        std::list<std::future<Ref<Model>>> m_PendingLoadModels;
 
         nvrhi::BufferHandle m_DebugRenderBuffer;
         

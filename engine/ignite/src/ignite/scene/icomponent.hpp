@@ -12,6 +12,7 @@ namespace ignite
         CompType_Transform,
         CompType_Sprite2D,
         CompType_Mesh,
+        CompType_Model,
         CompType_BoxCollider2D,
         CompType_Rigidbody2D
     };
