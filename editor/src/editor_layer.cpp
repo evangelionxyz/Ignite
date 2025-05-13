@@ -116,6 +116,8 @@ namespace ignite
     {
         Layer::OnUpdate(deltaTime);
 
+        float timeInSeconds = static_cast<float>(glfwGetTime());
+
         for (auto it = m_PendingLoadModels.begin(); it != m_PendingLoadModels.end(); )
         {
             std::future<Ref<ModelTask>> &future = *it;
@@ -147,13 +149,7 @@ namespace ignite
 
         for (auto &model : m_Models)
         {
-            if (!model->animations.empty() && m_SelectedAnimation >= 0)
-            {
-                float timeInSeconds = static_cast<float>(glfwGetTime());
-                AnimationSystem::UpdateSkeleton(model->skeleton, *model->animations[m_SelectedAnimation].get(), timeInSeconds);
-                model->boneTransforms = AnimationSystem::GetFinalJointTransforms(model->skeleton);
-            }
-
+            AnimationSystem::UpdateAnimation(model, timeInSeconds);
             model->OnUpdate(deltaTime);
         }
 
@@ -498,11 +494,6 @@ namespace ignite
                                     ImGui::EndDragDropSource();
                                 }
 
-                                if (!mesh->attachedNode.empty())
-                                {
-                                    ImGui::Text("Attached to: %s", mesh->attachedNode.c_str());
-                                }
-
                                 if (opened)
                                 {
                                     ImGui::TreePop();
@@ -520,8 +511,9 @@ namespace ignite
                                 if (ImGui::TreeNodeEx(anim->name.c_str(), ImGuiTreeNodeFlags_Leaf, "%s", anim->name.c_str()))
                                 {
                                     if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-                                        m_SelectedAnimation = static_cast<i32>(animIdx);
-
+                                    {
+                                        AnimationSystem::PlayAnimation(model, animIdx);
+                                    }
                                     ImGui::TreePop();
                                 }
                             }
@@ -894,7 +886,7 @@ namespace ignite
                 LOG_ASSERT(payload->DataSize == sizeof(Ref<Mesh>), "Wrong mesh item");
 
                 Ref<Mesh> mesh = *static_cast<Ref<Mesh> *>(payload->Data);
-                mesh->attachedNode = node.name;
+                // mesh->nodeID = node.id;
             }
             ImGui::EndDragDropTarget();
         }
@@ -906,6 +898,32 @@ namespace ignite
                 TraverseNodes(model, model->nodes[child], ++traverseIndex);
             }
 
+            for (i32 meshIndex : node.meshIndices)
+            {
+                Ref<Mesh> mesh = model->meshes[meshIndex];
+
+                bool opened = ImGui::TreeNodeEx(mesh->name.c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", mesh->name.c_str());
+
+                if (ImGui::BeginDragDropSource())
+                {
+                    ImGui::SetDragDropPayload("MESH_ITEM", &mesh, sizeof(Ref<Mesh>));
+                    ImGui::EndDragDropSource();
+                }
+
+                if (opened)
+                {
+                    if (ImGui::TreeNodeEx("Material", ImGuiTreeNodeFlags_Leaf, "Material"))
+                    {
+                        if (ImGui::IsItemClicked())
+                        {
+                            m_SelectedMaterial = &mesh->material.data;
+                        }
+
+                        ImGui::TreePop();
+                    }
+                    ImGui::TreePop();
+                }
+            }
             ImGui::TreePop();
         }
     }

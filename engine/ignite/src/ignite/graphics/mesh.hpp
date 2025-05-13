@@ -87,23 +87,12 @@ namespace ignite {
         std::unordered_map<std::string, i32> nameToJointMap; // for fast lookup by name
     };
 
-    enum class NodeType
-    {
-        Empty,
-        Mesh,
-        Bone,
-        Skeleton
-    };
-
     struct NodeInfo
     {
+        i32 parentID = -1;
         std::string name;
-        
-        NodeType type;
-
         glm::mat4 localTransform;
         glm::mat4 worldTransform;
-        i32 parentID = -1;
         std::vector<i32> childrenIDs;
         std::vector<i32> meshIndices;  // Meshes owned by this node
     };
@@ -117,8 +106,6 @@ namespace ignite {
     class Mesh
     {
     public:
-        Mesh(i32 id = 0);
-
         std::vector<VertexMesh> vertices;
         std::vector<uint32_t> indices;
         Material material;
@@ -138,8 +125,7 @@ namespace ignite {
         glm::mat4 localTransform;
         glm::mat4 worldTransform;
 
-        i32 nodeID = -1;
-        std::string attachedNode;     // ID of the bone this mesh is attached to
+        i32 nodeID = -1; // ID of the bone this mesh is attached to
 
         void CreateBuffers();
     };
@@ -165,10 +151,11 @@ namespace ignite {
         void WriteBuffer(nvrhi::CommandListHandle commandList);
         void OnUpdate(f32 deltaTime);
         void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline);
-
         const std::filesystem::path &GetFilepath() const { return m_Filepath; }
-
         static Ref<Model> Create(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo);
+
+        Ref<SkeletalAnimation> GetActiveAnimation();
+        bool IsPlayingAnimation();
 
         glm::mat4 transform = glm::mat4(1.0f);
         std::vector<Ref<SkeletalAnimation>> animations;
@@ -176,6 +163,7 @@ namespace ignite {
         std::vector<glm::mat4> boneTransforms;
         Skeleton skeleton;
         std::vector<Ref<Mesh>> meshes;
+        i32 activeAnimIndex = -1;
 
     private:
         ModelCreateInfo m_CreateInfo;
@@ -186,8 +174,7 @@ namespace ignite {
     class ModelLoader
     {
     public:
-        static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath,
-            std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID);
+        static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID);
         static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, const Skeleton &skeleton);
         static void ProcessBodeWeights(aiMesh *mesh, std::vector<VertexMesh> &vertices, const Skeleton &skeleton);
         static void ExtractSkeleton(const aiScene *scene, Skeleton &skeleton);

@@ -38,6 +38,7 @@ namespace ignite {
         float duration = 0;
         float ticksPerSeconds = 1.0f;
         float timeInSeconds = 0.0f;
+        bool isPlaying = false;
 
         std::unordered_map<std::string, AnimationChannel> channels;
     };

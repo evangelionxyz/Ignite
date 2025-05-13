@@ -20,10 +20,6 @@ namespace ignite {
     static std::unordered_map<std::string, nvrhi::TextureHandle> textureCache;
 
     // Mesh class
-    Mesh::Mesh(i32 id)
-    {
-    }
-
     void Mesh::CreateBuffers()
     {
         nvrhi::IDevice *device = Application::GetDeviceManager()->GetDevice();
@@ -75,7 +71,7 @@ namespace ignite {
         for (size_t i = 0; i < meshes.size(); ++i)
         {
             // create meshes
-            meshes[i] = CreateRef<Mesh>(i); // i = mesh ID
+            meshes[i] = CreateRef<Mesh>(); // i = mesh ID
         }
 
         if (scene->HasAnimations())
@@ -178,19 +174,16 @@ namespace ignite {
 
             ObjectBuffer modelPushConstant;
 
-            glm::mat4 meshTransform;
-            if (!mesh->attachedNode.empty())
+            glm::mat4 meshTransform = mesh->worldTransform;
+
+            if (activeAnimIndex >= 0 && animations[activeAnimIndex]->isPlaying && mesh->nodeID != -1)
             {
-                auto it = skeleton.nameToJointMap.find(mesh->attachedNode);
+                auto it = skeleton.nameToJointMap.find(nodes[mesh->nodeID].name);
                 if (it != skeleton.nameToJointMap.end())
                 {
                     Joint &joint = skeleton.joints[it->second];
                     meshTransform = joint.globalTransform * joint.inverseBindPose * mesh->worldTransform;
                 }
-            }
-            else
-            {
-                meshTransform = mesh->worldTransform;
             }
 
             modelPushConstant.transformation = transform * meshTransform;
@@ -237,6 +230,22 @@ namespace ignite {
         return CreateRef<Model>(filepath, createInfo);
     }
 
+    Ref<SkeletalAnimation> Model::GetActiveAnimation()
+    {
+        if (animations.empty() || activeAnimIndex == -1 || activeAnimIndex >= animations.size())
+            return nullptr;
+        return animations[activeAnimIndex];
+    }
+
+    bool Model::IsPlayingAnimation()
+    {
+        const Ref<SkeletalAnimation> &anim = GetActiveAnimation();
+        if (!anim)
+            return false;
+
+        return anim->isPlaying;
+    }
+
     // Mesh loader
 
     void ModelLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID)
@@ -246,10 +255,9 @@ namespace ignite {
         nodeInfo.localTransform = Math::AssimpToGlmMatrix(node->mTransformation);
         nodeInfo.parentID = parentNodeID;
         nodeInfo.name = node->mName.C_Str();
-
         i32 currentNodeID = nodes.size();
-        nodes.push_back(nodeInfo);
 
+        nodes.push_back(nodeInfo);
 
         // If parent exists, add this node as a child
         if (parentNodeID != -1)
@@ -262,8 +270,16 @@ namespace ignite {
             i32 meshIndex = node->mMeshes[i];
             aiMesh *mesh = scene->mMeshes[meshIndex];
 
-            // Link mesh to the node that owns it
-            meshes[meshIndex]->nodeID = currentNodeID;
+            if (nodeInfo.parentID != -1)
+            {
+                // Go up 
+                NodeInfo parentNode = nodes[nodeInfo.parentID];
+                auto it = skeleton.nameToJointMap.find(parentNode.name);
+                if (it != skeleton.nameToJointMap.end())
+                {
+                    meshes[meshIndex]->nodeID = nodeInfo.parentID;
+                }
+            }
 
             // Store mesh index in the node
             nodes[currentNodeID].meshIndices.push_back(meshIndex);
