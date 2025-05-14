@@ -3,7 +3,6 @@
 #include <nvrhi/nvrhi.h>
 #include "ignite/core/layer.hpp"
 #include "ignite/ignite.hpp"
-#include "ignite/graphics/mesh.hpp"
 #include "ignite/graphics/graphics_pipeline.hpp"
 #include "ignite/graphics/environment.hpp"
 #include "ignite/graphics/lighting.hpp"
@@ -20,6 +19,7 @@ namespace ignite
     class ShaderFactory;
     class DeviceManager;
     class ScenePanel;
+    class Model;
 
     struct DebugRenderData
     {

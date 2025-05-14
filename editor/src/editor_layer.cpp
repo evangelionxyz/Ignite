@@ -1,22 +1,22 @@
 #include "editor_layer.hpp"
 #include "panels/scene_panel.hpp"
-#include "ignite/graphics/renderer_2d.hpp"
-#include "ignite/graphics/mesh_factory.hpp"
 #include "ignite/core/platform_utils.hpp"
-#include <glm/glm.hpp>
-#include <nvrhi/utils.h>
 #include "ignite/core/command.hpp"
 #include "ignite/scene/camera.hpp"
 #include "ignite/graphics/texture.hpp"
-
 #include "ignite/animation/animation_system.hpp"
+#include "ignite/graphics/renderer_2d.hpp"
+#include "ignite/graphics/mesh_factory.hpp"
+#include "ignite/imgui/gui_function.hpp"
+#include "ignite/graphics/model.hpp"
+
+#include <glm/glm.hpp>
+#include <nvrhi/utils.h>
 
 #ifdef _WIN32
 #   include <dwmapi.h>
 #   include <ShellScalingApi.h>
 #endif
-
-#include "ignite/imgui/gui_function.hpp"
 
 namespace ignite
 {

@@ -1,7 +1,7 @@
 #include "animation_system.hpp"
 
 #include "ignite/core/logger.hpp"
-#include "ignite/graphics/mesh.hpp"
+#include "ignite/graphics/model.hpp"
 
 namespace ignite {
 
