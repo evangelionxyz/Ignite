@@ -9,6 +9,8 @@
 #include "ignite/graphics/mesh_factory.hpp"
 #include "ignite/imgui/gui_function.hpp"
 #include "ignite/graphics/model.hpp"
+#include "ignite/asset/asset.hpp"
+#include "ignite/asset/asset_worker.hpp"
 
 #include <glm/glm.hpp>
 #include <nvrhi/utils.h>
@@ -116,35 +118,18 @@ namespace ignite
     {
         Layer::OnUpdate(deltaTime);
 
+        AssetWorker::SyncMainThread(m_CommandList, m_Device);
+
         float timeInSeconds = static_cast<float>(glfwGetTime());
-
-        for (auto it = m_PendingLoadModels.begin(); it != m_PendingLoadModels.end(); )
-        {
-            std::future<Ref<Model>> &future = *it;
-            if (future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
-            {
-                Ref<Model> model = future.get();
-
-                m_CommandList->open();
-                model->WriteBuffer(m_CommandList);
-                m_CommandList->close();
-                m_Device->executeCommandList(m_CommandList);
-
-                m_Models.push_back(model);
-
-                it = m_PendingLoadModels.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
 
         // multi select entity
         m_Data.multiSelect = Input::IsKeyPressed(Key::LeftShift);
 
         for (auto &model : m_Models)
         {
+            if (!model)
+                continue;
+
             AnimationSystem::UpdateAnimation(model, timeInSeconds);
             // model->OnUpdate(deltaTime);
         }
@@ -292,6 +277,9 @@ namespace ignite
         // render objects
         for (auto &model : m_Models)
         {
+            if (!model)
+                continue;
+
             model->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline);
         }
 
@@ -445,13 +433,32 @@ namespace ignite
                 std::string filepath = FileDialogs::OpenFile("GLTF/GLB Files (*.gltf;*.glb)\0*.gltf;*.glb\0All Files (*.*)\0*.*\0");
                 if (!filepath.empty())
                 {
-                    LoadModel(filepath);
+                    AssetTask<Model> task(&m_Models.emplace_back(), [this](const std::string &filepath)
+                    {
+                        ModelCreateInfo modelCI;
+                        modelCI.device = m_Device;
+                        modelCI.cameraBuffer = m_Environment->GetCameraBuffer();
+                        modelCI.lightBuffer = m_Environment->GetDirLightBuffer();
+                        modelCI.envBuffer = m_Environment->GetParamsBuffer();
+                        modelCI.debugBuffer = m_DebugRenderBuffer;
+
+                        Ref<Model> model = Model::Create(filepath, modelCI);
+                        model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
+                        model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
+
+                        return model;
+                    }, filepath);
+
+                    AssetWorker::Submit(task);
                 }
             }
 
             int index = 0;
             for (auto it = m_Models.begin(); it != m_Models.end(); )
             {
+                if ((*it) == nullptr)
+                    break;
+
                 auto &model = *it;
                 bool requestToDelete = false;
 
@@ -845,6 +852,9 @@ namespace ignite
 
                     for (auto &model : m_Models)
                     {
+                        if (!model)
+                            continue;
+
                         model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
                         model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
                     }
@@ -937,30 +947,6 @@ namespace ignite
             }
             ImGui::TreePop();
         }
-    }
-
-    void EditorLayer::LoadModel(const std::string &filepath, int index)
-    {
-        if (index >= 0 && index < m_Models.size() - 1)
-            return;
-
-        std::future<Ref<Model>> modelFuture = std::async(std::launch::async, [this, filepath, index]()
-        {
-            ModelCreateInfo modelCI;
-            modelCI.device = m_Device;
-            modelCI.cameraBuffer = m_Environment->GetCameraBuffer();
-            modelCI.lightBuffer = m_Environment->GetDirLightBuffer();
-            modelCI.envBuffer = m_Environment->GetParamsBuffer();
-            modelCI.debugBuffer = m_DebugRenderBuffer;
-
-            Ref<Model> model = Model::Create(filepath, modelCI);
-            model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
-            model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
-
-            return model;
-        });
-        
-        m_PendingLoadModels.push_back(std::move(modelFuture));
     }
 
 }

@@ -78,9 +78,6 @@ namespace ignite
 
         void TraverseNodes(Model *model, const NodeInfo &node, int traverseIndex = 0);
 
-        // temporary
-        void LoadModel(const std::string &filepath, int index = -1);
-
         Ref<ScenePanel> m_ScenePanel;
         Ref<Scene> m_ActiveScene;
         Ref<Scene> m_EditorScene;

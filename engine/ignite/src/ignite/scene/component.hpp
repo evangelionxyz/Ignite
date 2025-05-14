@@ -13,7 +13,7 @@ namespace ignite
     class Texture;
     class Mesh;
     class Model;
-    class Material;
+    struct Material;
 
     static std::unordered_map<std::string, CompType> s_ComponentsName =
     {

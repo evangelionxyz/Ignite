@@ -4,6 +4,7 @@
 
 #include <string>
 #include <filesystem>
+#include <nvrhi/nvrhi.h>
 
 namespace ignite {
 
@@ -12,7 +13,7 @@ namespace ignite {
         Invalid,
         Texture,
         Audio,
-        Mesh,
+        Model,
         Scene
     };
 
@@ -35,6 +36,7 @@ namespace ignite {
         }
 
         virtual AssetType GetType() { return AssetType::Invalid; };
+        virtual void WriteBuffer(nvrhi::CommandListHandle commandList) { };
 
         void SetDirtyFlag(bool dirty) 
         { 

@@ -2,8 +2,11 @@
 
 #include "mesh.hpp"
 
+#include "ignite/asset/asset.hpp"
+
 namespace ignite {
-    class Model
+
+    class Model : public Asset
     {
     public:
         Model() = default;
@@ -12,7 +15,7 @@ namespace ignite {
         void SetEnvironmentTexture(nvrhi::TextureHandle envTexture);
         void CreateBindingSet(nvrhi::BindingLayoutHandle bindingLayout);
 
-        void WriteBuffer(nvrhi::CommandListHandle commandList);
+        void WriteBuffer(nvrhi::CommandListHandle commandList) override;
         void OnUpdate(f32 deltaTime);
         void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline);
         const std::filesystem::path &GetFilepath() const { return m_Filepath; }
@@ -28,6 +31,9 @@ namespace ignite {
         Skeleton skeleton;
         std::vector<Ref<Mesh>> meshes;
         i32 activeAnimIndex = -1;
+
+        static AssetType StaticType() { return AssetType::Model; }
+        virtual AssetType GetType() override { return StaticType(); };
 
     private:
         ModelCreateInfo m_CreateInfo;

@@ -3,8 +3,11 @@
 #include "ignite/graphics/shader_factory.hpp"
 #include "input/app_event.hpp"
 #include "ignite/imgui/imgui_layer.hpp"
-#include "nvrhi/utils.h"
 #include "ignite/graphics/renderer.hpp"
+
+#include "ignite/asset/asset_worker.hpp"
+
+#include <nvrhi/utils.h>
 
 namespace ignite
 {
