@@ -404,7 +404,7 @@ namespace ignite::vfs
         std::stringstream regex;
         AppendPatternToReges(normalizedPathStr, regex);
 
-        if (stringutils::ends_with(normalizedPathStr, "/") && !normalizedPath.empty())
+        if (stringutils::EndsWith(normalizedPathStr, "/") && !normalizedPath.empty())
             regex << '/';
         regex << "[^/]+";
 

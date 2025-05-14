@@ -12,7 +12,6 @@
 #include "ignite/graphics/mesh.hpp"
 #include "entt/entt.hpp"
 
-
 #include <set>
 #include <unordered_map>
 #include <string>
@@ -20,22 +19,6 @@
 
 namespace ignite
 {
-    static std::unordered_map<std::string, CompType> componentsName = 
-    {
-        { "Rigidbody2D", CompType_Rigidbody2D },
-        { "Sprite2D", CompType_Sprite2D},
-        { "BoxCollider2D", CompType_BoxCollider2D },
-        { "Mesh", CompType_Mesh },
-        { "Model", CompType_Model },
-    };
-
-    static std::string ToLower(const std::string &str)
-    {
-        std::string result = str;
-        std::transform(result.begin(), result.end(), result.begin(), ::tolower);
-        return result;
-    }
-
     UUID ScenePanel::m_TrackingSelectedEntity = UUID(0);
 
     ScenePanel::ScenePanel(const char *windowTitle, EditorLayer *editor)
@@ -304,7 +287,6 @@ namespace ignite
     {
         ImGui::Begin("Inspector");
 
-
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
 
         if (m_SelectedEntity.IsValid())
@@ -321,11 +303,7 @@ namespace ignite
             }
 
             ImGui::SameLine();
-            if (ImGui::Button("Add"))
-            {
-                ImGui::OpenPopupOnItemClick("add_component_context");
-            }
-
+    
             // transform component
             RenderComponent<Transform>("Transform", m_SelectedEntity, [this]()
             {
@@ -491,27 +469,18 @@ namespace ignite
 
                     break;
                 }
-                case CompType_Model:
+                case CompType_SkinnedMeshRenderer:
                 {
-                    RenderComponent<ModelComponent>("Model", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
+                    RenderComponent<SkinnedMeshRenderer>("Skinned Mesh Renderer", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
                     {
-                        ModelComponent *c = comp->As<ModelComponent>();
-
-                        if (ImGui::Button("Add GLTF/GLB"))
-                        {
-                            std::string filepath = FileDialogs::OpenFile("GLTF/GLB Files (*.gltf;*.glb)\0*.gltf;*.glb\0All Files (*.*)\0*.*\0");
-                            if (!filepath.empty())
-                            {
-                                // c->model = Model::Create(filepath);
-                            }
-                        }
+                        SkinnedMeshRenderer *c = comp->As<SkinnedMeshRenderer>();
                     });
                     break;
                 }
                 }
             }
 
-            if (ImGui::Button("Add Component", { ImGui::GetContentRegionAvail().x, 20.0f }))
+            if (ImGui::Button("Add Component", { ImGui::GetContentRegionAvail().x, 25.0f }))
             {
                 ImGui::OpenPopupOnItemClick("add_component_context");
             }
@@ -523,15 +492,16 @@ namespace ignite
                 static std::string compNameResult;
                 static std::set<std::pair<std::string, CompType>> filteredCompName;
 
-                ImGui::InputTextWithHint("##component_name", "Component", buffer, sizeof(buffer) + 1, ImGuiInputTextFlags_EscapeClearsAll);
+                ImGui::InputTextWithHint("##component_name", "Component", buffer, sizeof(buffer) + 1, ImGuiInputTextFlags_EscapeClearsAll | ImGuiInputTextFlags_NoHorizontalScroll);
                 
                 compNameResult = std::string(buffer);
+
                 filteredCompName.clear();
 
                 if (!compNameResult.empty())
                 {
-                    std::string search = ToLower(compNameResult);
-                    for (const auto& [strName, type] : componentsName)
+                    std::string search = stringutils::ToLower(compNameResult);
+                    for (const auto& [strName, type] : s_ComponentsName)
                     {
                         bool isExists = false;
                         for (IComponent *comp : comps)
@@ -544,7 +514,8 @@ namespace ignite
                         }
                         if (isExists)
                             continue;
-                        std::string nameLower = ToLower(strName);
+
+                        std::string nameLower = stringutils::ToLower(strName);
                         if (nameLower.find(search) != std::string::npos)
                         {
                             filteredCompName.insert({strName, type});
@@ -571,13 +542,22 @@ namespace ignite
                             entity.AddComponent<BoxCollider2D>();
                             break;
                         }
+                        case CompType_SkinnedMeshRenderer:
+                        {
+                            entity.AddComponent<SkinnedMeshRenderer>();
+                            break;
+                        }
+                        case CompType_StaticMeshRenderer:
+                        {
+                            entity.AddComponent<StaticMeshRenderer>();
+                            break;
+                        }
                     }
                 };
-                
 
                 if (compNameResult.empty())
                 {
-                    for (const auto& [strName, type] : componentsName)
+                    for (const auto& [strName, type] : s_ComponentsName)
                     {
                         bool isExists = false;
                         for (IComponent *comp : comps)
@@ -589,7 +569,9 @@ namespace ignite
                             }
                         }
                         if (isExists)
+                        {
                             continue;
+                        }
 
                         if (ImGui::Selectable(strName.c_str()))
                         {
@@ -623,6 +605,7 @@ namespace ignite
         const ImGuiWindow *window = ImGui::GetCurrentWindow();
         m_ViewportData.isFocused = ImGui::IsWindowFocused();
         m_ViewportData.isHovered = ImGui::IsWindowHovered();
+
         m_ViewportData.width = window->Size.x;
         m_ViewportData.height = window->Size.y;
 

@@ -19,12 +19,6 @@ namespace ignite {
     class Environment;
     class GraphicsPipeline;
 
-    enum class MeshType
-    {
-        Static,
-        Skeletal
-    };
-
     struct MaterialData
     {
         glm::vec4 baseColor;
@@ -68,7 +62,7 @@ namespace ignite {
         bool _reflective = false;
         bool _shouldWriteTexture = false;
 
-        friend class ModelLoader;
+        friend class MeshLoader;
     };
 
     struct Joint
@@ -97,12 +91,6 @@ namespace ignite {
         std::vector<i32> meshIndices;  // Meshes owned by this node
     };
 
-    struct MeshCreateInfo
-    {
-        MeshType type = MeshType::Static;
-        nvrhi::IDevice *device = nullptr;
-    };
-
     class Mesh
     {
     public:
@@ -127,6 +115,7 @@ namespace ignite {
 
         i32 nodeID = -1; // ID of the bone this mesh is attached to
 
+        void CreateConstantBuffers(nvrhi::IDevice *device);
         void CreateBuffers();
     };
     
@@ -171,9 +160,10 @@ namespace ignite {
         std::filesystem::path m_Filepath;
     };
 
-    class ModelLoader
+    class MeshLoader
     {
     public:
+        static const aiScene *ReadFile(const std::string &filepath);
         static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID);
         static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, const Skeleton &skeleton);
         static void ProcessBodeWeights(aiMesh *mesh, std::vector<VertexMesh> &vertices, const Skeleton &skeleton);
@@ -184,5 +174,6 @@ namespace ignite {
         static void LoadAnimation(const aiScene *scene, std::vector<Ref<SkeletalAnimation>> &animations);
         static void LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type);
         static void CalculateWorldTransforms(std::vector<NodeInfo> &nodes, std::vector<Ref<Mesh>> &meshes);
+        static void ClearTextureCache();
     };
 }

@@ -19,6 +19,27 @@ namespace ignite {
 
     static std::unordered_map<std::string, nvrhi::TextureHandle> textureCache;
 
+    void Mesh::CreateConstantBuffers(nvrhi::IDevice *device)
+    {
+        // create buffers
+        auto constantBufferDesc = nvrhi::BufferDesc()
+            .setIsConstantBuffer(true)
+            .setIsVolatile(true)
+            .setMaxVersions(16)
+            .setInitialState(nvrhi::ResourceStates::ConstantBuffer);
+
+        // create per mesh constant buffers
+        constantBufferDesc.setDebugName("Mesh constant buffer");
+        constantBufferDesc.setByteSize(sizeof(ObjectBuffer));
+        objectBuffer = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(objectBuffer, "[Model] Failed to create object constant buffer");
+
+        constantBufferDesc.setDebugName("Material constant buffer");
+        constantBufferDesc.setByteSize(sizeof(MaterialData));
+        materialBuffer = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(materialBuffer, "[Model] Failed to create material constant buffer");
+    }
+
     // Mesh class
     void Mesh::CreateBuffers()
     {
@@ -51,64 +72,36 @@ namespace ignite {
     Model::Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo)
         : m_Filepath(filepath), m_CreateInfo(createInfo)
     {
-        LOG_ASSERT(std::filesystem::exists(filepath), "[Model] Filepath does not exists!");
-
-        static Assimp::Importer importer;
-
-        const aiScene *scene = importer.ReadFile(filepath.generic_string(), ASSIMP_IMPORTER_FLAGS);
-
-        LOG_ASSERT(scene == nullptr || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || scene->mRootNode,
-            "[Model] Failed to load {}: {}", filepath, importer.GetErrorString());
-
+        const aiScene *scene = MeshLoader::ReadFile(filepath.generic_string());
         if (scene == nullptr)
             return;
 
-        // load animation here
-
-        // count vertices and indices
-        meshes.resize(scene->mNumMeshes);
-
-        for (size_t i = 0; i < meshes.size(); ++i)
-        {
-            // create meshes
-            meshes[i] = CreateRef<Mesh>(); // i = mesh ID
-        }
-
         if (scene->HasAnimations())
         {
-            ModelLoader::LoadAnimation(scene, animations);
+            MeshLoader::LoadAnimation(scene, animations);
 
             // Process Skeleton
-            ModelLoader::ExtractSkeleton(scene, skeleton);
-            ModelLoader::SortJointsHierchically(skeleton);
+            MeshLoader::ExtractSkeleton(scene, skeleton);
+            MeshLoader::SortJointsHierchically(skeleton);
         }
 
-        ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), meshes, nodes, skeleton, -1);
-        ModelLoader::CalculateWorldTransforms(nodes, meshes);
+        meshes.resize(scene->mNumMeshes);
+        for (size_t i = 0; i < meshes.size(); ++i)
+        {
+            meshes[i] = CreateRef<Mesh>();
+        }
 
-        textureCache.clear();
+        MeshLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), meshes, nodes, skeleton, -1);
+        MeshLoader::CalculateWorldTransforms(nodes, meshes);
 
         // create constant buffers
         for (auto &mesh : meshes)
         {
             // create buffers
-            auto constantBufferDesc = nvrhi::BufferDesc()
-                .setIsConstantBuffer(true)
-                .setIsVolatile(true)
-                .setMaxVersions(16)
-                .setInitialState(nvrhi::ResourceStates::ConstantBuffer);
-
-            // create per mesh constant buffers
-            constantBufferDesc.setDebugName("Mesh constant buffer");
-            constantBufferDesc.setByteSize(sizeof(ObjectBuffer));
-            mesh->objectBuffer = m_CreateInfo.device->createBuffer(constantBufferDesc);
-            LOG_ASSERT(mesh->objectBuffer, "[Model] Failed to create object constant buffer");
-
-            constantBufferDesc.setDebugName("Material constant buffer");
-            constantBufferDesc.setByteSize(sizeof(MaterialData));
-            mesh->materialBuffer = m_CreateInfo.device->createBuffer(constantBufferDesc);
-            LOG_ASSERT(mesh->materialBuffer, "[Model] Failed to create material constant buffer");
+            mesh->CreateConstantBuffers(m_CreateInfo.device);
         }
+
+        MeshLoader::ClearTextureCache();
     }
 
     void Model::SetEnvironmentTexture(nvrhi::TextureHandle envTexture)
@@ -188,7 +181,7 @@ namespace ignite {
 
             modelPushConstant.transformation = transform * meshTransform;
 
-            size_t numBones = std::min(boneTransforms.size(), static_cast<size_t>(MAX_BONES));
+            const size_t numBones = std::min(boneTransforms.size(), static_cast<size_t>(MAX_BONES));
             for (size_t i = 0; i < numBones; ++i)
             {
                 modelPushConstant.boneTransforms[i] = boneTransforms[i];
@@ -246,9 +239,22 @@ namespace ignite {
         return anim->isPlaying;
     }
 
+    const aiScene *MeshLoader::ReadFile(const std::string &filepath)
+    {
+        LOG_ASSERT(std::filesystem::exists(filepath), "[Mesh Loader] File does not exists!");
+
+        static Assimp::Importer importer;
+        const aiScene *scene = importer.ReadFile(filepath, ASSIMP_IMPORTER_FLAGS);
+
+        LOG_ASSERT(scene == nullptr || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || scene->mRootNode,
+            "[Model] Failed to load {}: {}", filepath, importer.GetErrorString());
+        
+        return scene;
+    }
+
     // Mesh loader
 
-    void ModelLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID)
+    void MeshLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID)
     {
         // Create a node entry and get its index
         NodeInfo nodeInfo;
@@ -294,7 +300,7 @@ namespace ignite {
         }
     }
     
-    void ModelLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, const Skeleton &skeleton)
+    void MeshLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, const Skeleton &skeleton)
     {
         meshes[meshIndex]->name = mesh->mName.C_Str();
 
@@ -352,7 +358,7 @@ namespace ignite {
         meshes[meshIndex]->CreateBuffers();
     }
 
-    void ModelLoader::ProcessBodeWeights(aiMesh *mesh, std::vector<VertexMesh> &vertices, const Skeleton &skeleton)
+    void MeshLoader::ProcessBodeWeights(aiMesh *mesh, std::vector<VertexMesh> &vertices, const Skeleton &skeleton)
     {
         for (uint32_t boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex)
         {
@@ -407,7 +413,7 @@ namespace ignite {
         }
     }
 
-    void ModelLoader::ExtractSkeleton(const aiScene *scene, Skeleton &skeleton)
+    void MeshLoader::ExtractSkeleton(const aiScene *scene, Skeleton &skeleton)
     {
         // count the number of bones
         std::unordered_set<std::string> uniqueBoneNames;
@@ -440,7 +446,7 @@ namespace ignite {
         
     }
 
-    void ModelLoader::ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Skeleton &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices)
+    void MeshLoader::ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Skeleton &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices)
     {
         std::string nodeName = node->mName.C_Str();
         bool isJoint = inverseBindMatrices.contains(nodeName);
@@ -470,7 +476,7 @@ namespace ignite {
         }
     }
 
-    void ModelLoader::SortJointsHierchically(Skeleton &skeleton)
+    void MeshLoader::SortJointsHierchically(Skeleton &skeleton)
     {
         std::vector<Joint> sortedJoints;
         sortedJoints.reserve(skeleton.joints.size());
@@ -531,7 +537,7 @@ namespace ignite {
 
     }
 
-    void ModelLoader::LoadMaterial(const aiScene *scene, aiMaterial *material, const std::string &filepath, Ref<Mesh> &mesh)
+    void MeshLoader::LoadMaterial(const aiScene *scene, aiMaterial *material, const std::string &filepath, Ref<Mesh> &mesh)
     {
         aiColor4D base_color(1.0f, 1.0f, 1.0f, 1.0f);
         aiColor4D diffuse_color(1.0f, 1.0f, 1.0f, 1.0f);
@@ -561,7 +567,7 @@ namespace ignite {
         mesh->material._reflective = reflectivity > 0.0f;
     }
 
-    void ModelLoader::LoadAnimation(const aiScene *scene, std::vector<Ref<SkeletalAnimation>> &animations)
+    void MeshLoader::LoadAnimation(const aiScene *scene, std::vector<Ref<SkeletalAnimation>> &animations)
     {
         animations.resize(scene->mNumAnimations);
 
@@ -572,7 +578,7 @@ namespace ignite {
         }
     }
 
-    void ModelLoader::LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type)
+    void MeshLoader::LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type)
     {
         if (const i32 texCount = material->GetTextureCount(type))
         {
@@ -671,7 +677,7 @@ namespace ignite {
 
     }
 
-    void ModelLoader::CalculateWorldTransforms(std::vector<NodeInfo> &nodes, std::vector<Ref<Mesh>> &meshes)
+    void MeshLoader::CalculateWorldTransforms(std::vector<NodeInfo> &nodes, std::vector<Ref<Mesh>> &meshes)
     {
         // First pass: calculate world transforms for nodes
         for (size_t i = 0; i < nodes.size(); i++)
@@ -695,4 +701,10 @@ namespace ignite {
             }
         }
     }
+
+    void MeshLoader::ClearTextureCache()
+    {
+        textureCache.clear();
+    }
+
 }

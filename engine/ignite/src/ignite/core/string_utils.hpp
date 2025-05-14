@@ -10,10 +10,21 @@
 
 namespace ignite::stringutils
 {
-inline bool ends_with(std::string_view const &value, std::string_view const &ending)
+inline bool EndsWith(std::string_view const &value, std::string_view const &ending)
 {
     if (ending.size() > value.size())
+    {
         return false;
+    }
+
     return std::equal(ending.rbegin(), ending.rend(), value.rbegin(), value.rend());
 }
+
+static std::string ToLower(const std::string &str)
+{
+    std::string result = str;
+    std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+    return result;
+}
+
 }
