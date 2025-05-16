@@ -8,6 +8,8 @@
 
 #include "ignite/core/types.hpp"
 
+#include <list>
+
 namespace ignite
 {
     class Window
@@ -38,7 +40,9 @@ namespace ignite
         void SetCallbacks() const;
         DeviceManager *m_DeviceManager;
         std::string m_WindowTitle;
-
+        
         std::function<void(Event&)> m_Callback;
+
+        friend class JoystickManager;
     };
 }

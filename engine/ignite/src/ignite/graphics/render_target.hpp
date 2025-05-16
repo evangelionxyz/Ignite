@@ -2,10 +2,10 @@
 
 #include "ignite/core/types.hpp"
 
+#include "shader.hpp"
+
 #include <nvrhi/nvrhi.h>
 #include <glm/glm.hpp>
-
-#include "shader.hpp"
 
 namespace ignite {
 

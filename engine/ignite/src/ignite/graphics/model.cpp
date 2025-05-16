@@ -10,9 +10,11 @@ namespace ignite {
     Model::Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo)
         : m_Filepath(filepath), m_CreateInfo(createInfo)
     {
-        const aiScene *scene = MeshLoader::ReadFile(filepath.generic_string());
-        if (scene == nullptr)
-            return;
+        LOG_ASSERT(std::filesystem::exists(filepath), "[Mesh Loader] File does not exists!");
+        const aiScene *scene = m_Importer.ReadFile(filepath.generic_string(), ASSIMP_IMPORTER_FLAGS);
+
+        LOG_ASSERT(scene == nullptr || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || scene->mRootNode,
+            "[Model] Failed to load {}: {}", filepath, m_Importer.GetErrorString());
 
         if (scene->HasAnimations())
         {

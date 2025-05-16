@@ -13,8 +13,6 @@
 #include <queue>
 #include <stb_image.h>
 
-#define ASSIMP_IMPORTER_FLAGS (aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices)
-
 namespace ignite {
 
     static std::unordered_map<std::string, nvrhi::TextureHandle> textureCache;
@@ -69,19 +67,6 @@ namespace ignite {
     }
 
     // Mesh loader
-    const aiScene *MeshLoader::ReadFile(const std::string &filepath)
-    {
-        LOG_ASSERT(std::filesystem::exists(filepath), "[Mesh Loader] File does not exists!");
-
-        static Assimp::Importer importer;
-        const aiScene *scene = importer.ReadFile(filepath, ASSIMP_IMPORTER_FLAGS);
-
-        LOG_ASSERT(scene == nullptr || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || scene->mRootNode,
-            "[Model] Failed to load {}: {}", filepath, importer.GetErrorString());
-
-        return scene;
-    }
-
     void MeshLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID)
     {
         // Create a node entry and get its index

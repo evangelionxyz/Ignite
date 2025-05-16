@@ -1,12 +1,14 @@
 #pragma once
 
 #include "ipanel.hpp"
+
 #include "ignite/graphics/render_target.hpp"
 #include "ignite/scene/entity.hpp"
 #include "ignite/core/uuid.hpp"
+#include "ignite/core/base.hpp"
+#include "ignite/core/types.hpp"
+
 #include <string>
-#include <ignite/core/base.hpp>
-#include <ignite/core/types.hpp>
 #include <glm/fwd.hpp>
 #include <nvrhi/nvrhi.h>
 
@@ -19,6 +21,7 @@ namespace ignite
     class Event;
     class MouseScrolledEvent;
     class MouseMovedEvent;
+    class JoystickConnectionEvent;
     class EditorLayer;
 
     class ScenePanel final : public IPanel
@@ -38,6 +41,7 @@ namespace ignite
         void OnEvent(Event &event);
         bool OnMouseScrolledEvent(MouseScrolledEvent &event);
         bool OnMouseMovedEvent(MouseMovedEvent &event);
+        bool OnJoystickConnectionEvent(JoystickConnectionEvent &event);
 
         void SetGizmoOperation(ImGuizmo::OPERATION op);
         void SetGizmoMode(ImGuizmo::MODE mode);

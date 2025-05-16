@@ -39,5 +39,8 @@ namespace ignite {
         ModelCreateInfo m_CreateInfo;
         nvrhi::TextureHandle m_EnvironmentTexture;
         std::filesystem::path m_Filepath;
+
+        Assimp::Importer m_Importer;
+
     };
 }

@@ -156,7 +156,6 @@ namespace ignite
         style.TabCloseButtonMinWidthUnselected = 1.0f;
         style.DockingSeparatorSize = 1.0f;
 
-
         style.WindowMenuButtonPosition = ImGuiDir_Right;
         style.ColorButtonPosition = ImGuiDir_Right;
         style.AntiAliasedFill = true;
@@ -165,9 +164,9 @@ namespace ignite
 
         ImGuiIO &io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        // io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
         io.ConfigWindowsMoveFromTitleBarOnly = true;
         io.ConfigViewportsNoDecoration = false;

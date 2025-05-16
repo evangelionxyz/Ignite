@@ -5,6 +5,7 @@
 #include "ignite/core/input/event.hpp"
 #include "ignite/core/input/key_event.hpp"
 #include "ignite/core/input/mouse_event.hpp"
+#include "ignite/core/input/joystick_event.hpp"
 #include "ignite/graphics/texture.hpp"
 #include "ignite/scene/icomponent.hpp"
 #include "ignite/core/platform_utils.hpp"
@@ -776,6 +777,7 @@ namespace ignite
         EventDispatcher dispatcher(event);
         dispatcher.Dispatch<MouseScrolledEvent>(BIND_CLASS_EVENT_FN(ScenePanel::OnMouseScrolledEvent));
         dispatcher.Dispatch<MouseMovedEvent>(BIND_CLASS_EVENT_FN(ScenePanel::OnMouseMovedEvent));
+        dispatcher.Dispatch<JoystickConnectionEvent>(BIND_CLASS_EVENT_FN(ScenePanel::OnJoystickConnectionEvent));
     }
 
     bool ScenePanel::OnMouseScrolledEvent(MouseScrolledEvent &event)
@@ -841,6 +843,13 @@ namespace ignite
         return false;
     }
 
+    bool ScenePanel::OnJoystickConnectionEvent(JoystickConnectionEvent &event)
+    {
+        LOG_INFO(event.ToString());
+
+        return false;
+    }
+
     void ScenePanel::SetGizmoOperation(ImGuizmo::OPERATION op)
     {
         m_Gizmo.SetOperation(op);
@@ -853,8 +862,27 @@ namespace ignite
 
     void ScenePanel::UpdateCameraInput(f32 deltaTime)
     {
+        for (const Ref<Joystick> &j : JoystickManager::GetConnectedJoystick())
+        {
+            const glm::vec2 &camViewAxis = j->GetRightAxis();
+            const glm::vec2 &camMoveAxis = j->GetLeftAxis();
+            const glm::vec2 &l2r2 = j->GetTriggerAxis();
+
+            m_ViewportCamera->yaw += deltaTime * camViewAxis.x;
+            m_ViewportCamera->pitch += deltaTime * camViewAxis.y;
+
+            m_ViewportCamera->position += m_ViewportCamera->GetForwardDirection() * deltaTime * m_CameraData.moveSpeed * -camMoveAxis.y;
+            m_ViewportCamera->position += m_ViewportCamera->GetRightDirection() * deltaTime * m_CameraData.moveSpeed * camMoveAxis.x;
+
+            // m_CameraData.moveSpeed += l2r2.y * deltaTime * 0.1f + 1.0f;
+            // m_CameraData.moveSpeed -= l2r2.x * deltaTime * 0.1f + 1.0f;
+
+            LOG_INFO(j->ToString());
+        }
+
         if (!m_ViewportData.isHovered)
             return;
+
         
         // Static to preserve state between frames
         static glm::vec2 lastMousePos = { ImGui::GetMousePos().x, ImGui::GetMousePos().y };
