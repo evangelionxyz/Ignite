@@ -23,6 +23,12 @@
 
 namespace ignite
 {
+    static Ref<Environment> LoadEnviTexture(Ref<Environment> *env, const std::string &filepath, nvrhi::IDevice *device, const Ref<GraphicsPipeline> &pipeline)
+    {
+        (*env)->LoadTexture(device, filepath, pipeline->GetBindingLayout());
+        return *env;
+    }
+
     EditorLayer::EditorLayer(const std::string &name)
         : Layer(name)
     {
@@ -89,13 +95,13 @@ namespace ignite
             m_EnvPipeline = GraphicsPipeline::Create(m_Device, params, pci);
 
             // create env
-            EnvironmentCreateInfo envCI;
-            envCI.device = m_Device;
-            envCI.commandList = m_CommandList;
-
-            m_Environment = Environment::Create(envCI);
-            m_Environment->LoadTexture("resources/hdr/rogland_clear_night_4k.hdr", m_EnvPipeline->GetBindingLayout());
-            m_Environment->WriteTexture();
+            m_Environment = Environment::Create(m_Device);
+            m_Environment->LoadTexture(m_Device, "resources/hdr/rogland_clear_night_4k.hdr", m_EnvPipeline->GetBindingLayout());
+            
+            m_CommandList->open();
+            m_Environment->WriteBuffer(m_CommandList);
+            m_CommandList->close();
+            m_Device->executeCommandList(m_CommandList);
 
             m_Environment->SetSunDirection(50.0f, -27.0f);
         }
@@ -120,6 +126,27 @@ namespace ignite
         Layer::OnUpdate(deltaTime);
 
         AssetImporter::SyncMainThread(m_CommandList, m_Device);
+
+        if (m_Future.valid() && (m_Future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready))
+        {
+            Ref<Environment> env = m_Future.get();
+
+            m_CommandList->open();
+            env->WriteBuffer(m_CommandList);
+            m_CommandList->close();
+            m_Device->executeCommandList(m_CommandList);
+
+            for (auto &model : m_Models)
+            {
+                if (!model)
+                {
+                    continue;
+                }
+
+                model->SetEnvironmentTexture(env->GetHDRTexture());
+                model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
+            }
+        }
 
         float timeInSeconds = static_cast<float>(glfwGetTime());
 
@@ -272,14 +299,15 @@ namespace ignite
         m_CommandList->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), nvrhi::AllSubresources, true, farDepth, true, 0);
 
         // render environment
-        m_Environment->Render(viewportFramebuffer, m_EnvPipeline, m_ScenePanel->GetViewportCamera());
+        m_Environment->Render(m_CommandList, viewportFramebuffer, m_EnvPipeline, m_ScenePanel->GetViewportCamera());
 
         // render objects
         for (auto &model : m_Models)
         {
             if (!model)
+            {
                 continue;
-
+            }
             model->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline);
         }
 
@@ -847,17 +875,7 @@ namespace ignite
                 std::string filepath = FileDialogs::OpenFile("HDR Files (*.hdr)\0*.hdr\0");
                 if (!filepath.empty())
                 {
-                    m_Environment->LoadTexture(filepath, m_EnvPipeline->GetBindingLayout());
-                    m_Environment->WriteTexture();
-
-                    for (auto &model : m_Models)
-                    {
-                        if (!model)
-                            continue;
-
-                        model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
-                        model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
-                    }
+                    m_Future = std::async(std::launch::async, LoadEnviTexture, &m_Environment, filepath, m_Device, m_EnvPipeline);
                 }
             }
 

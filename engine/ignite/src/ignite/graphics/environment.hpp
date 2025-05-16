@@ -20,25 +20,20 @@ namespace ignite {
         float gamma = 2.2f;
     };
 
-    struct EnvironmentCreateInfo
-    {
-        nvrhi::IDevice *device;
-        nvrhi::ICommandList *commandList;
-    };
-
     class Environment
     {
     public:
         Environment() = default;
-        Environment(const EnvironmentCreateInfo &createInfo);
+        Environment(nvrhi::IDevice *device);
 
-        void Render(nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline, Camera *camera);
-        void LoadTexture(const std::string &filepath, nvrhi::BindingLayoutHandle bindingLayout);
-        void WriteTexture();
+        void Render(nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline, Camera *camera);
+        void LoadTexture(nvrhi::IDevice *device, const std::string &filepath, nvrhi::BindingLayoutHandle bindingLayout);
+
+        void WriteBuffer(nvrhi::ICommandList *commandList);
 
         void SetSunDirection(float pitch, float yaw);
 
-        static Ref<Environment> Create(const EnvironmentCreateInfo &createInfo);
+        static Ref<Environment> Create(nvrhi::IDevice *device);
 
         static nvrhi::VertexAttributeDesc GetAttribute();
         static nvrhi::BindingLayoutDesc GetBindingLayoutDesc();
@@ -53,9 +48,6 @@ namespace ignite {
         nvrhi::BufferHandle GetCameraBuffer() { return m_CameraConstantBuffer; }
 
     private:
-        void CreateLightingBuffer();
-
-        EnvironmentCreateInfo m_CreateInfo;
 
         nvrhi::BufferHandle m_VertexBuffer;
         nvrhi::BufferHandle m_IndexBuffer;
