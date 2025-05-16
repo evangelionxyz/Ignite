@@ -14,16 +14,12 @@
 
 namespace ignite {
 
+#define ASSIMP_IMPORTER_FLAGS (aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices)
+
     class Shader;
     class Camera;
     class Environment;
     class GraphicsPipeline;
-
-    enum class MeshType
-    {
-        Static,
-        Skeletal
-    };
 
     struct MaterialData
     {
@@ -68,30 +64,38 @@ namespace ignite {
         bool _reflective = false;
         bool _shouldWriteTexture = false;
 
-        friend class ModelLoader;
+        friend class MeshLoader;
+    };
+
+    struct Joint
+    {
+        std::string name;
+        i32 id; // index in joints array
+        i32 parentJointId; // parent in skeleton hierarchy (-1 for root)
+        glm::mat4 inverseBindPose; // inverse bind pose matrix
+        glm::mat4 localTransform; // current local transform
+        glm::mat4 globalTransform; // current global transform
+    };
+
+    struct Skeleton
+    {
+        std::vector<Joint> joints;
+        std::unordered_map<std::string, i32> nameToJointMap; // for fast lookup by name
     };
 
     struct NodeInfo
     {
+        i32 parentID = -1;
         std::string name;
         glm::mat4 localTransform;
         glm::mat4 worldTransform;
-        i32 parentID = -1;
         std::vector<i32> childrenIDs;
         std::vector<i32> meshIndices;  // Meshes owned by this node
-    };
-
-    struct MeshCreateInfo
-    {
-        MeshType type = MeshType::Static;
-        nvrhi::IDevice *device = nullptr;
     };
 
     class Mesh
     {
     public:
-        Mesh(i32 id = 0);
-
         std::vector<VertexMesh> vertices;
         std::vector<uint32_t> indices;
         Material material;
@@ -111,57 +115,25 @@ namespace ignite {
         glm::mat4 localTransform;
         glm::mat4 worldTransform;
 
-        i32 nodeID = -1;
+        i32 nodeID = -1; // ID of the bone this mesh is attached to
 
+        void CreateConstantBuffers(nvrhi::IDevice *device);
         void CreateBuffers();
     };
     
-    struct ModelCreateInfo
-    {
-        nvrhi::IDevice *device;
-        nvrhi::BufferHandle cameraBuffer;
-        nvrhi::BufferHandle lightBuffer;
-        nvrhi::BufferHandle envBuffer;
-        nvrhi::BufferHandle debugBuffer;
-    };
-
-    class Model
+    class MeshLoader
     {
     public:
-        Model() = default;
-        Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo);
-
-        void SetEnvironmentTexture(nvrhi::TextureHandle envTexture);
-        void CreateBindingSet(nvrhi::BindingLayoutHandle bindingLayout);
-
-        void WriteBuffer(nvrhi::CommandListHandle commandList);
-        void OnUpdate(f32 deltaTime);
-        void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline);
-
-        std::vector<Ref<Mesh>> &GetMeshes() { return m_Meshes; }
-
-        static Ref<Model> Create(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo);
-
-        glm::mat4 transform = glm::mat4(1.0f);
-        std::vector<Ref<SkeletalAnimation>> animations;
-
-        std::vector<NodeInfo> nodes;
-
-    private:
-        ModelCreateInfo m_CreateInfo;
-        nvrhi::TextureHandle m_EnvironmentTexture;
-        std::vector<Ref<Mesh>> m_Meshes;
-    };
-
-    class ModelLoader
-    {
-    public:
-        static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath,
-            std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, i32 parentNodeID);
-        static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes);
+        static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID);
+        static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, const Skeleton &skeleton);
+        static void ProcessBodeWeights(aiMesh *mesh, std::vector<VertexMesh> &vertices, const Skeleton &skeleton);
+        static void ExtractSkeleton(const aiScene *scene, Skeleton &skeleton);
+        static void ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Skeleton &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices);
+        static void SortJointsHierchically(Skeleton &skeleton);
         static void LoadMaterial(const aiScene *scene, aiMaterial *material, const std::string &filepath, Ref<Mesh> &mesh);
         static void LoadAnimation(const aiScene *scene, std::vector<Ref<SkeletalAnimation>> &animations);
         static void LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type);
         static void CalculateWorldTransforms(std::vector<NodeInfo> &nodes, std::vector<Ref<Mesh>> &meshes);
+        static void ClearTextureCache();
     };
 }

@@ -1,13 +1,25 @@
 #include "editor_layer.hpp"
 #include "panels/scene_panel.hpp"
-#include "ignite/graphics/renderer_2d.hpp"
-#include "ignite/graphics/mesh_factory.hpp"
 #include "ignite/core/platform_utils.hpp"
-#include <glm/glm.hpp>
-#include <nvrhi/utils.h>
 #include "ignite/core/command.hpp"
 #include "ignite/scene/camera.hpp"
 #include "ignite/graphics/texture.hpp"
+#include "ignite/animation/animation_system.hpp"
+#include "ignite/graphics/renderer_2d.hpp"
+#include "ignite/graphics/mesh_factory.hpp"
+#include "ignite/imgui/gui_function.hpp"
+#include "ignite/graphics/model.hpp"
+#include "ignite/asset/asset.hpp"
+#include "ignite/asset/asset_importer.hpp"
+
+#include <glm/glm.hpp>
+#include <nvrhi/utils.h>
+
+#ifdef _WIN32
+#   include <dwmapi.h>
+#   include <ShellScalingApi.h>
+#endif
+
 
 namespace ignite
 {
@@ -62,7 +74,7 @@ namespace ignite
             params.enableBlend = true;
             params.depthWrite = true;
             params.depthTest = true;
-            params.recompileShader = true;
+            params.recompileShader = false;
             params.cullMode = nvrhi::RasterCullMode::Front;
             params.comparison = nvrhi::ComparisonFunc::Always;
             params.vertexShaderFilepath = "skybox.vertex.hlsl";
@@ -107,32 +119,21 @@ namespace ignite
     {
         Layer::OnUpdate(deltaTime);
 
-        for (auto it = m_PendingLoadModels.begin(); it != m_PendingLoadModels.end(); )
-        {
-            std::future<Ref<Model>> &future = *it;
-            if (future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
-            {
-                Ref<Model> model = future.get();
-                m_Models.push_back(model);
+        ModelImporter::SyncMainThread(m_CommandList, m_Device);
 
-                m_CommandList->open();
-                model->WriteBuffer(m_CommandList);
-                m_CommandList->close();
-                m_Device->executeCommandList(m_CommandList);
-
-                it = m_PendingLoadModels.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
+        float timeInSeconds = static_cast<float>(glfwGetTime());
 
         // multi select entity
         m_Data.multiSelect = Input::IsKeyPressed(Key::LeftShift);
 
         for (auto &model : m_Models)
-            model->OnUpdate(deltaTime);
+        {
+            if (!model)
+                continue;
+
+            AnimationSystem::UpdateAnimation(model, timeInSeconds);
+            // model->OnUpdate(deltaTime);
+        }
 
         switch (m_Data.sceneState)
         {
@@ -277,6 +278,9 @@ namespace ignite
         // render objects
         for (auto &model : m_Models)
         {
+            if (!model)
+                continue;
+
             model->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline);
         }
 
@@ -304,20 +308,77 @@ namespace ignite
         ImGuiWindow *window = ImGui::GetCurrentWindow();
         window->DC.LayoutType = ImGuiLayoutType_Horizontal;
         window->DC.NavLayerCurrent = ImGuiNavLayer_Menu;
-        ImDrawList *draw_list = ImGui::GetWindowDrawList();
+        ImDrawList *drawList = ImGui::GetWindowDrawList();
         const ImVec2 minPos = viewport->Pos;
         const ImVec2 maxPos = ImVec2(viewport->Pos.x + viewport->Size.x, totalTitlebarHeight);
-        draw_list->AddRectFilled(minPos, maxPos, IM_COL32(30, 30, 30, 255));
+        drawList->AddRectFilled(minPos, maxPos, IM_COL32(30, 30, 30, 255));
 
-        // play stop and simulate button
 
         // =========== Menubar ===========
-        const ImVec2 menuBarButtonSize = { 40.0f, 20.0f};
-        ImVec2 menubarBTCursorPos = { viewport->Pos.x, viewport->Pos.y };
-        if (ImGui::Button("File"))
+        const glm::vec2 menuBarButtonSize = { 45.0f, 20.0f };
+        const auto decorateBt = UIButtonDecorate()
+            .Fill( { 0.32f, 0.0f, 0.0f, 1.0f }, { 0.62f, 0.0f, 0.0f, 1.0f })
+            .Outline( { 0.62f, 0.0f, 0.0f, 1.0f }, { 0.92f, 0.0f, 0.0f, 1.0f });
+
+        // ===== MENUBAR BUTTONS ==== 
+        UI::DrawHorizontalButtonList(menuBarButtonSize,
+            { 
+                UIButton("File", decorateBt, []() { ImGui::OpenPopup("MenuBar_File"); }),
+                UIButton("Edit", decorateBt, []() { ImGui::OpenPopup("MenuBar_Edit"); }),
+                UIButton("View", decorateBt, []() {  ImGui::OpenPopup("MenuBar_View"); })
+            },
+            2.0f, // GAP
+            { 12.0f, 2.0f }, // Padding
+            { 0.0f, 0.0f } // Margin
+        );
+        
+        // ==== TOOLBAR BUTTONS ====
+
+        bool sceneStatePlaying = m_Data.sceneState == State::ScenePlay;
+        
+        glm::vec4 toolbarColor = glm::vec4{ 0.32f, 0.0f, 0.0f, 1.0f };
+        glm::vec4 toolbarHoverColor = glm::vec4{ 0.62f, 0.0f, 0.0f, 1.0f };
+        glm::vec4 toolbarOutlineColor = glm::vec4 { 0.62f, 0.0f, 0.0f, 1.0f };
+        glm::vec4 toolbarOutlineHoverColor = glm::vec4{ 0.92f, 0.0f, 0.0f, 1.0f };
+
+        if (sceneStatePlaying)
         {
-            ImGui::OpenPopup("MenuBar_File");
+            toolbarColor = glm::vec4 { 0.0f, 0.32f, 0.0f, 1.0f };
+            toolbarHoverColor = glm::vec4 { 0.0f, 0.62f, 0.0f, 1.0f };
+            toolbarOutlineColor = glm::vec4 { 0.0f, 0.62f, 0.0f, 1.0f };
+            toolbarOutlineHoverColor = glm::vec4 { 0.00f, 92.0f, 0.0f, 1.0f };
         }
+
+
+        if (UI::DrawButton(UIButton(sceneStatePlaying ? "Stop" : "Play",
+            UIButtonDecorate()
+            .Fill(toolbarColor, toolbarHoverColor)
+            .Outline(toolbarOutlineColor, toolbarOutlineHoverColor)), menuBarButtonSize, { 12.0f, 2.0f }, Margin(40.0f, 3.0f, 0.0f, 3.0f)))
+        {
+            if (sceneStatePlaying)
+            {
+                OnSceneStop();
+#if _WIN32
+                HWND hwnd = glfwGetWin32Window(Application::GetInstance()->GetDeviceManager()->GetWindow());
+                COLORREF rgbRed = 0x00E86071;
+                DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
+#endif
+            }
+            else
+            {
+                OnScenePlay();
+#if _WIN32
+                HWND hwnd = glfwGetWin32Window(Application::GetInstance()->GetDeviceManager()->GetWindow());
+                COLORREF rgbRed = 0x000000AB;
+                DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
+#endif
+            }
+        }
+
+        if (UI::DrawButton(UIButton("Simulate", decorateBt), menuBarButtonSize, {12.0f, 2.0f }, Margin(3.0f, 0.0f)))
+        {
+        }
+
 
         if (ImGui::BeginPopup("MenuBar_File"))
         {
@@ -360,27 +421,6 @@ namespace ignite
             ImGui::EndPopup();
         }
 
-        menubarBTCursorPos = { viewport->Pos.x + menuBarButtonSize.x, viewport->Pos.y };
-        if (ImGui::Button("View"))
-        {
-            ImGui::OpenPopup("MenuBar_View");
-        }
-
-        // =========== Toolbar ===========
-        const ImVec2 toolbarButtonSize = { 40.0f, 25.0f };
-        f32 buttonMiddle = totalTitlebarHeight / 2.0f - toolbarButtonSize.y / 2.0f;
-        ImVec2 toolbarBTCursorPos = { viewport->Pos.x, buttonMiddle + (totalTitlebarHeight / 4.0f)};
-        ImGui::SetCursorScreenPos(toolbarBTCursorPos);
-
-        bool sceneStatePlaying = m_Data.sceneState == State::ScenePlay;
-        if (ImGui::Button(sceneStatePlaying ? "Stop" : "Play", toolbarButtonSize))
-        {
-            if (sceneStatePlaying)
-                OnSceneStop();
-            else 
-                OnScenePlay();
-        }
-
         // dockspace
         ImGui::SetCursorScreenPos({viewport->Pos.x, totalTitlebarHeight});
         ImGui::DockSpace(ImGui::GetID("main_dockspace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
@@ -389,60 +429,183 @@ namespace ignite
             m_ScenePanel->OnGuiRender();
             ImGui::Begin("Models");
 
-            if (ImGui::Button("Load GLTF/GLB"))
+            if (ImGui::Button("Add GLTF/GLB"))
             {
-                std::string filepath = FileDialogs::OpenFile("GLTF/GLB Files (*.gltf;*.glb)\0*.gltf;*.glb\0All Files (*.*)\0*.*\0");
-                if (!filepath.empty())
+                std::vector<std::string> filepaths = FileDialogs::OpenFiles("GLTF/GLB Files (*.gltf;*.glb)\0*.gltf;*.glb\0All Files (*.*)\0*.*\0");
+                if (!filepaths.empty())
                 {
-                    LoadModel(filepath);
+                    ModelCreateInfo modelCI;
+                    modelCI.device = m_Device;
+                    modelCI.debugBuffer = m_DebugRenderBuffer;
+                    modelCI.cameraBuffer = m_Environment->GetCameraBuffer();
+                    modelCI.lightBuffer = m_Environment->GetDirLightBuffer();
+                    modelCI.envBuffer = m_Environment->GetParamsBuffer();
+
+                    ModelImporter::LoadAsync(&m_Models, filepaths, modelCI, m_Environment, m_MeshPipeline);
                 }
             }
 
-            for (size_t i = 0; i < m_Models.size(); ++i)
+            int index = 0;
+            for (auto it = m_Models.begin(); it != m_Models.end(); )
             {
-                auto &model = m_Models[i];
+                auto &model = *it;
+                if (!model)
+                {
+                    ++it;
+                    continue;
+                }
 
-                bool opened = ImGui::TreeNodeEx((void *)(uint64_t *) &model, 0, "Model %zu", i);
-                if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                bool requestToDelete = false;
+
+                const std::string modelName = model->GetFilepath().stem().generic_string();
+                bool opened = ImGui::TreeNodeEx((void *)(uint64_t *) &model, ImGuiTreeNodeFlags_OpenOnArrow, "%s", modelName.c_str());
+
+                if (ImGui::IsItemClicked())
+                {
                     m_SelectedModel = model.get();
+                }
+
+                if (ImGui::BeginPopupContextItem(modelName.c_str()))
+                {
+                    if (ImGui::MenuItem("Delete"))
+                    {
+                        requestToDelete = true;
+                        m_SelectedModel = nullptr;
+                    }
+
+                    ImGui::EndPopup();
+                }
 
                 if (opened)
                 {
-                    for (const auto &node : model->nodes)
-                        TraverseNodes(model.get(), node, 0);
-                    
+                    glm::vec3 scale, translation, skew;
+                    glm::vec4 perspective;
+                    glm::quat orientation;
+                    glm::decompose(model->transform, scale, orientation, translation, skew, perspective);
+
+                    ImGui::DragFloat3("Translation", &translation.x, 0.025f);
+
+                    glm::vec3 eulerAngle = glm::degrees(glm::eulerAngles(orientation));
+                    if (ImGui::DragFloat3("Rotation", &eulerAngle.x, 0.025f))
+                        orientation = glm::radians(eulerAngle);
+
+                    ImGui::DragFloat3("Scale", &scale.x, 0.025f);
+
+                    model->transform = glm::recompose(scale, orientation, translation, skew, perspective);
+
+                    if (!requestToDelete)
+                    {
+                        if (ImGui::TreeNode("Meshes"))
+                        {
+                            for (const Ref<Mesh> &mesh : model->meshes)
+                            {
+                                bool opened = ImGui::TreeNode(mesh->name.c_str());
+
+                                if (ImGui::BeginDragDropSource())
+                                {
+                                    ImGui::SetDragDropPayload("MESH_ITEM", &mesh, sizeof(Ref<Mesh>));
+                                    ImGui::EndDragDropSource();
+                                }
+
+                                if (opened)
+                                {
+                                    ImGui::TreePop();
+                                }
+                            }
+
+                            ImGui::TreePop();
+                        }
+
+                        if (!model->animations.empty() && ImGui::TreeNode("Animation"))
+                        {
+                            for (size_t animIdx = 0; animIdx < model->animations.size(); ++animIdx)
+                            {
+                                const Ref<SkeletalAnimation> &anim = model->animations[animIdx];
+                                if (ImGui::TreeNodeEx(anim->name.c_str(), ImGuiTreeNodeFlags_Leaf, "%s", anim->name.c_str()))
+                                {
+                                    if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                                    {
+                                        AnimationSystem::PlayAnimation(model, animIdx);
+                                    }
+                                    ImGui::TreePop();
+                                }
+                            }
+                            ImGui::TreePop();
+                        }
+
+                        if (ImGui::TreeNode("Skeleton"))
+                        {
+                            for (auto &joint : model->skeleton.joints)
+                            {
+                                if (ImGui::TreeNodeEx(joint.name.c_str(), ImGuiTreeNodeFlags_None, "%s: %d", joint.name.c_str(), joint.id))
+                                {
+                                    ImGui::Text("Parent: %d", joint.parentJointId);
+
+                                    ImGui::Text("Inv Bind Pose");
+                                    ImGui::InputFloat4("BP 0", &joint.inverseBindPose[0].x);
+                                    ImGui::InputFloat4("BP 1", &joint.inverseBindPose[1].x);
+                                    ImGui::InputFloat4("BP 2", &joint.inverseBindPose[2].x);
+                                    ImGui::InputFloat4("BP 3", &joint.inverseBindPose[3].x);
+
+                                    ImGui::Text("Local Transform");
+                                    ImGui::InputFloat4("LT 0", &joint.localTransform[0].x);
+                                    ImGui::InputFloat4("LT 1", &joint.localTransform[1].x);
+                                    ImGui::InputFloat4("LT 2", &joint.localTransform[2].x);
+                                    ImGui::InputFloat4("LT 3", &joint.localTransform[3].x);
+
+                                    ImGui::Text("World Transform");
+                                    ImGui::InputFloat4("WT 0", &joint.globalTransform[0].x);
+                                    ImGui::InputFloat4("WT 1", &joint.globalTransform[1].x);
+                                    ImGui::InputFloat4("WT 2", &joint.globalTransform[2].x);
+                                    ImGui::InputFloat4("WT 3", &joint.globalTransform[3].x);
+
+                                    ImGui::TreePop();
+                                }
+                            }
+
+                            ImGui::TreePop();
+                        }
+
+                    }
+
                     ImGui::TreePop();
                 }
-            }
 
-            if(m_SelectedModel && !m_SelectedModel->animations.empty() && ImGui::TreeNode("Animation"))
-            {
-                for (auto &anim : m_SelectedModel->animations)
+                if (requestToDelete)
                 {
-                    bool opened = ImGui::TreeNodeEx(anim->GetName().c_str(), ImGuiTreeNodeFlags_Leaf, "%s", anim->GetName().c_str());
-                    if (opened)
-                    {
-                        ImGui::TreePop();
-                    }
+                    it = m_Models.erase(it);
                 }
-                ImGui::TreePop();
+                else
+                {
+                    ++it;
+                    ++index;
+                }
             }
 
+            ImGui::End();
+
+            ImGui::Begin("Model Hierarchy");
+            if (m_SelectedModel)
+            {
+                for (const auto &node : m_SelectedModel->nodes)
+                    TraverseNodes(m_SelectedModel, node, 0);
+            }
+            ImGui::End();
+
+            ImGui::Begin("Material");
             if (m_SelectedMaterial)
             {
-                ImGui::Separator();
-
                 ImGui::ColorEdit4("Base Color", &m_SelectedMaterial->baseColor.x);
                 ImGui::DragFloat("Metallic", &m_SelectedMaterial->metallic, 0.005f, 0.0f, 1.0f);
                 ImGui::DragFloat("Rougness", &m_SelectedMaterial->roughness, 0.005f, 0.0f, 1.0f);
                 ImGui::DragFloat("Emissive", &m_SelectedMaterial->emissive, 0.005f, 0.0f, 1000.0f);
             }
-
             ImGui::End();
 
             // Render GUI
             SettingsUI();
         }
+
         ImGui::End(); // end dockspace
     }
 
@@ -685,6 +848,9 @@ namespace ignite
 
                     for (auto &model : m_Models)
                     {
+                        if (!model)
+                            continue;
+
                         model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
                         model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
                     }
@@ -730,6 +896,18 @@ namespace ignite
 
         bool opened = ImGui::TreeNodeEx(node.name.c_str(), flags, node.name.c_str());
 
+        if (ImGui::BeginDragDropTarget())
+        {
+            if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("MESH_ITEM"))
+            {
+                LOG_ASSERT(payload->DataSize == sizeof(Ref<Mesh>), "Wrong mesh item");
+
+                Ref<Mesh> mesh = *static_cast<Ref<Mesh> *>(payload->Data);
+                // mesh->nodeID = node.id;
+            }
+            ImGui::EndDragDropTarget();
+        }
+
         if (opened)
         {
             for (i32 child : node.childrenIDs)
@@ -737,28 +915,34 @@ namespace ignite
                 TraverseNodes(model, model->nodes[child], ++traverseIndex);
             }
 
+            for (i32 meshIndex : node.meshIndices)
+            {
+                Ref<Mesh> mesh = model->meshes[meshIndex];
+
+                bool opened = ImGui::TreeNodeEx(mesh->name.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow, "%s", mesh->name.c_str());
+
+                if (ImGui::BeginDragDropSource())
+                {
+                    ImGui::SetDragDropPayload("MESH_ITEM", &mesh, sizeof(Ref<Mesh>));
+                    ImGui::EndDragDropSource();
+                }
+
+                if (opened)
+                {
+                    if (ImGui::TreeNodeEx("Material", ImGuiTreeNodeFlags_Leaf, "Material"))
+                    {
+                        if (ImGui::IsItemClicked())
+                        {
+                            m_SelectedMaterial = &mesh->material.data;
+                        }
+
+                        ImGui::TreePop();
+                    }
+                    ImGui::TreePop();
+                }
+            }
             ImGui::TreePop();
         }
-    }
-
-    void EditorLayer::LoadModel(const std::string &filepath)
-    {
-        std::future<Ref<Model>> modelFuture = std::async(std::launch::async, [this, filepath]()
-        {
-            ModelCreateInfo modelCI;
-            modelCI.device = m_Device;
-            modelCI.cameraBuffer = m_Environment->GetCameraBuffer();
-            modelCI.lightBuffer = m_Environment->GetDirLightBuffer();
-            modelCI.envBuffer = m_Environment->GetParamsBuffer();
-            modelCI.debugBuffer = m_DebugRenderBuffer;
-
-            Ref<Model> model = Model::Create(filepath, modelCI);
-            model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
-            model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
-            return model;
-        });
-        
-        m_PendingLoadModels.push_back(std::move(modelFuture));
     }
 
 }

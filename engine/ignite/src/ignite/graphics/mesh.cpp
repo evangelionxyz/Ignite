@@ -10,19 +10,35 @@
 #include "ignite/graphics/environment.hpp"
 #include "ignite/graphics/graphics_pipeline.hpp"
 
+#include <queue>
 #include <stb_image.h>
-
-#define ASSIMP_IMPORTER_FLAGS (aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices)
 
 namespace ignite {
 
     static std::unordered_map<std::string, nvrhi::TextureHandle> textureCache;
 
-    // Mesh class
-    Mesh::Mesh(i32 id)
+    void Mesh::CreateConstantBuffers(nvrhi::IDevice *device)
     {
+        // create buffers
+        auto constantBufferDesc = nvrhi::BufferDesc()
+            .setIsConstantBuffer(true)
+            .setIsVolatile(true)
+            .setMaxVersions(16)
+            .setInitialState(nvrhi::ResourceStates::ConstantBuffer);
+
+        // create per mesh constant buffers
+        constantBufferDesc.setDebugName("Mesh constant buffer");
+        constantBufferDesc.setByteSize(sizeof(ObjectBuffer));
+        objectBuffer = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(objectBuffer, "[Model] Failed to create object constant buffer");
+
+        constantBufferDesc.setDebugName("Material constant buffer");
+        constantBufferDesc.setByteSize(sizeof(MaterialData));
+        materialBuffer = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(materialBuffer, "[Model] Failed to create material constant buffer");
     }
 
+    // Mesh class
     void Mesh::CreateBuffers()
     {
         nvrhi::IDevice *device = Application::GetDeviceManager()->GetDevice();
@@ -50,177 +66,16 @@ namespace ignite {
         LOG_ASSERT(indexBuffer, "[Mesh] Failed to create Index Buffer");
     }
 
-    // Model class
-    Model::Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo)
-        : m_CreateInfo(createInfo)
-    {
-        LOG_ASSERT(std::filesystem::exists(filepath), "[Model] Filepath does not exists!");
-
-        static Assimp::Importer importer;
-
-        const aiScene *scene = importer.ReadFile(filepath.generic_string(), ASSIMP_IMPORTER_FLAGS);
-
-        LOG_ASSERT(scene == nullptr || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || scene->mRootNode,
-            "[Model] Failed to load {}: {}", filepath, importer.GetErrorString());
-
-        if (scene == nullptr)
-            return;
-
-        // load animation here
-
-        // count vertices and indices
-        m_Meshes.resize(scene->mNumMeshes);
-
-        for (size_t i = 0; i < m_Meshes.size(); ++i)
-        {
-            // create meshes
-            m_Meshes[i] = CreateRef<Mesh>(i); // i = mesh ID
-        }
-
-        ModelLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), m_Meshes, nodes, -1);
-        ModelLoader::CalculateWorldTransforms(nodes, m_Meshes);
-        textureCache.clear();
-
-        if (scene->HasAnimations())
-        {
-            ModelLoader::LoadAnimation(scene, animations);
-        }
-
-        // create constant buffers
-        for (auto &mesh : m_Meshes)
-        {
-            // create buffers
-            auto constantBufferDesc = nvrhi::BufferDesc()
-                .setIsConstantBuffer(true)
-                .setIsVolatile(true)
-                .setMaxVersions(16)
-                .setInitialState(nvrhi::ResourceStates::ConstantBuffer);
-
-            // create per mesh constant buffers
-            constantBufferDesc.setDebugName("Mesh constant buffer");
-            constantBufferDesc.setByteSize(sizeof(ObjectBuffer));
-            mesh->objectBuffer = m_CreateInfo.device->createBuffer(constantBufferDesc);
-            LOG_ASSERT(mesh->objectBuffer, "[Model] Failed to create object constant buffer");
-
-            constantBufferDesc.setDebugName("Material constant buffer");
-            constantBufferDesc.setByteSize(sizeof(MaterialData));
-            mesh->materialBuffer = m_CreateInfo.device->createBuffer(constantBufferDesc);
-            LOG_ASSERT(mesh->materialBuffer, "[Model] Failed to create material constant buffer");
-        }
-    }
-
-    void Model::SetEnvironmentTexture(nvrhi::TextureHandle envTexture)
-    {
-        m_EnvironmentTexture = envTexture;
-    }
-
-    void Model::CreateBindingSet(nvrhi::BindingLayoutHandle bindingLayout)
-    {
-        for (auto &mesh : m_Meshes)
-        {
-            auto desc = nvrhi::BindingSetDesc();
-
-            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, m_CreateInfo.cameraBuffer));
-            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, m_CreateInfo.lightBuffer));
-            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, m_CreateInfo.envBuffer));
-            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, mesh->objectBuffer));
-            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, mesh->materialBuffer));
-            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(5, m_CreateInfo.debugBuffer));
-
-            desc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, mesh->material.textures[aiTextureType_DIFFUSE].handle));
-            desc.addItem(nvrhi::BindingSetItem::Texture_SRV(1, mesh->material.textures[aiTextureType_SPECULAR].handle));
-            desc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, mesh->material.textures[aiTextureType_EMISSIVE].handle));
-            desc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, mesh->material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
-            desc.addItem(nvrhi::BindingSetItem::Texture_SRV(4, mesh->material.textures[aiTextureType_NORMALS].handle));
-            desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, m_EnvironmentTexture ? m_EnvironmentTexture : Renderer::GetBlackTexture()->GetHandle()));
-            desc.addItem(nvrhi::BindingSetItem::Sampler(0, mesh->material.sampler));
-
-            mesh->bindingSet = m_CreateInfo.device->createBindingSet(desc, bindingLayout);
-            LOG_ASSERT(mesh->bindingSet, "Failed to create binding set");
-        }
-    }
-
-    void Model::WriteBuffer(nvrhi::CommandListHandle commandList)
-    {
-        for (auto &mesh : m_Meshes)
-        {
-            commandList->writeBuffer(mesh->vertexBuffer, mesh->vertices.data(), sizeof(VertexMesh) * mesh->vertices.size());
-            commandList->writeBuffer(mesh->indexBuffer, mesh->indices.data(), sizeof(uint32_t) * mesh->indices.size());
-
-            // write textures
-            if (mesh->material.ShouldWriteTexture())
-            {
-                mesh->material.WriteBuffer(commandList);
-            }
-        }
-    }
-
-    void Model::OnUpdate(f32 deltaTime)
-    {
-
-    }
-
-    void Model::Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline)
-    {
-        nvrhi::Viewport viewport = framebuffer->getFramebufferInfo().getViewport();
-
-        for (auto &mesh : m_Meshes)
-        {
-            // write material constant buffer
-            commandList->writeBuffer(mesh->materialBuffer, &mesh->material.data, sizeof(mesh->material.data));
-
-            // write model constant buffer
-
-            ObjectBuffer modelPushConstant;
-
-            modelPushConstant.transformation = transform * mesh->worldTransform;
-
-           /* if (mesh->parentID != -1)
-                modelPushConstant.transformation = transform * m_Meshes[mesh->parentID]->localTransform * mesh->localTransform;
-            else
-                modelPushConstant.transformation = transform * mesh->localTransform;*/
-
-            glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(modelPushConstant.transformation)));
-            modelPushConstant.normal = glm::mat4(normalMat3);
-            commandList->writeBuffer(mesh->objectBuffer, &modelPushConstant, sizeof(ObjectBuffer));
-
-            // render
-            auto meshGraphicsState = nvrhi::GraphicsState();
-            meshGraphicsState.pipeline = pipeline->GetHandle();
-            meshGraphicsState.framebuffer = framebuffer;
-            meshGraphicsState.viewport = nvrhi::ViewportState().addViewportAndScissorRect(viewport);
-            meshGraphicsState.addVertexBuffer({ mesh->vertexBuffer, 0, 0 });
-            meshGraphicsState.indexBuffer = { mesh->indexBuffer, nvrhi::Format::R32_UINT };
-
-            if (mesh->bindingSet != nullptr)
-                meshGraphicsState.addBindingSet(mesh->bindingSet);
-
-            commandList->setGraphicsState(meshGraphicsState);
-
-            nvrhi::DrawArguments args;
-            args.setVertexCount((uint32_t)mesh->indices.size());
-            args.instanceCount = 1;
-
-            commandList->drawIndexed(args);
-        }
-    }
-
-    Ref<Model> Model::Create(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo)
-    {
-        return CreateRef<Model>(filepath, createInfo);
-    }
-
     // Mesh loader
-
-    void ModelLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, i32 parentNodeID)
+    void MeshLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID)
     {
         // Create a node entry and get its index
         NodeInfo nodeInfo;
         nodeInfo.localTransform = Math::AssimpToGlmMatrix(node->mTransformation);
         nodeInfo.parentID = parentNodeID;
         nodeInfo.name = node->mName.C_Str();
-
         i32 currentNodeID = nodes.size();
+
         nodes.push_back(nodeInfo);
 
         // If parent exists, add this node as a child
@@ -234,23 +89,31 @@ namespace ignite {
             i32 meshIndex = node->mMeshes[i];
             aiMesh *mesh = scene->mMeshes[meshIndex];
 
-            // Link mesh to the node that owns it
-            meshes[meshIndex]->nodeID = currentNodeID;
+            if (nodeInfo.parentID != -1)
+            {
+                // Go up 
+                NodeInfo parentNode = nodes[nodeInfo.parentID];
+                auto it = skeleton.nameToJointMap.find(parentNode.name);
+                if (it != skeleton.nameToJointMap.end())
+                {
+                    meshes[meshIndex]->nodeID = nodeInfo.parentID;
+                }
+            }
 
             // Store mesh index in the node
             nodes[currentNodeID].meshIndices.push_back(meshIndex);
 
-            LoadSingleMesh(scene, meshIndex, mesh, filepath, meshes);
+            LoadSingleMesh(scene, meshIndex, mesh, filepath, meshes, skeleton);
         }
 
         // Process all children with this node as parent
         for (u32 i = 0; i < node->mNumChildren; ++i)
         {
-            ProcessNode(scene, node->mChildren[i], filepath, meshes, nodes, currentNodeID);
+            ProcessNode(scene, node->mChildren[i], filepath, meshes, nodes, skeleton, currentNodeID);
         }
     }
-
-    void ModelLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes)
+    
+    void MeshLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, const Skeleton &skeleton)
     {
         meshes[meshIndex]->name = mesh->mName.C_Str();
 
@@ -273,6 +136,13 @@ namespace ignite {
             else
                 vertex.texCoord = { 0.0f, 0.0f };
 
+            // Initialize boneIDs and weights to default values
+            for (int j = 0; j < VERTEX_MAX_BONES; ++j)
+            {
+                vertex.boneIDs[j] = 0;
+                vertex.weights[j] = 0.0f;
+            }
+
             meshes[meshIndex]->vertices[i] = vertex;
         }
 
@@ -285,6 +155,12 @@ namespace ignite {
             meshes[meshIndex]->indices.push_back(face.mIndices[2]);
         }
 
+        // Load bones
+        if (mesh->HasBones())
+        {
+            ProcessBodeWeights(mesh, meshes[meshIndex]->vertices, skeleton);
+        }
+
         if (mesh->mMaterialIndex >= 0)
         {
             // TODO: Load material here
@@ -295,7 +171,186 @@ namespace ignite {
         meshes[meshIndex]->CreateBuffers();
     }
 
-    void ModelLoader::LoadMaterial(const aiScene *scene, aiMaterial *material, const std::string &filepath, Ref<Mesh> &mesh)
+    void MeshLoader::ProcessBodeWeights(aiMesh *mesh, std::vector<VertexMesh> &vertices, const Skeleton &skeleton)
+    {
+        for (uint32_t boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex)
+        {
+            aiBone *bone = mesh->mBones[boneIndex];
+            std::string boneName = bone->mName.C_Str();
+
+            // Get bone ID from skeleton
+            auto it = skeleton.nameToJointMap.find(boneName);
+            if (it == skeleton.nameToJointMap.end())
+            {
+                LOG_WARN("[Model Loader]: Bone {} not found in skeleton!", boneName);
+                continue;
+            }
+
+            uint32_t boneId = it->second;
+
+            // Each vertex can be affected by multimple bones
+            for (uint32_t weightIndex = 0; weightIndex < bone->mNumWeights; ++weightIndex)
+            {
+                uint32_t vertexId = bone->mWeights[weightIndex].mVertexId;
+                float weight = bone->mWeights[weightIndex].mWeight;
+
+                // Find the first empty slot in this vertex's bone array
+                for (uint32_t j = 0; j < VERTEX_MAX_BONES; ++j)
+                {
+                    if (vertices[vertexId].weights[j] < 0.00001f)
+                    {
+                        vertices[vertexId].boneIDs[j] = boneId;
+                        vertices[vertexId].weights[j] = weight;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Normalize weights to ensure the sume to 1.0
+        for (auto &vertex : vertices)
+        {
+            float totalWeight = 0.0f;
+            for (uint32_t i = 0; i < VERTEX_MAX_BONES; ++i)
+            {
+                totalWeight += vertex.weights[i];
+            }
+
+            if (totalWeight > 0.0f)
+            {
+                for (int i = 0; i < VERTEX_MAX_BONES; ++i)
+                {
+                    vertex.weights[i] /= totalWeight;
+                }
+            }
+        }
+    }
+
+    void MeshLoader::ExtractSkeleton(const aiScene *scene, Skeleton &skeleton)
+    {
+        // count the number of bones
+        std::unordered_set<std::string> uniqueBoneNames;
+        for (uint32_t m = 0; m < scene->mNumMeshes; ++m)
+        {
+            aiMesh *mesh = scene->mMeshes[m];
+            for (uint32_t b = 0; b < mesh->mNumBones; ++b)
+            {
+                uniqueBoneNames.insert(mesh->mBones[b]->mName.C_Str());
+            }
+        }
+
+        skeleton.joints.reserve(uniqueBoneNames.size());
+
+        // create joints map and collect inverse bind matrices
+        std::unordered_map<std::string, glm::mat4> inverseBindMatrices;
+        for (uint32_t m = 0; m < scene->mNumMeshes; ++m)
+        {
+            aiMesh *mesh = scene->mMeshes[m];
+            for (uint32_t b = 0; b < mesh->mNumBones; ++b)
+            {
+                aiBone *bone = mesh->mBones[b];
+                std::string boneName = bone->mName.C_Str();
+                inverseBindMatrices[boneName] = Math::AssimpToGlmMatrix(bone->mOffsetMatrix);
+            }
+        }
+
+        // Find all nodes related to the skeleton
+        ExtractSkeletonRecursive(scene->mRootNode, -1, skeleton, inverseBindMatrices);
+        
+    }
+
+    void MeshLoader::ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Skeleton &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices)
+    {
+        std::string nodeName = node->mName.C_Str();
+        bool isJoint = inverseBindMatrices.contains(nodeName);
+
+        i32 currentJointId = -1;
+
+        if (isJoint)
+        {
+            // Add this node as a joint
+            Joint joint;
+            joint.name = nodeName;
+            joint.id = skeleton.joints.size();
+            joint.parentJointId = parentJointId;
+            joint.inverseBindPose = inverseBindMatrices.at(nodeName);
+            joint.localTransform = Math::AssimpToGlmMatrix(node->mTransformation);
+
+            currentJointId = joint.id;
+            skeleton.nameToJointMap[nodeName] = currentJointId;
+            skeleton.joints.push_back(joint);
+        }
+
+        // process childe (use parent id if this node is not a joint)
+        i32 childParentId = isJoint ? currentJointId : parentJointId;
+        for (uint32_t i = 0; i < node->mNumChildren; ++i)
+        {
+            ExtractSkeletonRecursive(node->mChildren[i], childParentId, skeleton, inverseBindMatrices);
+        }
+    }
+
+    void MeshLoader::SortJointsHierchically(Skeleton &skeleton)
+    {
+        std::vector<Joint> sortedJoints;
+        sortedJoints.reserve(skeleton.joints.size());
+
+        // use a queue to process joints level by level
+        std::queue<i32> queue;
+
+        // start with root joints
+        for (size_t i = 0; i < skeleton.joints.size(); ++i)
+        {
+            if (skeleton.joints[i].parentJointId == -1)
+                queue.push(i);
+        }
+
+        // BFS traversal to ensure parents are processed before children
+        while (!queue.empty())
+        {
+            i32 jointIdx = queue.front();
+            queue.pop();
+
+            sortedJoints.push_back(skeleton.joints[jointIdx]);
+            i32 newIdx = sortedJoints.size() - 1;
+
+            // Update joint indices in the new array
+            if (sortedJoints[newIdx].parentJointId != -1)
+            {
+                // Find new parent index
+                std::string parentName = skeleton.joints[sortedJoints[newIdx].parentJointId].name;
+                for (size_t j = 0; j < newIdx; ++j)
+                {
+                    if (sortedJoints[j].name == parentName)
+                    {
+                        sortedJoints[newIdx].parentJointId = j;
+                        break;
+                    }
+                }
+            }
+
+            // Add children to queue
+            for (size_t i = 0; i < skeleton.joints.size(); ++i)
+            {
+                if (skeleton.joints[i].parentJointId == jointIdx)
+                {
+                    queue.push(i);
+                }
+            }
+        }
+
+        // Update name to joint name
+        skeleton.nameToJointMap.clear();
+        for (size_t i = 0; i < sortedJoints.size(); ++i)
+        {
+            sortedJoints[i].id = i;
+            skeleton.nameToJointMap[sortedJoints[i].name] = i;
+        }
+
+        skeleton.joints = std::move(sortedJoints);
+
+    }
+
+    void MeshLoader::LoadMaterial(const aiScene *scene, aiMaterial *material, const std::string &filepath, Ref<Mesh> &mesh)
     {
         aiColor4D base_color(1.0f, 1.0f, 1.0f, 1.0f);
         aiColor4D diffuse_color(1.0f, 1.0f, 1.0f, 1.0f);
@@ -325,7 +380,7 @@ namespace ignite {
         mesh->material._reflective = reflectivity > 0.0f;
     }
 
-    void ModelLoader::LoadAnimation(const aiScene *scene, std::vector<Ref<SkeletalAnimation>> &animations)
+    void MeshLoader::LoadAnimation(const aiScene *scene, std::vector<Ref<SkeletalAnimation>> &animations)
     {
         animations.resize(scene->mNumAnimations);
 
@@ -336,7 +391,7 @@ namespace ignite {
         }
     }
 
-    void ModelLoader::LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type)
+    void MeshLoader::LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type)
     {
         if (const i32 texCount = material->GetTextureCount(type))
         {
@@ -435,7 +490,7 @@ namespace ignite {
 
     }
 
-    void ModelLoader::CalculateWorldTransforms(std::vector<NodeInfo> &nodes, std::vector<Ref<Mesh>> &meshes)
+    void MeshLoader::CalculateWorldTransforms(std::vector<NodeInfo> &nodes, std::vector<Ref<Mesh>> &meshes)
     {
         // First pass: calculate world transforms for nodes
         for (size_t i = 0; i < nodes.size(); i++)
@@ -459,4 +514,10 @@ namespace ignite {
             }
         }
     }
+
+    void MeshLoader::ClearTextureCache()
+    {
+        textureCache.clear();
+    }
+
 }

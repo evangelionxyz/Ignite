@@ -1,12 +1,14 @@
 #pragma once
 
 #include "ipanel.hpp"
+
 #include "ignite/graphics/render_target.hpp"
 #include "ignite/scene/entity.hpp"
 #include "ignite/core/uuid.hpp"
+#include "ignite/core/base.hpp"
+#include "ignite/core/types.hpp"
+
 #include <string>
-#include <ignite/core/base.hpp>
-#include <ignite/core/types.hpp>
 #include <glm/fwd.hpp>
 #include <nvrhi/nvrhi.h>
 
@@ -19,14 +21,8 @@ namespace ignite
     class Event;
     class MouseScrolledEvent;
     class MouseMovedEvent;
+    class JoystickConnectionEvent;
     class EditorLayer;
-
-    enum CameraMode : u8
-    {
-        CAMERA_MODE_2D = BIT(0),
-        CAMERA_MODE_FLY = BIT(1),
-        CAMERA_MODE_PIVOT = BIT(2)
-    };
 
     class ScenePanel final : public IPanel
     {
@@ -45,6 +41,7 @@ namespace ignite
         void OnEvent(Event &event);
         bool OnMouseScrolledEvent(MouseScrolledEvent &event);
         bool OnMouseMovedEvent(MouseMovedEvent &event);
+        bool OnJoystickConnectionEvent(JoystickConnectionEvent &event);
 
         void SetGizmoOperation(ImGuizmo::OPERATION op);
         void SetGizmoMode(ImGuizmo::MODE mode);
@@ -76,7 +73,6 @@ namespace ignite
             bool settingsWindow = true;
         } m_Data;
 
-        CameraMode m_CameraMode = CAMERA_MODE_2D;
         Scope<Camera> m_ViewportCamera;
         Ref<RenderTarget> m_RenderTarget;
         EditorLayer *m_Editor;

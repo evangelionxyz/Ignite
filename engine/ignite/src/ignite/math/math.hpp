@@ -116,6 +116,9 @@ namespace ignite
         Margin(float value) : top(value), bottom(value), left(value), right(value) {}
         Margin(float horizontal, float vertical) : top(vertical), bottom(vertical), left(horizontal), right(horizontal) {}
         Margin(float l, float r, float t, float b) : top(t), bottom(b), left(l), right(r) {}
+
+        glm::vec2 Start() const { return { left, top }; }
+        glm::vec2 End() const { return { right, bottom }; }
     };
 
 }

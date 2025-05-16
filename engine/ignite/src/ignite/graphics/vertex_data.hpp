@@ -7,7 +7,8 @@
 
 namespace ignite
 {
-#define MAX_BONES 4
+#define VERTEX_MAX_BONES 4
+#define MAX_BONES 200
 
     struct CameraBuffer
     {
@@ -19,6 +20,7 @@ namespace ignite
     {
         glm::mat4 transformation;
         glm::mat4 normal;
+        glm::mat4 boneTransforms[MAX_BONES];
     };
 
     struct VertexMesh
@@ -28,10 +30,10 @@ namespace ignite
         glm::vec2 texCoord;
         glm::vec2 tilingFactor;
         glm::vec4 color;
-        //uint32_t boneIDs[MAX_BONES] = { 0 };
-        //uint32_t weights[MAX_BONES] = { 0.0f };
+        uint32_t boneIDs[VERTEX_MAX_BONES] = { 0 };
+        f32 weights[VERTEX_MAX_BONES] = { 0.0f };
 
-        static std::array<nvrhi::VertexAttributeDesc, 5> GetAttributes()
+        static std::array<nvrhi::VertexAttributeDesc, 7> GetAttributes()
         {
             return 
             {
@@ -59,17 +61,19 @@ namespace ignite
                     .setName("COLOR")
                     .setFormat(nvrhi::Format::RGBA32_FLOAT)
                     .setOffset(offsetof(VertexMesh, color))
+                    .setElementStride(sizeof(VertexMesh)),
+                nvrhi::VertexAttributeDesc()
+                    .setName("BONEIDS")
+                    .setFormat(nvrhi::Format::RGBA32_UINT)
+                    .setOffset(offsetof(VertexMesh, boneIDs))
+                    .setArraySize(VERTEX_MAX_BONES)
+                    .setElementStride(sizeof(VertexMesh)),
+                nvrhi::VertexAttributeDesc()
+                    .setName("WEIGHTS")
+                    .setFormat(nvrhi::Format::RGBA32_FLOAT)
+                    .setOffset(offsetof(VertexMesh, weights))
+                    .setArraySize(VERTEX_MAX_BONES)
                     .setElementStride(sizeof(VertexMesh))
-                //nvrhi::VertexAttributeDesc()
-                //    .setName("BONEIDS")
-                //    .setFormat(nvrhi::Format::RGBA32_UINT)
-                //    .setOffset(offsetof(VertexMesh, boneIDs))
-                //    .setElementStride(sizeof(VertexMesh)),
-                //nvrhi::VertexAttributeDesc()
-                //    .setName("WEIGHTS")
-                //    .setFormat(nvrhi::Format::RGBA32_UINT)
-                //    .setOffset(offsetof(VertexMesh, boneIDs))
-                //    .setElementStride(sizeof(VertexMesh))
             };
         }
 

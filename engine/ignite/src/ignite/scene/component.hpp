@@ -3,7 +3,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
-
+#include <nvrhi/nvrhi.h>
 #include <string>
 #include "ignite/core/uuid.hpp"
 #include "icomponent.hpp"
@@ -12,6 +12,17 @@ namespace ignite
 {
     class Texture;
     class Mesh;
+    class Model;
+    struct Material;
+
+    static std::unordered_map<std::string, CompType> s_ComponentsName =
+    {
+        { "Rigid Body 2D", CompType_Rigidbody2D },
+        { "Sprite 2D", CompType_Sprite2D},
+        { "Box Collider 2D", CompType_BoxCollider2D },
+        { "Skinned Mesh Renderer", CompType_SkinnedMeshRenderer },
+        { "Static Mesh hRenderer", CompType_StaticMeshRenderer },
+    };
 
     enum EntityType : u8
     {
@@ -147,12 +158,31 @@ namespace ignite
         virtual CompType GetType() override { return StaticType(); }
     };
 
-    class MeshComponent : public IComponent
-    {
-        Ref<Mesh> mesh;
 
-        static CompType StaticType() { return CompType_Mesh; }
-        virtual CompType GetType() { return StaticType(); }
+    class MeshRenderer
+    {
+    public:
+        Ref<Material> material;
+
+        nvrhi::RasterCullMode cullMode = nvrhi::RasterCullMode::Front;
+        nvrhi::RasterFillMode fillMode = nvrhi::RasterFillMode::Solid;
+    };
+
+    class SkinnedMeshRenderer : public IComponent, public MeshRenderer
+    {
+    public:
+        // Root joint
+
+        static CompType StaticType() { return CompType_SkinnedMeshRenderer; }
+        virtual CompType GetType() override { return StaticType(); }
+    };
+
+    class StaticMeshRenderer : public IComponent, public MeshRenderer
+    {
+    public:
+
+        static CompType StaticType() { return CompType_StaticMeshRenderer; }
+        virtual CompType GetType() override { return StaticType(); }
     };
 }
 

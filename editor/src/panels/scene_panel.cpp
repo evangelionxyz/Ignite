@@ -5,10 +5,12 @@
 #include "ignite/core/input/event.hpp"
 #include "ignite/core/input/key_event.hpp"
 #include "ignite/core/input/mouse_event.hpp"
+#include "ignite/core/input/joystick_event.hpp"
 #include "ignite/graphics/texture.hpp"
 #include "ignite/scene/icomponent.hpp"
 #include "ignite/core/platform_utils.hpp"
 #include "editor_layer.hpp"
+#include "ignite/graphics/mesh.hpp"
 #include "entt/entt.hpp"
 
 #include <set>
@@ -18,20 +20,6 @@
 
 namespace ignite
 {
-    static std::unordered_map<std::string, CompType> componentsName = 
-    {
-        { "Rigidbody2D", CompType_Rigidbody2D },
-        { "Sprite2D", CompType_Sprite2D},
-        { "BoxCollider2D", CompType_BoxCollider2D }
-    };
-
-    static std::string ToLower(const std::string &str)
-    {
-        std::string result = str;
-        std::transform(result.begin(), result.end(), result.begin(), ::tolower);
-        return result;
-    }
-
     UUID ScenePanel::m_TrackingSelectedEntity = UUID(0);
 
     ScenePanel::ScenePanel(const char *windowTitle, EditorLayer *editor)
@@ -300,7 +288,6 @@ namespace ignite
     {
         ImGui::Begin("Inspector");
 
-
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
 
         if (m_SelectedEntity.IsValid())
@@ -317,11 +304,7 @@ namespace ignite
             }
 
             ImGui::SameLine();
-            if (ImGui::Button("Add"))
-            {
-                ImGui::OpenPopupOnItemClick("add_component_context");
-            }
-
+    
             // transform component
             RenderComponent<Transform>("Transform", m_SelectedEntity, [this]()
             {
@@ -487,10 +470,18 @@ namespace ignite
 
                     break;
                 }
+                case CompType_SkinnedMeshRenderer:
+                {
+                    RenderComponent<SkinnedMeshRenderer>("Skinned Mesh Renderer", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
+                    {
+                        SkinnedMeshRenderer *c = comp->As<SkinnedMeshRenderer>();
+                    });
+                    break;
+                }
                 }
             }
 
-            if (ImGui::Button("Add Component", { ImGui::GetContentRegionAvail().x, 20.0f }))
+            if (ImGui::Button("Add Component", { ImGui::GetContentRegionAvail().x, 25.0f }))
             {
                 ImGui::OpenPopupOnItemClick("add_component_context");
             }
@@ -502,15 +493,16 @@ namespace ignite
                 static std::string compNameResult;
                 static std::set<std::pair<std::string, CompType>> filteredCompName;
 
-                ImGui::InputTextWithHint("##component_name", "Component", buffer, sizeof(buffer) + 1, ImGuiInputTextFlags_EscapeClearsAll);
+                ImGui::InputTextWithHint("##component_name", "Component", buffer, sizeof(buffer) + 1, ImGuiInputTextFlags_EscapeClearsAll | ImGuiInputTextFlags_NoHorizontalScroll);
                 
                 compNameResult = std::string(buffer);
+
                 filteredCompName.clear();
 
                 if (!compNameResult.empty())
                 {
-                    std::string search = ToLower(compNameResult);
-                    for (const auto& [strName, type] : componentsName)
+                    std::string search = stringutils::ToLower(compNameResult);
+                    for (const auto& [strName, type] : s_ComponentsName)
                     {
                         bool isExists = false;
                         for (IComponent *comp : comps)
@@ -523,7 +515,8 @@ namespace ignite
                         }
                         if (isExists)
                             continue;
-                        std::string nameLower = ToLower(strName);
+
+                        std::string nameLower = stringutils::ToLower(strName);
                         if (nameLower.find(search) != std::string::npos)
                         {
                             filteredCompName.insert({strName, type});
@@ -550,13 +543,22 @@ namespace ignite
                             entity.AddComponent<BoxCollider2D>();
                             break;
                         }
+                        case CompType_SkinnedMeshRenderer:
+                        {
+                            entity.AddComponent<SkinnedMeshRenderer>();
+                            break;
+                        }
+                        case CompType_StaticMeshRenderer:
+                        {
+                            entity.AddComponent<StaticMeshRenderer>();
+                            break;
+                        }
                     }
                 };
-                
 
                 if (compNameResult.empty())
                 {
-                    for (const auto& [strName, type] : componentsName)
+                    for (const auto& [strName, type] : s_ComponentsName)
                     {
                         bool isExists = false;
                         for (IComponent *comp : comps)
@@ -568,7 +570,9 @@ namespace ignite
                             }
                         }
                         if (isExists)
+                        {
                             continue;
+                        }
 
                         if (ImGui::Selectable(strName.c_str()))
                         {
@@ -602,6 +606,7 @@ namespace ignite
         const ImGuiWindow *window = ImGui::GetCurrentWindow();
         m_ViewportData.isFocused = ImGui::IsWindowFocused();
         m_ViewportData.isHovered = ImGui::IsWindowHovered();
+
         m_ViewportData.width = window->Size.x;
         m_ViewportData.height = window->Size.y;
 
@@ -772,6 +777,7 @@ namespace ignite
         EventDispatcher dispatcher(event);
         dispatcher.Dispatch<MouseScrolledEvent>(BIND_CLASS_EVENT_FN(ScenePanel::OnMouseScrolledEvent));
         dispatcher.Dispatch<MouseMovedEvent>(BIND_CLASS_EVENT_FN(ScenePanel::OnMouseMovedEvent));
+        dispatcher.Dispatch<JoystickConnectionEvent>(BIND_CLASS_EVENT_FN(ScenePanel::OnJoystickConnectionEvent));
     }
 
     bool ScenePanel::OnMouseScrolledEvent(MouseScrolledEvent &event)
@@ -837,6 +843,13 @@ namespace ignite
         return false;
     }
 
+    bool ScenePanel::OnJoystickConnectionEvent(JoystickConnectionEvent &event)
+    {
+        LOG_INFO(event.ToString());
+
+        return false;
+    }
+
     void ScenePanel::SetGizmoOperation(ImGuizmo::OPERATION op)
     {
         m_Gizmo.SetOperation(op);
@@ -849,8 +862,27 @@ namespace ignite
 
     void ScenePanel::UpdateCameraInput(f32 deltaTime)
     {
+        for (const Ref<Joystick> &j : JoystickManager::GetConnectedJoystick())
+        {
+            const glm::vec2 &camViewAxis = j->GetRightAxis();
+            const glm::vec2 &camMoveAxis = j->GetLeftAxis();
+            const glm::vec2 &l2r2 = j->GetTriggerAxis();
+
+            m_ViewportCamera->yaw += deltaTime * camViewAxis.x;
+            m_ViewportCamera->pitch += deltaTime * camViewAxis.y;
+
+            m_ViewportCamera->position += m_ViewportCamera->GetForwardDirection() * deltaTime * m_CameraData.moveSpeed * -camMoveAxis.y;
+            m_ViewportCamera->position += m_ViewportCamera->GetRightDirection() * deltaTime * m_CameraData.moveSpeed * camMoveAxis.x;
+
+            // m_CameraData.moveSpeed += l2r2.y * deltaTime * 0.1f + 1.0f;
+            // m_CameraData.moveSpeed -= l2r2.x * deltaTime * 0.1f + 1.0f;
+
+            LOG_INFO(j->ToString());
+        }
+
         if (!m_ViewportData.isHovered)
             return;
+
         
         // Static to preserve state between frames
         static glm::vec2 lastMousePos = { ImGui::GetMousePos().x, ImGui::GetMousePos().y };

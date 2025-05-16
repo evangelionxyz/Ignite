@@ -5,6 +5,7 @@
 #include "ignite/core/input/event.hpp"
 #include "ignite/core/input/key_event.hpp"
 #include "ignite/core/input/mouse_event.hpp"
+#include "ignite/core/input/joystick_event.hpp"
 
 #ifdef _WIN32
 #include <dwmapi.h>
@@ -12,6 +13,7 @@
 #pragma comment(lib, "Dwmapi.lib") // Link to DWM API
 #pragma comment(lib, "shcore.lib")
 #endif
+#include <ignite/core/input/joystick_codes.hpp>
 
 namespace ignite
 {
@@ -112,6 +114,8 @@ namespace ignite
 
         LOG_ASSERT(m_DeviceManager->m_Window, "Failed to create GLFW window\n");
 
+        JoystickManager::Init(this);
+
         if (m_DeviceManager->m_DeviceParams.startFullscreen)
         {
             glfwSetWindowMonitor(m_DeviceManager->m_Window, glfwGetPrimaryMonitor(),
@@ -128,7 +132,7 @@ namespace ignite
         }
 
         glfwSetWindowUserPointer(m_DeviceManager->m_Window, this);
-
+                                   
         if (m_DeviceManager->m_DeviceParams.windowPosX != -1 && m_DeviceManager->m_DeviceParams.windowPosY != -1)
             glfwSetWindowPos(m_DeviceManager->m_Window, m_DeviceManager->m_DeviceParams.windowPosX, m_DeviceManager->m_DeviceParams.windowPosY);
 
@@ -141,8 +145,8 @@ namespace ignite
         COLORREF rgbRed = 0x00E86071;
         DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
 
-        // DWM_WINDOW_CORNER_PREFERENCE preference = DWMWCP_DONOTROUND;
-        // DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &preference, sizeof(preference));
+        // DWM_WINDOW_CORNER_PREFERENCE cornerPreference = DWMWCP_ROUNDSMALL;
+        // DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference, sizeof(cornerPreference));
 #endif
 
         result = m_DeviceManager->CreateDevice();
@@ -168,6 +172,11 @@ namespace ignite
     void Window::PollEvents()
     {
         glfwPollEvents();
+        
+        for (const Ref<Joystick> &j : JoystickManager::GetConnectedJoystick())
+        {
+            j->Update();
+        }
     }
 
     void Window::Destroy()
@@ -270,6 +279,14 @@ namespace ignite
             Window &win = *static_cast<Window *>(glfwGetWindowUserPointer(window));
             WindowCloseEvent event;
             win.m_Callback(event);
+        });
+
+        glfwSetJoystickCallback([](int jid, int state)
+        {
+            if (state == GLFW_CONNECTED)
+                JoystickManager::ConnectJoystick(jid);
+            else if (state == GLFW_DISCONNECTED)
+                JoystickManager::DisconnectJoystick(jid);
         });
 
         glfwSetKeyCallback(m_DeviceManager->m_Window, [](GLFWwindow* window, i32 key, i32 scancode, i32 action, i32 mods)

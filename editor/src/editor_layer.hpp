@@ -3,7 +3,6 @@
 #include <nvrhi/nvrhi.h>
 #include "ignite/core/layer.hpp"
 #include "ignite/ignite.hpp"
-#include "ignite/graphics/mesh.hpp"
 #include "ignite/graphics/graphics_pipeline.hpp"
 #include "ignite/graphics/environment.hpp"
 #include "ignite/graphics/lighting.hpp"
@@ -20,6 +19,7 @@ namespace ignite
     class ShaderFactory;
     class DeviceManager;
     class ScenePanel;
+    class Model;
 
     struct DebugRenderData
     {
@@ -78,9 +78,6 @@ namespace ignite
 
         void TraverseNodes(Model *model, const NodeInfo &node, int traverseIndex = 0);
 
-        // temporary
-        void LoadModel(const std::string &filepath);
-
         Ref<ScenePanel> m_ScenePanel;
         Ref<Scene> m_ActiveScene;
         Ref<Scene> m_EditorScene;
@@ -88,18 +85,19 @@ namespace ignite
         Ref<GraphicsPipeline> m_MeshPipeline;
 
         Ref<GraphicsPipeline> m_EnvPipeline;
+
         std::vector<Ref<Model>> m_Models;
 
-        MaterialData *m_SelectedMaterial = nullptr;
         Model *m_SelectedModel = nullptr;
 
+        MaterialData *m_SelectedMaterial = nullptr;
+
         Ref<Environment> m_Environment;
+
         DebugRenderData m_DebugRenderData;
         EditorData m_Data;
 
         std::filesystem::path m_CurrentSceneFilePath;
-
-        std::list<std::future<Ref<Model>>> m_PendingLoadModels;
 
         nvrhi::BufferHandle m_DebugRenderBuffer;
         
