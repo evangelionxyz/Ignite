@@ -119,7 +119,7 @@ namespace ignite
     {
         Layer::OnUpdate(deltaTime);
 
-        ModelImporter::SyncMainThread(m_CommandList, m_Device);
+        AssetImporter::SyncMainThread(m_CommandList, m_Device);
 
         float timeInSeconds = static_cast<float>(glfwGetTime());
 
@@ -259,7 +259,6 @@ namespace ignite
         m_EnvPipeline->Create(m_Device, viewportFramebuffer);
 
         m_MeshPipeline->Create(m_Device, viewportFramebuffer);
-
 
         // main scene rendering
         m_CommandList->open();
