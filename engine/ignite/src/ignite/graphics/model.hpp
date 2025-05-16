@@ -6,6 +6,8 @@
 
 namespace ignite {
 
+    class Environment;
+
     struct ModelCreateInfo
     {
         nvrhi::IDevice *device;
@@ -21,7 +23,7 @@ namespace ignite {
         Model() = default;
         Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo);
 
-        void SetEnvironmentTexture(nvrhi::TextureHandle envTexture);
+        void SetEnvironment(const Ref<Environment> &env);
         void CreateBindingSet(nvrhi::BindingLayoutHandle bindingLayout);
         void WriteBuffer(nvrhi::ICommandList *commandList);
 
@@ -46,9 +48,11 @@ namespace ignite {
         virtual AssetType GetType() override { return StaticType(); };
 
     private:
-
         ModelCreateInfo m_CreateInfo;
-        nvrhi::TextureHandle m_EnvironmentTexture;
+
+        Environment *m_Environment = nullptr;
+        nvrhi::BindingLayoutHandle m_BindingLayout;
+        
         std::filesystem::path m_Filepath;
 
         Assimp::Importer m_Importer;

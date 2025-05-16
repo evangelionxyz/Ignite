@@ -93,8 +93,6 @@ namespace ignite
         MaterialData *m_SelectedMaterial = nullptr;
 
         Ref<Environment> m_Environment;
-        std::future<Ref<Environment>> m_Future;
-
         DebugRenderData m_DebugRenderData;
         EditorData m_Data;
 

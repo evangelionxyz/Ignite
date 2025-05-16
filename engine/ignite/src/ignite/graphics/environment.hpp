@@ -28,10 +28,10 @@ namespace ignite {
 
         void Render(nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline, Camera *camera);
         void LoadTexture(nvrhi::IDevice *device, const std::string &filepath, nvrhi::BindingLayoutHandle bindingLayout);
-
         void WriteBuffer(nvrhi::ICommandList *commandList);
-
         void SetSunDirection(float pitch, float yaw);
+
+        bool IsUpdatingTexture() const { return m_IsUpdatingTexture; }
 
         static Ref<Environment> Create(nvrhi::IDevice *device);
 
@@ -59,5 +59,10 @@ namespace ignite {
         nvrhi::BindingSetHandle m_BindingSet;
 
         Ref<Texture> m_HDRTexture;
+        bool m_IsUpdatingTexture = false;
+
+        friend class EnvironmentImporter;
+
+
     };
 }

@@ -29,4 +29,17 @@ namespace ignite {
         static Ref<Model> LoadModel(Ref<Model> *outModels, const std::string &filepath, const ModelCreateInfo &createInfo, const Ref<Environment> &env, const Ref<GraphicsPipeline> &pipeline);
         static std::vector<std::future<Ref<Model>>> m_ModelFutures;
     };
+
+    class EnvironmentImporter : public AssetImporter
+    {
+    public:
+        static void Import(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline);
+        static void UpdateTexture(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline);
+        static void SyncMainThread(nvrhi::ICommandList *commandList, nvrhi::IDevice *device);
+
+    private:
+        static Ref<Environment> ImportAsync(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline);
+        static Ref<Environment> LoadTextureAsync(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline);
+        static std::future<Ref<Environment>> m_Future;
+    };
 }

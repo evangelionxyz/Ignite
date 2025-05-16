@@ -103,12 +103,12 @@ namespace ignite {
 
         m_DirLightConstantBuffer = device->createBuffer(desc);
         LOG_ASSERT(m_DirLightConstantBuffer, "[Environment] Failed to create directional light constant buffer!");
-
-        
     }
 
     void Environment::Render(nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline, Camera *camera)
     {
+        m_IsUpdatingTexture = false;
+
         CameraBuffer camPushConstant;
         camPushConstant.viewProjection = camera->GetViewProjectionMatrix();
         camPushConstant.position = glm::vec4(camera->position, 1.0f);
@@ -140,6 +140,8 @@ namespace ignite {
 
     void Environment::LoadTexture(nvrhi::IDevice *device, const std::string &filepath, nvrhi::BindingLayoutHandle bindingLayout)
     {
+        m_IsUpdatingTexture = true;
+
         TextureCreateInfo textureCI;
         textureCI.device = device;
         textureCI.dimension = nvrhi::TextureDimension::Texture2D;

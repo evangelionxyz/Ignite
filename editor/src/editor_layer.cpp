@@ -23,12 +23,6 @@
 
 namespace ignite
 {
-    static Ref<Environment> LoadEnviTexture(Ref<Environment> *env, const std::string &filepath, nvrhi::IDevice *device, const Ref<GraphicsPipeline> &pipeline)
-    {
-        (*env)->LoadTexture(device, filepath, pipeline->GetBindingLayout());
-        return *env;
-    }
-
     EditorLayer::EditorLayer(const std::string &name)
         : Layer(name)
     {
@@ -127,26 +121,8 @@ namespace ignite
 
         AssetImporter::SyncMainThread(m_CommandList, m_Device);
 
-        if (m_Future.valid() && (m_Future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready))
-        {
-            Ref<Environment> env = m_Future.get();
-
-            m_CommandList->open();
-            env->WriteBuffer(m_CommandList);
-            m_CommandList->close();
-            m_Device->executeCommandList(m_CommandList);
-
-            for (auto &model : m_Models)
-            {
-                if (!model)
-                {
-                    continue;
-                }
-
-                model->SetEnvironmentTexture(env->GetHDRTexture());
-                model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
-            }
-        }
+        // model->SetEnvironmentTexture(env->GetHDRTexture());
+        // model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
 
         float timeInSeconds = static_cast<float>(glfwGetTime());
 
@@ -159,7 +135,7 @@ namespace ignite
                 continue;
 
             AnimationSystem::UpdateAnimation(model, timeInSeconds);
-            // model->OnUpdate(deltaTime);
+            model->OnUpdate(deltaTime);
         }
 
         switch (m_Data.sceneState)
@@ -875,7 +851,7 @@ namespace ignite
                 std::string filepath = FileDialogs::OpenFile("HDR Files (*.hdr)\0*.hdr\0");
                 if (!filepath.empty())
                 {
-                    m_Future = std::async(std::launch::async, LoadEnviTexture, &m_Environment, filepath, m_Device, m_EnvPipeline);
+                    EnvironmentImporter::UpdateTexture(&m_Environment, m_Device, filepath, m_EnvPipeline);
                 }
             }
 

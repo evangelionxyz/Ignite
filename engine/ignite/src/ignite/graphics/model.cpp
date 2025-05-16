@@ -5,6 +5,8 @@
 #include "renderer.hpp"
 #include "texture.hpp"
 
+#include "environment.hpp"
+
 namespace ignite {
     // Model class
     Model::Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo)
@@ -43,13 +45,15 @@ namespace ignite {
         MeshLoader::ClearTextureCache();
     }
 
-    void Model::SetEnvironmentTexture(nvrhi::TextureHandle envTexture)
+    void Model::SetEnvironment(const Ref<Environment> &env)
     {
-        m_EnvironmentTexture = envTexture;
+        m_Environment = env.get();
     }
 
     void Model::CreateBindingSet(nvrhi::BindingLayoutHandle bindingLayout)
     {
+        m_BindingLayout = bindingLayout;
+
         for (auto &mesh : meshes)
         {
             auto desc = nvrhi::BindingSetDesc();
@@ -66,7 +70,17 @@ namespace ignite {
             desc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, mesh->material.textures[aiTextureType_EMISSIVE].handle));
             desc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, mesh->material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
             desc.addItem(nvrhi::BindingSetItem::Texture_SRV(4, mesh->material.textures[aiTextureType_NORMALS].handle));
-            desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, m_EnvironmentTexture ? m_EnvironmentTexture : Renderer::GetBlackTexture()->GetHandle()));
+
+            if (m_Environment && m_Environment->GetHDRTexture())
+            {
+                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, m_Environment->GetHDRTexture()));
+
+            }
+            else
+            {
+                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, Renderer::GetBlackTexture()->GetHandle()));
+            }
+
             desc.addItem(nvrhi::BindingSetItem::Sampler(0, mesh->material.sampler));
 
             mesh->bindingSet = m_CreateInfo.device->createBindingSet(desc, bindingLayout);
@@ -97,6 +111,11 @@ namespace ignite {
 
     void Model::OnUpdate(f32 deltaTime)
     {
+        if (m_Environment && m_Environment->IsUpdatingTexture())
+        {
+            if (m_BindingLayout)
+                CreateBindingSet(m_BindingLayout);
+        }
     }
 
     void Model::Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline)

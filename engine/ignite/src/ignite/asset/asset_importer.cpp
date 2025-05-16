@@ -8,6 +8,7 @@ namespace ignite {
     void AssetImporter::SyncMainThread(nvrhi::ICommandList *commandList, nvrhi::IDevice *device)
     {
         ModelImporter::SyncMainThread(commandList, device);
+        EnvironmentImporter::SyncMainThread(commandList, device);
     }
 
     std::vector<std::future<Ref<Model>>> ModelImporter::m_ModelFutures;
@@ -50,7 +51,7 @@ namespace ignite {
     {
         Ref<Model> model = Model::Create(filepath, createInfo);
 
-        model->SetEnvironmentTexture(env->GetHDRTexture());
+        model->SetEnvironment(env);
         model->CreateBindingSet(pipeline->GetBindingLayout());
 
         outModels->push_back(model);
@@ -63,10 +64,49 @@ namespace ignite {
     {
         *outModels = Model::Create(filepath, createInfo);
 
-        (*outModels)->SetEnvironmentTexture(env->GetHDRTexture());
+        (*outModels)->SetEnvironment(env);
         (*outModels)->CreateBindingSet(pipeline->GetBindingLayout());
 
         return *outModels;
     }
+
+    void EnvironmentImporter::Import(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline)
+    {
+        m_Future = std::async(std::launch::async, ImportAsync, outEnvironment, device, filepath, pipeline);
+    }
+
+    void EnvironmentImporter::UpdateTexture(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline)
+    {
+        m_Future = std::async(std::launch::async, LoadTextureAsync, outEnvironment, device, filepath, pipeline);
+    }
+
+    void EnvironmentImporter::SyncMainThread(nvrhi::ICommandList *commandList, nvrhi::IDevice *device)
+    {
+        if (m_Future.valid() && m_Future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
+        {
+            Ref<Environment> env = m_Future.get();
+
+            commandList->open();
+            env->WriteBuffer(commandList);
+            commandList->close();
+            device->executeCommandList(commandList);
+
+            env->m_IsUpdatingTexture = true;
+        }
+    }
+
+    Ref<Environment> EnvironmentImporter::ImportAsync(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline)
+    {
+        (*outEnvironment) = Environment::Create(device);
+        (*outEnvironment)->LoadTexture(device, filepath, pipeline->GetBindingLayout());
+        return *outEnvironment;
+    }
+
+    Ref<Environment> EnvironmentImporter::LoadTextureAsync(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline)
+    {
+        (*outEnvironment)->LoadTexture(device, filepath, pipeline->GetBindingLayout());
+        return *outEnvironment;
+    }
+    std::future<Ref<Environment>> EnvironmentImporter::m_Future;
 
 }
