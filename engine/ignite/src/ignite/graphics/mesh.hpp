@@ -121,15 +121,6 @@ namespace ignite {
         void CreateBuffers();
     };
     
-    struct ModelCreateInfo
-    {
-        nvrhi::IDevice *device;
-        nvrhi::BufferHandle cameraBuffer;
-        nvrhi::BufferHandle lightBuffer;
-        nvrhi::BufferHandle envBuffer;
-        nvrhi::BufferHandle debugBuffer;
-    };
-
     class MeshLoader
     {
     public:

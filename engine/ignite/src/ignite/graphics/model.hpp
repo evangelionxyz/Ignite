@@ -6,6 +6,15 @@
 
 namespace ignite {
 
+    struct ModelCreateInfo
+    {
+        nvrhi::IDevice *device;
+        nvrhi::BufferHandle cameraBuffer;
+        nvrhi::BufferHandle lightBuffer;
+        nvrhi::BufferHandle envBuffer;
+        nvrhi::BufferHandle debugBuffer;
+    };
+
     class Model : public Asset
     {
     public:
@@ -14,8 +23,8 @@ namespace ignite {
 
         void SetEnvironmentTexture(nvrhi::TextureHandle envTexture);
         void CreateBindingSet(nvrhi::BindingLayoutHandle bindingLayout);
+        void WriteBuffer(nvrhi::ICommandList *commandList);
 
-        void WriteBuffer(nvrhi::CommandListHandle commandList) override;
         void OnUpdate(f32 deltaTime);
         void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline);
         const std::filesystem::path &GetFilepath() const { return m_Filepath; }
@@ -23,6 +32,7 @@ namespace ignite {
 
         Ref<SkeletalAnimation> GetActiveAnimation();
         bool IsPlayingAnimation();
+        bool IsBufferWritten() const { return m_BufferWritten; }
 
         glm::mat4 transform = glm::mat4(1.0f);
         std::vector<Ref<SkeletalAnimation>> animations;
@@ -36,11 +46,13 @@ namespace ignite {
         virtual AssetType GetType() override { return StaticType(); };
 
     private:
+
         ModelCreateInfo m_CreateInfo;
         nvrhi::TextureHandle m_EnvironmentTexture;
         std::filesystem::path m_Filepath;
 
         Assimp::Importer m_Importer;
 
+        bool m_BufferWritten = false;
     };
 }

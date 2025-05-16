@@ -18,6 +18,55 @@ namespace ignite {
 
 #ifdef PLATFORM_WINDOWS
 
+    std::vector<std::string> FileDialogs::OpenFiles(const char *filter)
+    {
+        OPENFILENAMEA ofn;
+        CHAR szFile[8192] = { 0 };
+        CHAR currentDir[256] = { 0 };
+        ZeroMemory(&ofn, sizeof(OPENFILENAME));
+        ofn.lStructSize = sizeof(OPENFILENAME);
+        ofn.hwndOwner = glfwGetWin32Window(Application::GetInstance()->GetWindow()->GetWindowHandle());
+        ofn.lpstrFile = szFile;
+        ofn.nMaxFile = sizeof(szFile);
+
+        if (GetCurrentDirectoryA(256, currentDir))
+        {
+            ofn.lpstrInitialDir = currentDir;
+        }
+
+        ofn.lpstrFilter = filter;
+        ofn.nFilterIndex = 1;
+        ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR | OFN_ALLOWMULTISELECT | OFN_EXPLORER;
+
+        std::vector<std::string> files;
+
+        if (GetOpenFileNameA(&ofn) == TRUE)
+        {
+            char *ptr = ofn.lpstrFile;
+
+            std::string directory = ptr;
+            ptr += directory.size() + 1;
+
+            if (*ptr == '\0')
+            {
+                // Only one file was selected
+                files.push_back(directory);
+            }
+            else
+            {
+                // Multiple files selected
+                while (*ptr)
+                {
+                    std::string filename = ptr;
+                    ptr += filename.size() + 1;
+                    files.push_back(directory + "\\" + filename);
+                }
+            }
+        }
+
+        return files;
+    }
+
     std::string FileDialogs::OpenFile(const char *filter)
     {
         OPENFILENAMEA ofn;
@@ -29,7 +78,10 @@ namespace ignite {
         ofn.lpstrFile = szFile;
         ofn.nMaxFile = sizeof(szFile);
         if (GetCurrentDirectoryA(256, currentDir))
+        {
             ofn.lpstrInitialDir = currentDir;
+        }
+
         ofn.lpstrFilter = filter;
         ofn.nFilterIndex = 1;
         ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;

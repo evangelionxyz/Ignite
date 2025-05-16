@@ -93,12 +93,11 @@ namespace ignite
         MaterialData *m_SelectedMaterial = nullptr;
 
         Ref<Environment> m_Environment;
+
         DebugRenderData m_DebugRenderData;
         EditorData m_Data;
 
         std::filesystem::path m_CurrentSceneFilePath;
-
-        std::list<std::future<Ref<Model>>> m_PendingLoadModels;
 
         nvrhi::BufferHandle m_DebugRenderBuffer;
         

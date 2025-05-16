@@ -10,7 +10,7 @@
 #include "ignite/imgui/gui_function.hpp"
 #include "ignite/graphics/model.hpp"
 #include "ignite/asset/asset.hpp"
-#include "ignite/asset/asset_worker.hpp"
+#include "ignite/asset/asset_importer.hpp"
 
 #include <glm/glm.hpp>
 #include <nvrhi/utils.h>
@@ -19,6 +19,7 @@
 #   include <dwmapi.h>
 #   include <ShellScalingApi.h>
 #endif
+
 
 namespace ignite
 {
@@ -118,7 +119,7 @@ namespace ignite
     {
         Layer::OnUpdate(deltaTime);
 
-        AssetWorker::SyncMainThread(m_CommandList, m_Device);
+        ModelImporter::SyncMainThread(m_CommandList, m_Device);
 
         float timeInSeconds = static_cast<float>(glfwGetTime());
 
@@ -430,36 +431,30 @@ namespace ignite
 
             if (ImGui::Button("Add GLTF/GLB"))
             {
-                std::string filepath = FileDialogs::OpenFile("GLTF/GLB Files (*.gltf;*.glb)\0*.gltf;*.glb\0All Files (*.*)\0*.*\0");
-                if (!filepath.empty())
+                std::vector<std::string> filepaths = FileDialogs::OpenFiles("GLTF/GLB Files (*.gltf;*.glb)\0*.gltf;*.glb\0All Files (*.*)\0*.*\0");
+                if (!filepaths.empty())
                 {
-                    AssetTask<Model> task(&m_Models.emplace_back(), [this](const std::string &filepath)
-                    {
-                        ModelCreateInfo modelCI;
-                        modelCI.device = m_Device;
-                        modelCI.cameraBuffer = m_Environment->GetCameraBuffer();
-                        modelCI.lightBuffer = m_Environment->GetDirLightBuffer();
-                        modelCI.envBuffer = m_Environment->GetParamsBuffer();
-                        modelCI.debugBuffer = m_DebugRenderBuffer;
+                    ModelCreateInfo modelCI;
+                    modelCI.device = m_Device;
+                    modelCI.debugBuffer = m_DebugRenderBuffer;
+                    modelCI.cameraBuffer = m_Environment->GetCameraBuffer();
+                    modelCI.lightBuffer = m_Environment->GetDirLightBuffer();
+                    modelCI.envBuffer = m_Environment->GetParamsBuffer();
 
-                        Ref<Model> model = Model::Create(filepath, modelCI);
-                        model->SetEnvironmentTexture(m_Environment->GetHDRTexture());
-                        model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
-
-                        return model;
-                    }, filepath);
-
-                    AssetWorker::Submit(task);
+                    ModelImporter::LoadAsync(&m_Models, filepaths, modelCI, m_Environment, m_MeshPipeline);
                 }
             }
 
             int index = 0;
             for (auto it = m_Models.begin(); it != m_Models.end(); )
             {
-                if ((*it) == nullptr)
-                    break;
-
                 auto &model = *it;
+                if (!model)
+                {
+                    ++it;
+                    continue;
+                }
+
                 bool requestToDelete = false;
 
                 const std::string modelName = model->GetFilepath().stem().generic_string();
@@ -610,6 +605,7 @@ namespace ignite
             // Render GUI
             SettingsUI();
         }
+
         ImGui::End(); // end dockspace
     }
 

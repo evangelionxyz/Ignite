@@ -34,7 +34,6 @@ namespace ignite {
         MeshLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), meshes, nodes, skeleton, -1);
         MeshLoader::CalculateWorldTransforms(nodes, meshes);
 
-        // create constant buffers
         for (auto &mesh : meshes)
         {
             // create buffers
@@ -75,10 +74,14 @@ namespace ignite {
         }
     }
 
-    void Model::WriteBuffer(nvrhi::CommandListHandle commandList)
+    void Model::WriteBuffer(nvrhi::ICommandList *commandList)
     {
+        if (m_BufferWritten)
+            return;
+
         for (auto &mesh : meshes)
         {
+            // m_CreateInfo.commandList->open();
             commandList->writeBuffer(mesh->vertexBuffer, mesh->vertices.data(), sizeof(VertexMesh) * mesh->vertices.size());
             commandList->writeBuffer(mesh->indexBuffer, mesh->indices.data(), sizeof(uint32_t) * mesh->indices.size());
 
@@ -88,6 +91,8 @@ namespace ignite {
                 mesh->material.WriteBuffer(commandList);
             }
         }
+
+        m_BufferWritten = true;
     }
 
     void Model::OnUpdate(f32 deltaTime)

@@ -36,7 +36,6 @@ namespace ignite {
         }
 
         virtual AssetType GetType() { return AssetType::Invalid; };
-        virtual void WriteBuffer(nvrhi::CommandListHandle commandList) { };
 
         void SetDirtyFlag(bool dirty) 
         { 
