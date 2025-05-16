@@ -72,6 +72,7 @@ namespace ignite {
         // Create a node entry and get its index
         NodeInfo nodeInfo;
         nodeInfo.localTransform = Math::AssimpToGlmMatrix(node->mTransformation);
+        nodeInfo.id = nodes.size();
         nodeInfo.parentID = parentNodeID;
         nodeInfo.name = node->mName.C_Str();
         i32 currentNodeID = nodes.size();
@@ -89,6 +90,10 @@ namespace ignite {
             i32 meshIndex = node->mMeshes[i];
             aiMesh *mesh = scene->mMeshes[meshIndex];
 
+            // Set node
+            meshes[meshIndex]->nodeID = currentNodeID;
+
+            // Set parent node
             if (nodeInfo.parentID != -1)
             {
                 // Go up 
@@ -96,7 +101,7 @@ namespace ignite {
                 auto it = skeleton.nameToJointMap.find(parentNode.name);
                 if (it != skeleton.nameToJointMap.end())
                 {
-                    meshes[meshIndex]->nodeID = nodeInfo.parentID;
+                    meshes[meshIndex]->nodeParentID = nodeInfo.parentID;
                 }
             }
 

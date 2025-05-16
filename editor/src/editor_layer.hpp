@@ -76,7 +76,7 @@ namespace ignite
 
         void SettingsUI();
 
-        void TraverseNodes(Model *model, const NodeInfo &node, int traverseIndex = 0);
+        void TraverseNodes(Model *model, const NodeInfo &node);
 
         Ref<ScenePanel> m_ScenePanel;
         Ref<Scene> m_ActiveScene;

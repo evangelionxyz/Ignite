@@ -85,6 +85,7 @@ namespace ignite {
 
     struct NodeInfo
     {
+        i32 id = -1;
         i32 parentID = -1;
         std::string name;
         glm::mat4 localTransform;
@@ -115,6 +116,7 @@ namespace ignite {
         glm::mat4 localTransform;
         glm::mat4 worldTransform;
 
+        i32 nodeParentID = -1;
         i32 nodeID = -1; // ID of the bone this mesh is attached to
 
         void CreateConstantBuffers(nvrhi::IDevice *device);

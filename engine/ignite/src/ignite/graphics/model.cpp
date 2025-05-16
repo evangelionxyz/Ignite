@@ -114,9 +114,9 @@ namespace ignite {
 
             glm::mat4 meshTransform = mesh->worldTransform;
 
-            if (activeAnimIndex >= 0 && animations[activeAnimIndex]->isPlaying && mesh->nodeID != -1)
+            if (activeAnimIndex >= 0 && animations[activeAnimIndex]->isPlaying && mesh->nodeParentID != -1)
             {
-                auto it = skeleton.nameToJointMap.find(nodes[mesh->nodeID].name);
+                auto it = skeleton.nameToJointMap.find(nodes[mesh->nodeParentID].name);
                 if (it != skeleton.nameToJointMap.end())
                 {
                     Joint &joint = skeleton.joints[it->second];

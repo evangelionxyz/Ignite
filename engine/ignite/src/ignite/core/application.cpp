@@ -5,8 +5,6 @@
 #include "ignite/imgui/imgui_layer.hpp"
 #include "ignite/graphics/renderer.hpp"
 
-#include "ignite/asset/asset_worker.hpp"
-
 #include <nvrhi/utils.h>
 
 namespace ignite

@@ -587,7 +587,12 @@ namespace ignite
             if (m_SelectedModel)
             {
                 for (const auto &node : m_SelectedModel->nodes)
-                    TraverseNodes(m_SelectedModel, node, 0);
+                {
+                    if (node.parentID == -1)
+                    {
+                        TraverseNodes(m_SelectedModel, node);
+                    }
+                }
             }
             ImGui::End();
 
@@ -885,16 +890,21 @@ namespace ignite
         ImGui::End();
     }
 
-    void EditorLayer::TraverseNodes(Model *model, const NodeInfo &node, int traverseIndex)
+    void EditorLayer::TraverseNodes(Model *model, const NodeInfo &node)
     {
-        if (node.parentID != -1 && traverseIndex == 0)
-            return;
+        // Determine if the node is a leaf node (has no children and no meshes)
+        bool isLeaf = node.childrenIDs.empty() && node.meshIndices.empty();
 
-        ImGuiTreeNodeFlags flags = (node.childrenIDs.empty()) ? ImGuiTreeNodeFlags_Leaf : 0 | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen
-            | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow
+            | ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
 
-        bool opened = ImGui::TreeNodeEx(node.name.c_str(), flags, node.name.c_str());
+        if (isLeaf)
+            flags |= ImGuiTreeNodeFlags_Leaf;
 
+        // Tree node UI
+        bool opened = ImGui::TreeNodeEx((void *)(intptr_t)node.id, flags, node.name.c_str());
+
+        // Handle drag drop target for meshes
         if (ImGui::BeginDragDropTarget())
         {
             if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("MESH_ITEM"))
@@ -902,31 +912,28 @@ namespace ignite
                 LOG_ASSERT(payload->DataSize == sizeof(Ref<Mesh>), "Wrong mesh item");
 
                 Ref<Mesh> mesh = *static_cast<Ref<Mesh> *>(payload->Data);
-                // mesh->nodeID = node.id;
+                mesh->nodeID = node.id;
+                mesh->nodeParentID = node.parentID;
             }
             ImGui::EndDragDropTarget();
         }
 
         if (opened)
         {
-            for (i32 child : node.childrenIDs)
-            {
-                TraverseNodes(model, model->nodes[child], ++traverseIndex);
-            }
-
+            // Display meshes under this node
             for (i32 meshIndex : node.meshIndices)
             {
                 Ref<Mesh> mesh = model->meshes[meshIndex];
-
-                bool opened = ImGui::TreeNodeEx(mesh->name.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow, "%s", mesh->name.c_str());
+                bool meshOpened = ImGui::TreeNodeEx((void *)(intptr_t)meshIndex, ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow, "%s", mesh->name.c_str());
 
                 if (ImGui::BeginDragDropSource())
                 {
                     ImGui::SetDragDropPayload("MESH_ITEM", &mesh, sizeof(Ref<Mesh>));
+                    ImGui::Text("%s", mesh->name.c_str());
                     ImGui::EndDragDropSource();
                 }
 
-                if (opened)
+                if (meshOpened)
                 {
                     if (ImGui::TreeNodeEx("Material", ImGuiTreeNodeFlags_Leaf, "Material"))
                     {
@@ -934,13 +941,20 @@ namespace ignite
                         {
                             m_SelectedMaterial = &mesh->material.data;
                         }
-
                         ImGui::TreePop();
                     }
-                    ImGui::TreePop();
+
+                    ImGui::TreePop(); // mesh node
                 }
             }
-            ImGui::TreePop();
+
+            // Recurse into children
+            for (i32 child : node.childrenIDs)
+            {
+                TraverseNodes(model, model->nodes[child]);
+            }
+
+            ImGui::TreePop(); // current node
         }
     }
 
