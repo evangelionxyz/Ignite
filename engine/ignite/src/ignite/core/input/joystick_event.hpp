@@ -53,23 +53,33 @@ namespace ignite {
                 {
                     unsigned char buttonState = gamepadState.buttons[bt];
                     m_Buttons[bt] = buttonState == GLFW_PRESS;
-
-                    if (m_Buttons[bt])
-                    {
-                        m_ButtonStrStream << " button " << bt << " pressed";
-                    }
                 }
             }
         }
 
         std::string ToString() const
         {
-            std::string msg = fmt::format("[Joystick] Left {} {} Right {} {} L2 {} R2 {} {}\n",
+            std::string msg = fmt::format("[Joystick] Left {} {} Right {} {} L2 {} R2 {}\n",
                 m_LeftAxis.x, m_LeftAxis.y,
                 m_RightAxis.x, m_RightAxis.y,
-                m_Triggers.x, m_Triggers.y,
-                m_ButtonStrStream.str());
-            m_ButtonStrStream.clear();
+                m_Triggers.x, m_Triggers.y);
+
+            msg += "Buttons Pressed: ";
+
+            bool anyPressed = false;
+            for (int bt = 0; bt < joystick::button::LAST; ++bt)
+            {
+                if (m_Buttons[bt])
+                {
+                    anyPressed = true;
+                    msg += joystick::ButtonToString(bt) + " ";
+                }
+            }
+
+            if (!anyPressed)
+                msg += "None";
+
+            msg += "\n";
             return msg;
         }
 
@@ -90,8 +100,6 @@ namespace ignite {
         int m_JoyId = -1;
         mutable bool m_Buttons[joystick::button::LAST] = { false };
         mutable glm::vec2 m_LeftAxis, m_RightAxis, m_Triggers;
-        mutable std::stringstream m_ButtonStrStream;
-
     };
 
     class JoystickManager
