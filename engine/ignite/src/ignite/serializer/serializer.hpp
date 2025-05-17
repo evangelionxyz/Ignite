@@ -321,5 +321,4 @@ namespace ignite {
     private:
         Ref<Project> m_Project;
     };
-
 }

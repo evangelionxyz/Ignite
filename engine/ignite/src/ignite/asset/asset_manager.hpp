@@ -14,9 +14,11 @@ namespace ignite {
         AssetManager() = default;
 
         AssetHandle ImportAsset(const std::filesystem::path &filepath);
+        void InsertMetaData(AssetHandle handle, const AssetMetaData &metadata);
         void RemoveAsset(AssetHandle handle);
 
         Ref<Asset> GetAsset(AssetHandle handle);
+
         AssetType GetAssetType(AssetHandle handle);
 
         const AssetMetaData &GetMetaData(AssetHandle handle) const;

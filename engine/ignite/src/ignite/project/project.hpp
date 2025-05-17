@@ -13,8 +13,10 @@ namespace ignite
     struct ProjectInfo
     {
         std::string name;
+        AssetHandle defaultSceneHandle = AssetHandle(0);
         std::filesystem::path filepath;
-        std::filesystem::path assetFilepath = "/Assets";
+        std::filesystem::path assetFilepath = "Assets";
+        std::filesystem::path assetRegistryFilename = "AssetRegistry.ixreg";
     };
 
     class Project : public Asset
@@ -22,11 +24,26 @@ namespace ignite
     public:
         Project() = default;
         Project(const ProjectInfo &info);
+
+        ~Project();
+
+        std::filesystem::path GetAssetFilepath(const std::filesystem::path &filepath);
+        std::filesystem::path GetRelativePath(const std::filesystem::path &filepath);
         
+        void SetActiveScene(const Ref<Scene> &scene);
+
+        template<typename T>
+        static Ref<T> GetAsset(AssetHandle handle)
+        {
+            Ref<Asset> asset = Project::GetInstance()->GetAssetManager().GetAsset(handle);
+            return std::static_pointer_cast<T>(asset);
+        }
+
         const ProjectInfo &GetInfo() const { return m_Info; }
+
         const Ref<Scene> &GetActiveScene() { return m_ActiveScene; }
 
-        const AssetManager &GetAssetManager() { return m_AssetManager; }
+        AssetManager &GetAssetManager() { return m_AssetManager; }
 
         static Project *GetInstance();
         static Ref<Project> Create(const ProjectInfo &info);
@@ -37,9 +54,10 @@ namespace ignite
     private:
         void SerializeAssetRegistry();
 
-        Ref<Scene> m_ActiveScene;
+        Ref<Scene> m_ActiveScene; // current active scene in editor
         ProjectInfo m_Info;
 
         AssetManager m_AssetManager;
     };
+
 }

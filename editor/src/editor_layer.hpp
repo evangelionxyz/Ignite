@@ -68,10 +68,9 @@ namespace ignite
         bool OpenScene(const std::filesystem::path &filepath);
         
         void SaveProject();
-        void SaveProject(const std::filesystem::path &filepath);
         void SaveProjectAs();
         void OpenProject();
-        void OpenProject(const std::filesystem::path &filepath);
+        bool OpenProject(const std::filesystem::path &filepath);
 
         void OnScenePlay();
         void OnSceneStop();
@@ -84,6 +83,7 @@ namespace ignite
         Ref<ScenePanel> m_ScenePanel;
         Ref<Scene> m_ActiveScene;
         Ref<Scene> m_EditorScene;
+        Ref<Project> m_ActiveProject;
         
         Ref<GraphicsPipeline> m_MeshPipeline;
 

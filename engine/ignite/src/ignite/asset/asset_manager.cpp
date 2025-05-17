@@ -6,26 +6,6 @@
 
 namespace ignite {
 
-    static std::map<const char *, AssetType> s_AssetExtensionMap = 
-    {
-        { ".ixproj", AssetType::Project },
-        { ".ixs", AssetType::Scene },
-        { ".jpg", AssetType::Texture },
-        { ".hdr", AssetType::Texture },
-        { ".png", AssetType::Texture },
-        { ".jpeg", AssetType::Texture },
-        { ".mp3", AssetType::Audio },
-        { ".wav", AssetType::Audio },
-        { ".fbx", AssetType::Audio },
-        { ".glb", AssetType::Audio },
-        { ".gltf", AssetType::Audio },
-    };
-
-    static AssetType GetAssetTypeFromExtension(const char *ext)
-    {
-        return s_AssetExtensionMap.at(ext);
-    }
-
     AssetHandle AssetManager::ImportAsset(const std::filesystem::path &filepath)
     {
         AssetHandle handle;
@@ -33,7 +13,7 @@ namespace ignite {
         // create metadata
         AssetMetaData metadata;
         metadata.filepath = filepath;
-        metadata.type = GetAssetTypeFromExtension(metadata.filepath.extension().generic_string().c_str());
+        metadata.type = GetAssetTypeFromExtension(metadata.filepath.extension().generic_string());
 
         // Invalid 
         if (metadata.type == AssetType::Invalid)
@@ -64,9 +44,16 @@ namespace ignite {
         return handle;
     }
 
+    void AssetManager::InsertMetaData(AssetHandle handle, const AssetMetaData &metadata)
+    {
+        m_AssetRegistry[handle] = metadata;
+    }
+
     void AssetManager::RemoveAsset(AssetHandle handle)
     {
-
+        auto it = m_AssetRegistry.find(handle);
+        if (it != m_AssetRegistry.end())
+            m_AssetRegistry.erase(it);
     }
 
     Ref<Asset> AssetManager::GetAsset(AssetHandle handle)

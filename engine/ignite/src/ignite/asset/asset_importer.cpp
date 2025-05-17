@@ -1,5 +1,7 @@
 #include "asset_importer.hpp"
 
+#include "ignite/serializer/serializer.hpp"
+#include "ignite/project/project.hpp"
 #include "ignite/scene/scene.hpp"
 #include "ignite/graphics/graphics_pipeline.hpp"
 #include "ignite/graphics/environment.hpp"
@@ -19,10 +21,10 @@ namespace ignite {
 
     Ref<Asset> AssetImporter::Import(AssetHandle handle, const AssetMetaData &metadata)
     {
-        Ref<Asset> asset;
+        if (s_ImportFuntions.contains(metadata.type))
+            return s_ImportFuntions.at(metadata.type)(handle, metadata);
 
-
-        return asset;
+        return nullptr;
     }
 
     std::vector<std::future<Ref<Model>>> ModelImporter::m_ModelFutures;
@@ -125,8 +127,16 @@ namespace ignite {
 
     Ref<Scene> SceneImporter::Import(AssetHandle handle, const AssetMetaData &metadata)
     {
-        Ref<Scene> scene = Scene::Create("New Scene");
-        scene->handle = handle;
+        Project *activeProject = Project::GetInstance();
+
+        std::filesystem::path filepath = activeProject->GetAssetFilepath(metadata.filepath);
+        
+        Ref<Scene> scene = SceneSerializer::Deserialize(filepath);
+
+        if (scene)
+        {
+            scene->handle = handle;
+        }
 
         return scene;
     }

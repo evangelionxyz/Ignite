@@ -408,17 +408,12 @@ namespace ignite
 
             else if (ImGui::MenuItem("Save Project"))
             {
-
+                SaveProject();
             }
 
-            else if (ImGui::MenuItem("Save Project As"))
+            else if (ImGui::MenuItem("Open Project"))
             {
-
-            }
-
-            else if (ImGui::MenuItem("Close Project"))
-            {
-
+                OpenProject();
             }
 
             ImGui::EndPopup();
@@ -458,7 +453,7 @@ namespace ignite
                 }
             }
 
-            if (ImGui::Button("OK"))
+            if (ImGui::Button("Create"))
             {
                 if (!m_Data.projectCreateInfo.name.empty() && !m_Data.projectCreateInfo.filepath.empty())
                 {
@@ -471,6 +466,14 @@ namespace ignite
                     m_Data.projectCreateInfo.filepath /= (m_Data.projectCreateInfo.name + ".ixproj");
 
                     Ref<Project> newProject = Project::Create(m_Data.projectCreateInfo);
+
+                    if (newProject)
+                    {
+                        ProjectSerializer serializer(newProject);
+                        serializer.Serialize(m_Data.projectCreateInfo.filepath);
+
+                        m_ActiveProject = newProject;
+                    }
 
                     m_Data.projectCreateInfo.filepath.clear();
                     m_Data.projectCreateInfo.name.clear();
@@ -509,6 +512,49 @@ namespace ignite
         {
             // scene dockspace
             m_ScenePanel->OnGuiRender();
+
+            ImGui::Begin("Project");
+
+            if (Project *activeProject = Project::GetInstance())
+            {
+                const auto &info = activeProject->GetInfo();
+
+                std::string projectName = info.name;
+                if (activeProject->IsDirty())
+                    projectName += "*";
+
+                ImGui::Text("Name: %s", projectName.c_str());
+                
+                ImGui::Text("Filepath: %s", info.filepath.generic_string().c_str());
+
+                auto &assetManager = activeProject->GetAssetManager();
+                auto &assetRegistry = assetManager.GetAssetAssetRegistry();
+
+                if (!assetRegistry.empty())
+                {
+                    ImGui::Text("Registered assets:");
+
+                    for (auto &[handle, metadata] : assetRegistry)
+                    {
+                        ImGui::Text("Handle: %ull", (uint64_t)handle);
+                        ImGui::Text("Type: %s", AssetTypeToString(metadata.type).c_str());
+                        ImGui::Text("Filepath: %s", metadata.filepath.generic_string().c_str());
+                    }
+                }
+
+                if (ImGui::Button("Import File"))
+                {
+                    std::filesystem::path filepath = FileDialogs::OpenFile("All Files (*.*)\0*.*\0");
+
+                    if (!filepath.empty())
+                    {
+                        AssetHandle handle = assetManager.ImportAsset(filepath);
+                        activeProject->SetDirtyFlag(true);
+                    }
+                }
+            }
+
+            ImGui::End();
 
             ImGui::Begin("Models");
 
@@ -739,7 +785,7 @@ namespace ignite
 
     void EditorLayer::OpenScene()
     {
-        std::string filepath = FileDialogs::OpenFile("Ignite Scene (*igs)\0*.igs\0");
+        std::string filepath = FileDialogs::OpenFile("Ignite Scene (*igs)\0*.ixs\0");
         if (!filepath.empty())
         {
             m_CurrentSceneFilePath = filepath;
@@ -767,12 +813,15 @@ namespace ignite
 
     void EditorLayer::SaveProject()
     {
-
-    }
-
-    void EditorLayer::SaveProject(const std::filesystem::path &filepath)
-    {
-
+        if (m_ActiveProject)
+        {
+            const auto &info = m_ActiveProject->GetInfo();
+            ProjectSerializer sr(m_ActiveProject);
+            if (!info.filepath.empty())
+            {
+                sr.Serialize(info.filepath);
+            }
+        }
     }
 
     void EditorLayer::SaveProjectAs()
@@ -782,12 +831,38 @@ namespace ignite
 
     void EditorLayer::OpenProject()
     {
-
+        std::filesystem::path filepath = FileDialogs::OpenFile("Ignite Project (*.ixproj)\0*.ixproj\0");
+        if (!filepath.empty())
+        {
+            OpenProject(filepath);
+        }
     }
 
-    void EditorLayer::OpenProject(const std::filesystem::path &filepath)
+    bool EditorLayer::OpenProject(const std::filesystem::path &filepath)
     {
+        Ref<Project> openedProject = ProjectSerializer::Deserialize(filepath);
+        if (!openedProject)
+        {
+            return false;
+        }
 
+        m_ActiveProject = openedProject;
+        if (m_ActiveProject->GetActiveScene())
+        {
+            Ref<Scene> scene = m_ActiveProject->GetActiveScene();
+
+            m_EditorScene = SceneManager::Copy(scene);
+            m_EditorScene->SetDirtyFlag(false);
+
+            m_ActiveScene = m_EditorScene;
+            m_ScenePanel->SetActiveScene(m_ActiveScene.get(), true);
+
+            AssetMetaData metadata = Project::GetInstance()->GetAssetManager().GetMetaData(scene->handle);
+            auto scenePath = Project::GetInstance()->GetAssetFilepath(metadata.filepath);
+            m_CurrentSceneFilePath = scenePath;
+        }
+
+        return true;
     }
 
     void EditorLayer::OnScenePlay()
