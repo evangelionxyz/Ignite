@@ -21,7 +21,9 @@ namespace ignite
             for (i32 i = 0; i < m_CreateInfo.cmdLineArgs.count; ++i)
             {
                 if (strcmp(createInfo.cmdLineArgs.args[i], "-dx12") == 0)
+                {
                     m_CreateInfo.graphicsApi = nvrhi::GraphicsAPI::D3D12;
+                }
             }
         }
 

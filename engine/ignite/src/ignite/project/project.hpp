@@ -43,6 +43,16 @@ namespace ignite
 
         const Ref<Scene> &GetActiveScene() { return m_ActiveScene; }
 
+        const std::filesystem::path GetAssetDirectory()
+        {
+            return m_Info.filepath.parent_path() / m_Info.assetFilepath;
+        }
+
+        static std::filesystem::path GetActiveAssetDirectory()
+        {
+            return GetInstance()->GetAssetDirectory();
+        }
+
         AssetManager &GetAssetManager() { return m_AssetManager; }
 
         static Project *GetInstance();

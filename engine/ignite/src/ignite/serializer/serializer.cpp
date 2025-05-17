@@ -368,7 +368,7 @@ namespace ignite {
             {
                 assetSr.BeginMap(); // Begin Metadata
 
-                metadata.filepath = m_Project->GetRelativePath(metadata.filepath);
+                metadata.filepath = m_Project->GetAssetFilepath(metadata.filepath);
 
                 assetSr.AddKeyValue("Handle", (uint64_t)handle);
                 assetSr.AddKeyValue("Type", AssetTypeToString(metadata.type));

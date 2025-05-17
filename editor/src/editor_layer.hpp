@@ -58,6 +58,8 @@ namespace ignite
         void OnGuiRender() override;
 
         Scene *GetActiveScene() { return m_ActiveScene.get(); }
+        Project *GetActiveProject() { return m_ActiveProject.get(); }
+
         EditorData GetState() const { return m_Data; }
 
     private:

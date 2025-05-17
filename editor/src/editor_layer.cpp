@@ -110,7 +110,16 @@ namespace ignite
 
         m_ContentBrowserPanel = CreateRef<ContentBrowserPanel>("Content Browser");
 
-        NewScene();
+        const auto &cmdArgs = Application::GetInstance()->GetCreateInfo().cmdLineArgs;
+        for (int i = 0; i < cmdArgs.count; ++i)
+        {
+            std::string args = cmdArgs[i];
+            if (args.find("-project=") != std::string::npos)
+            {
+                std::string projectFilepath = args.substr(9, args.size() - 9);
+                OpenProject(projectFilepath);
+            }
+        }
     }
 
     void EditorLayer::OnDetach()
@@ -546,17 +555,6 @@ namespace ignite
                         ImGui::Text("Filepath: %s", metadata.filepath.generic_string().c_str());
                     }
                 }
-
-                if (ImGui::Button("Import File"))
-                {
-                    std::filesystem::path filepath = FileDialogs::OpenFile("All Files (*.*)\0*.*\0");
-
-                    if (!filepath.empty())
-                    {
-                        AssetHandle handle = assetManager.ImportAsset(filepath);
-                        activeProject->SetDirtyFlag(true);
-                    }
-                }
             }
 
             ImGui::End();
@@ -852,6 +850,10 @@ namespace ignite
         }
 
         m_ActiveProject = openedProject;
+
+        m_ContentBrowserPanel->SetActiveProject(m_ActiveProject);
+
+
         if (m_ActiveProject->GetActiveScene())
         {
             Ref<Scene> scene = m_ActiveProject->GetActiveScene();
@@ -866,6 +868,7 @@ namespace ignite
             auto scenePath = Project::GetInstance()->GetAssetFilepath(metadata.filepath);
             m_CurrentSceneFilePath = scenePath;
         }
+
 
         return true;
     }

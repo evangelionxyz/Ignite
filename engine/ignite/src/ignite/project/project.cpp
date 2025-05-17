@@ -17,8 +17,7 @@ namespace ignite
 
     std::filesystem::path Project::GetAssetFilepath(const std::filesystem::path &filepath)
     {
-        auto relPath = std::filesystem::relative(filepath, m_Info.assetFilepath);
-        return m_Info.filepath.parent_path() / m_Info.assetFilepath / relPath;
+        return m_Info.filepath.parent_path() / m_Info.assetFilepath / filepath;
     }
 
     std::filesystem::path Project::GetRelativePath(const std::filesystem::path &filepath)
