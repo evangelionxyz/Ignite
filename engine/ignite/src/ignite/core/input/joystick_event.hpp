@@ -59,7 +59,7 @@ namespace ignite {
 
         std::string ToString() const
         {
-            std::string msg = fmt::format("[Joystick] Left {} {} Right {} {} L2 {} R2 {}\n",
+            std::string msg = fmt::format("[Joystick] Left {} {} Right {} {} L2 {} R2 {} | ",
                 m_LeftAxis.x, m_LeftAxis.y,
                 m_RightAxis.x, m_RightAxis.y,
                 m_Triggers.x, m_Triggers.y);
