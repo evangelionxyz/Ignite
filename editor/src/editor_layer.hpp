@@ -20,6 +20,7 @@ namespace ignite
     class ShaderFactory;
     class DeviceManager;
     class ScenePanel;
+    class ContentBrowserPanel;
     class Model;
 
     struct DebugRenderData
@@ -81,6 +82,8 @@ namespace ignite
         void TraverseNodes(Model *model, const NodeInfo &node);
 
         Ref<ScenePanel> m_ScenePanel;
+        Ref<ContentBrowserPanel> m_ContentBrowserPanel;
+
         Ref<Scene> m_ActiveScene;
         Ref<Scene> m_EditorScene;
         Ref<Project> m_ActiveProject;

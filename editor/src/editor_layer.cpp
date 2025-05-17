@@ -1,5 +1,8 @@
 ﻿#include "editor_layer.hpp"
+
 #include "panels/scene_panel.hpp"
+#include "panels/content_browser_panel.hpp"
+
 #include "ignite/core/platform_utils.hpp"
 #include "ignite/core/command.hpp"
 #include "ignite/scene/camera.hpp"
@@ -19,7 +22,6 @@
 #   include <dwmapi.h>
 #   include <ShellScalingApi.h>
 #endif
-
 
 namespace ignite
 {
@@ -105,6 +107,8 @@ namespace ignite
 
         m_ScenePanel = CreateRef<ScenePanel>("Scene Panel", this);
         m_ScenePanel->CreateRenderTarget(m_Device);
+
+        m_ContentBrowserPanel = CreateRef<ContentBrowserPanel>("Content Browser");
 
         NewScene();
     }
@@ -512,6 +516,7 @@ namespace ignite
         {
             // scene dockspace
             m_ScenePanel->OnGuiRender();
+            m_ContentBrowserPanel->OnGuiRender();
 
             ImGui::Begin("Project");
 
