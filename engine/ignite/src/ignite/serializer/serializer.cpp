@@ -311,4 +311,23 @@ namespace ignite {
 
         return desScene;
     }
+
+
+    ProjectSerializer::ProjectSerializer(const Ref<Project> &project)
+        : m_Project(project)
+    {
+    }
+
+    bool ProjectSerializer::Serialize(const std::filesystem::path &filepath)
+    {
+        return true;
+    }
+
+    Ref<Project> ProjectSerializer::Deserialize(const std::filesystem::path &filepath)
+    {
+        Ref<Project> project;
+
+        return project;
+    }
+
 }

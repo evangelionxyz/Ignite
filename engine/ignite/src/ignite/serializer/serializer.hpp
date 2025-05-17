@@ -264,6 +264,7 @@ namespace ignite {
 namespace ignite {
 
     class Scene;
+    class Project;
 
     class Serializer
     {
@@ -307,6 +308,18 @@ namespace ignite {
 
     private:
         Ref<Scene> m_Scene;
+    };
+
+    class ProjectSerializer
+    {
+    public:
+        ProjectSerializer(const Ref<Project> &project);
+
+        bool Serialize(const std::filesystem::path &filepath);
+        static Ref<Project> Deserialize(const std::filesystem::path &filepath);
+
+    private:
+        Ref<Project> m_Project;
     };
 
 }
