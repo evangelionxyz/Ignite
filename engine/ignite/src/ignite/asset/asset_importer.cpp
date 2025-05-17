@@ -1,14 +1,28 @@
 #include "asset_importer.hpp"
 
+#include "ignite/scene/scene.hpp"
 #include "ignite/graphics/graphics_pipeline.hpp"
 #include "ignite/graphics/environment.hpp"
 
 namespace ignite {
 
+    static std::unordered_map<AssetType, std::function<Ref<Asset>(UUID, const AssetMetaData &)>> s_ImportFuntions =
+    {
+        { AssetType::Scene, SceneImporter::Import }
+    };
+
     void AssetImporter::SyncMainThread(nvrhi::ICommandList *commandList, nvrhi::IDevice *device)
     {
         ModelImporter::SyncMainThread(commandList, device);
         EnvironmentImporter::SyncMainThread(commandList, device);
+    }
+
+    Ref<Asset> AssetImporter::Import(AssetHandle handle, const AssetMetaData &metadata)
+    {
+        Ref<Asset> asset;
+
+
+        return asset;
     }
 
     std::vector<std::future<Ref<Model>>> ModelImporter::m_ModelFutures;
@@ -108,5 +122,13 @@ namespace ignite {
         return *outEnvironment;
     }
     std::future<Ref<Environment>> EnvironmentImporter::m_Future;
+
+    Ref<Scene> SceneImporter::Import(AssetHandle handle, const AssetMetaData &metadata)
+    {
+        Ref<Scene> scene = Scene::Create("New Scene");
+        scene->handle = handle;
+
+        return scene;
+    }
 
 }

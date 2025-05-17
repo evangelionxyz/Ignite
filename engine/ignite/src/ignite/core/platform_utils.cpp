@@ -4,6 +4,7 @@
 
 #ifdef PLATFORM_WINDOWS
 #   include <Windows.h>
+#   include <ShObjIdl.h>
 #   include <commdlg.h>
 #   include <GLFW/glfw3.h>
 #   include <GLFW/glfw3native.h>
@@ -90,6 +91,50 @@ namespace ignite {
             return ofn.lpstrFile;
 
         return {};
+    }
+
+    std::string FileDialogs::SelectFolder()
+    {
+        std::string folderPath;
+
+        IFileDialog *pFileDialog = nullptr;
+
+        HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pFileDialog));
+
+        if (SUCCEEDED(hr))
+        {
+            // Set the dialog to pick folders
+            DWORD options;
+            pFileDialog->GetOptions(&options);
+            pFileDialog->SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM);
+
+            // show the dialg
+            hr = pFileDialog->Show(nullptr);
+            if (SUCCEEDED(hr))
+            {
+                IShellItem *pItem;
+                hr = pFileDialog->GetResult(&pItem);
+                if (SUCCEEDED(hr))
+                {
+                    PWSTR pszFilePath = nullptr;
+                    hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+
+                    if (SUCCEEDED(hr))
+                    {
+                        // convert wide string to std::string
+                        char path[MAX_PATH];
+                        WideCharToMultiByte(CP_ACP, 0, pszFilePath, -1, path, MAX_PATH, nullptr, nullptr);
+                        folderPath = path;
+                        CoTaskMemFree(pszFilePath);
+                    }
+
+                    pItem->Release();
+                }
+            }
+            pFileDialog->Release();
+        }
+
+        return folderPath;
     }
 
     std::string FileDialogs::SaveFile(const char *filter)

@@ -1,4 +1,4 @@
-#include "editor_layer.hpp"
+﻿#include "editor_layer.hpp"
 #include "panels/scene_panel.hpp"
 #include "ignite/core/platform_utils.hpp"
 #include "ignite/core/command.hpp"
@@ -90,7 +90,7 @@ namespace ignite
 
             // create env
             m_Environment = Environment::Create(m_Device);
-            m_Environment->LoadTexture(m_Device, "resources/hdr/rogland_clear_night_4k.hdr", m_EnvPipeline->GetBindingLayout());
+            m_Environment->LoadTexture(m_Device, "resources/hdr/klippad_sunrise_2_2k.hdr", m_EnvPipeline->GetBindingLayout());
             
             m_CommandList->open();
             m_Environment->WriteBuffer(m_CommandList);
@@ -120,9 +120,6 @@ namespace ignite
         Layer::OnUpdate(deltaTime);
 
         AssetImporter::SyncMainThread(m_CommandList, m_Device);
-
-        // model->SetEnvironmentTexture(env->GetHDRTexture());
-        // model->CreateBindingSet(m_MeshPipeline->GetBindingLayout());
 
         float timeInSeconds = static_cast<float>(glfwGetTime());
 
@@ -406,16 +403,19 @@ namespace ignite
 
             if (ImGui::MenuItem("New Project"))
             {
-
+                m_Data.popupNewProjectModal = true;
             }
+
             else if (ImGui::MenuItem("Save Project"))
             {
 
             }
+
             else if (ImGui::MenuItem("Save Project As"))
             {
 
             }
+
             else if (ImGui::MenuItem("Close Project"))
             {
 
@@ -424,12 +424,92 @@ namespace ignite
             ImGui::EndPopup();
         }
 
+        if (m_Data.popupNewProjectModal)
+        {
+            ImGui::OpenPopup("New Project");
+            m_Data.popupNewProjectModal = false;
+        }
+
+        if (ImGui::BeginPopupModal("New Project", nullptr, 0))
+        {
+            ImGui::Text("Create a brand new project here...");
+
+            static char nameBuffer[128] = {};
+            if (ImGui::InputText("Project Name", nameBuffer, 128))
+            {
+                m_Data.projectCreateInfo.name = std::string(nameBuffer);
+            }
+
+            static char filepathBuffer[256] = {};
+            if (ImGui::InputText("Location", filepathBuffer, sizeof(filepathBuffer), ImGuiInputTextFlags_ReadOnly))
+            {
+                m_Data.projectCreateInfo.filepath = std::string(filepathBuffer);
+            }
+
+            ImGui::SameLine();
+            if (ImGui::Button("..."))
+            {
+                m_Data.projectCreateInfo.filepath = FileDialogs::SelectFolder();
+
+                if (!m_Data.projectCreateInfo.filepath.empty())
+                {
+                    std::string filepathCopy = m_Data.projectCreateInfo.filepath.generic_string();
+                    memcpy(filepathBuffer, filepathCopy.c_str(), sizeof(filepathBuffer));
+                }
+            }
+
+            if (ImGui::Button("OK"))
+            {
+                if (!m_Data.projectCreateInfo.name.empty() && !m_Data.projectCreateInfo.filepath.empty())
+                {
+                    while (m_Data.projectCreateInfo.name.find(" ") != std::string::npos)
+                    {
+                        size_t spacePos = m_Data.projectCreateInfo.name.find(" ");
+                        m_Data.projectCreateInfo.name.replace(spacePos, 1, "");
+                    }
+
+                    m_Data.projectCreateInfo.filepath /= (m_Data.projectCreateInfo.name + ".ixproj");
+
+                    Ref<Project> newProject = Project::Create(m_Data.projectCreateInfo);
+
+                    m_Data.projectCreateInfo.filepath.clear();
+                    m_Data.projectCreateInfo.name.clear();
+
+                    memset(nameBuffer, 0, sizeof(nameBuffer));
+                    memset(filepathBuffer, 0, sizeof(filepathBuffer));
+
+                    ImGui::CloseCurrentPopup();
+                }
+                else
+                {
+                    // TODO: Show error message text
+                }
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("Cancel"))
+            {
+                m_Data.projectCreateInfo.filepath.clear();
+                m_Data.projectCreateInfo.name.clear();
+
+                memset(nameBuffer, 0, sizeof(nameBuffer));
+                memset(filepathBuffer, 0, sizeof(filepathBuffer));
+
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+
+
         // dockspace
         ImGui::SetCursorScreenPos({viewport->Pos.x, totalTitlebarHeight});
         ImGui::DockSpace(ImGui::GetID("main_dockspace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
         {
             // scene dockspace
             m_ScenePanel->OnGuiRender();
+
             ImGui::Begin("Models");
 
             if (ImGui::Button("Add GLTF/GLB"))
@@ -649,7 +729,7 @@ namespace ignite
 
     void EditorLayer::SaveSceneAs()
     {
-        std::string filepath = FileDialogs::SaveFile("Ignite Scene (*igs)\0*.igs\0");
+        std::string filepath = FileDialogs::SaveFile("Ignite Scene (*ixs)\0*.ixs\0");
         if (!filepath.empty())
         {
             m_CurrentSceneFilePath = filepath;
@@ -683,11 +763,6 @@ namespace ignite
         }
 
         return true;
-    }
-
-    void EditorLayer::NewProject()
-    {
-
     }
 
     void EditorLayer::SaveProject()

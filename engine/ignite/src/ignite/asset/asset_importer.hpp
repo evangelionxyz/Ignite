@@ -1,5 +1,6 @@
 #pragma once
 
+#include "asset.hpp"
 #include "ignite/graphics/model.hpp"
 
 #include <future>
@@ -10,11 +11,15 @@ namespace ignite {
 
     class Environment;
     class GraphicsPipeline;
+    class Scene;
 
     class AssetImporter
     {
     public:
         static void SyncMainThread(nvrhi::ICommandList *commandList, nvrhi::IDevice *device);
+        
+        static Ref<Asset> Import(AssetHandle handle, const AssetMetaData &metadata);
+
     };
 
     class ModelImporter : public AssetImporter
@@ -41,5 +46,12 @@ namespace ignite {
         static Ref<Environment> ImportAsync(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline);
         static Ref<Environment> LoadTextureAsync(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline);
         static std::future<Ref<Environment>> m_Future;
+    };
+
+    class SceneImporter : public AssetImporter
+    {
+    public:
+        static Ref<Scene> Import(AssetHandle handle, const AssetMetaData &metadata);
+
     };
 }

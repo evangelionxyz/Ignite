@@ -7,6 +7,7 @@
 #include "ignite/graphics/environment.hpp"
 #include "ignite/graphics/lighting.hpp"
 #include "ignite/serializer/serializer.hpp"
+#include "ignite/project/project.hpp"
 
 #include "states.hpp"
 
@@ -35,6 +36,9 @@ namespace ignite
             bool developerMode = false;
             bool multiSelect = false;
             bool settingsWindow = false;
+            bool popupNewProjectModal = false;
+
+            ProjectInfo projectCreateInfo;
 
             State sceneState = State::SceneEdit;
             nvrhi::RasterFillMode rasterFillMode = nvrhi::RasterFillMode::Solid;
@@ -63,7 +67,6 @@ namespace ignite
         void OpenScene();
         bool OpenScene(const std::filesystem::path &filepath);
         
-        void NewProject();
         void SaveProject();
         void SaveProject(const std::filesystem::path &filepath);
         void SaveProjectAs();

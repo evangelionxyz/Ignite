@@ -8,21 +8,27 @@
 
 namespace ignite {
 
+    using AssetHandle = UUID;
+
+
     enum class AssetType
     {
         Invalid,
         Texture,
         Audio,
         Model,
+        Project,
+        Environment,
         Scene
     };
 
-    struct AssetRegistry
+    struct AssetMetaData
     {
-        UUID uuid;
-        AssetType type;
+        AssetHandle handle = AssetHandle(0);
+        AssetType type = AssetType::Invalid;
         std::filesystem::path filepath;
     };
+
 
     class Asset
     {
@@ -46,6 +52,8 @@ namespace ignite {
         { 
             return m_IsDirty;
         }
+
+        AssetHandle handle;
 
     protected:
         bool m_IsDirty = true;
