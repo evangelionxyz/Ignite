@@ -129,8 +129,12 @@ namespace ignite {
         }
     }
     
-    void MeshLoader::ProcessNode(const aiScene *assimpScene, aiNode *node, const std::string &filepath, Scene *scene, const Skeleton &skeleton, UUID parentId)
+#if 0
+    UUID MeshLoader::ProcessNode(const aiScene *assimpScene, aiNode *node, const std::string &filepath, Scene *scene, std::vector<EntityNodeInfo> &nodes, const Skeleton &skeleton, UUID parentUUID, i32 parentId)
     {
+        EntityNodeInfo nodeInfo;
+        nodeInfo.localTransform
+
         // Create a node entity
         Entity entity = SceneManager::CreateEntity(scene, node->mName.C_Str(), EntityType_Node);
         UUID currentNodeId = entity.GetUUID();
@@ -201,7 +205,10 @@ namespace ignite {
         {
             ProcessNode(assimpScene, node->mChildren[i], filepath, scene, skeleton, currentNodeId);
         }
+
+        return currentNodeId;
     }
+#endif
 
     template<typename T>
     void MeshLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *assimpMesh, Ref<T> &mesh, const std::string &filepath, const Skeleton &skeleton)
@@ -597,7 +604,6 @@ namespace ignite {
             {
                 // Child node
                 nodes[i].worldTransform = nodes[nodes[i].parentID].worldTransform * nodes[i].localTransform;
-                
             }
 
             // Apply node's world transform to all its meshes

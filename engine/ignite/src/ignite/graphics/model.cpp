@@ -26,7 +26,6 @@ namespace ignite {
         if (scene->HasAnimations())
         {
             MeshLoader::LoadAnimation(scene, animations);
-
             // Process Skeleton
             MeshLoader::ExtractSkeleton(scene, skeleton);
             MeshLoader::SortJointsHierchically(skeleton);

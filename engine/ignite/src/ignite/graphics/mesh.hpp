@@ -45,6 +45,9 @@ namespace ignite {
     {
         i32 id = -1;
         i32 parentID = -1;
+
+        UUID uuid = UUID(0);
+
         std::string name;
         glm::mat4 localTransform;
         glm::mat4 worldTransform;
@@ -117,10 +120,7 @@ namespace ignite {
     {
     public:
 
-        static void ProcessNode(const aiScene *assimpScene, aiNode *node, const std::string &filepath, Scene *scene, const Skeleton &skeleton, UUID parentId);
-
         static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &mesh, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID);
-        
         template<typename T>
         static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, Ref<T> &meshes, const std::string &filepath, const Skeleton &skeleton);
 

@@ -160,7 +160,7 @@ namespace ignite
         void UpdateLocalMatrix()
         {
             localMatrix = glm::translate(glm::mat4(1.0f), localTranslation) 
-                * glm::mat4_cast(localRotation) * glm::scale(glm::mat4(1.0f), localScale);
+                * glm::mat4(localRotation) * glm::scale(glm::mat4(1.0f), localScale);
         }
 
         // World transformation
@@ -185,7 +185,7 @@ namespace ignite
         void UpdateWorldMatrix()
         {
             worldMatrix = glm::translate(glm::mat4(1.0f), translation)
-                * glm::mat4_cast(rotation) * glm::scale(glm::mat4(1.0f), scale);
+                * glm::mat4(rotation) * glm::scale(glm::mat4(1.0f), scale);
         }
 
         static CompType StaticType() { return CompType_Transform; }
@@ -218,6 +218,7 @@ namespace ignite
         // Root joint
 
         Ref<EntityMesh> mesh;
+        UUID parentNode = UUID(0);
 
         static CompType StaticType() { return CompType_SkinnedMeshRenderer; }
         virtual CompType GetType() override { return StaticType(); }

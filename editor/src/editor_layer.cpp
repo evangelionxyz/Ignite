@@ -28,6 +28,11 @@
 
 namespace ignite
 {
+    void CreateEntityNode(Scene *scene, std::vector<NodeInfo> &info)
+    {
+
+    }
+
     static void TestLoader(nvrhi::IDevice *device, Ref<Scene> &scene, const std::filesystem::path &filepath, std::vector<Ref<SkeletalAnimation>> &animations, Skeleton &skeleton)
     {
         LOG_ASSERT(std::filesystem::exists(filepath), "[Mesh Loader] File does not exists!");
@@ -52,7 +57,72 @@ namespace ignite
             MeshLoader::SortJointsHierchically(skeleton);
         }
 
-        MeshLoader::ProcessNode(assimpScene, assimpScene->mRootNode, filepath.generic_string(), scene.get(), skeleton, UUID(0));
+        std::vector<Ref<Mesh>> meshes;
+        meshes.resize(assimpScene->mNumMeshes);
+        for (size_t i = 0; i < meshes.size(); ++i)
+        {
+            meshes[i] = CreateRef<Mesh>();
+        }
+
+        std::vector<NodeInfo> nodes;
+
+        MeshLoader::ProcessNode(assimpScene, assimpScene->mRootNode, filepath.generic_string(), meshes, nodes, skeleton, -1);
+        MeshLoader::CalculateWorldTransforms(nodes, meshes);
+
+        // First pass: create all node entities
+        for (auto &node : nodes)
+        {
+            if (node.uuid == UUID(0)) // not yet created
+            {
+                Entity entity = SceneManager::CreateEntity(scene.get(), node.name, EntityType_Node);
+                node.uuid = entity.GetUUID();
+
+                Transform &tr = entity.GetComponent<Transform>();
+                tr.localMatrix = node.localTransform;
+                tr.worldMatrix = node.worldTransform;
+
+                Math::DecomposeTransform(tr.localMatrix, tr.localTranslation, tr.localRotation, tr.localScale);
+                Math::DecomposeTransform(tr.worldMatrix, tr.translation, tr.rotation, tr.scale);
+
+            }
+        }
+
+        // Second pass: establish hierarchy and add meshes
+
+        for (auto &node : nodes)
+        {
+            Entity nodeEntity = SceneManager::GetEntity(scene.get(), node.uuid);
+
+            // Attach to parent if not root
+            if (node.parentID != -1)
+            {
+                const auto &parentNode = nodes[node.parentID];
+                Entity parentEntity = SceneManager::GetEntity(scene.get(), parentNode.uuid);
+                SceneManager::AddChild(scene.get(), parentEntity, nodeEntity);
+            }
+
+            // Attach mesh entities to this node
+            for (i32 meshIdx : node.meshIndices)
+            {
+                const auto &mesh = meshes[meshIdx];
+                Entity meshEntity = SceneManager::CreateEntity(scene.get(), mesh->name, EntityType_Mesh);
+                SceneManager::AddChild(scene.get(), nodeEntity, meshEntity);
+
+                SkinnedMeshRenderer &smr = meshEntity.AddComponent<SkinnedMeshRenderer>();
+                smr.mesh = CreateRef<EntityMesh>();
+
+                const auto &parentNode = nodes[node.parentID];
+                smr.parentNode = parentNode.uuid;
+
+                smr.mesh->vertices = mesh->vertices;
+                smr.mesh->indices = mesh->indices;
+                smr.mesh->indexBuffer = mesh->indexBuffer;
+                smr.mesh->vertexBuffer = mesh->vertexBuffer;
+
+                smr.material = mesh->material;
+            }
+        }
+
         MeshLoader::ClearTextureCache();
     }
 
@@ -174,11 +244,11 @@ namespace ignite
         // multi select entity
         m_Data.multiSelect = Input::IsKeyPressed(Key::LeftShift);
 
-        // if (AnimationSystem::UpdateSkeleton(m_TestData.skeleton, m_TestData.animations[m_TestData.activeAnimIndex], timeInSeconds))
-        // {
-        //     m_TestData.animations[m_TestData.activeAnimIndex]->isPlaying = true;
-        //     m_TestData.boneTransforms = AnimationSystem::GetFinalJointTransforms(m_TestData.skeleton);
-        // }
+        if (AnimationSystem::UpdateSkeleton(m_TestData.skeleton, m_TestData.animations[m_TestData.activeAnimIndex], timeInSeconds))
+        {
+            m_TestData.animations[m_TestData.activeAnimIndex]->isPlaying = true;
+            m_TestData.boneTransforms = AnimationSystem::GetFinalJointTransforms(m_TestData.skeleton);
+        }
 
 
         for (auto &model : m_Models)
@@ -349,16 +419,20 @@ namespace ignite
 
                 ObjectBuffer modelPushConstant;
 
-                glm::mat4 meshTransform = tr.worldMatrix;
+                Entity parentNodeEntity = SceneManager::GetEntity(m_ActiveScene.get(), smr.parentNode);
+                Transform &parentTr = parentNodeEntity.GetComponent<Transform>();
+                const std::string &name = parentNodeEntity.GetName();
+
+                glm::mat4 meshTransform = parentTr.worldMatrix;
 
                 if (m_TestData.activeAnimIndex >= 0 && m_TestData.animations[m_TestData.activeAnimIndex]->isPlaying && idcomp.parent != UUID(0))
                 {
-                    Entity parentEntity = SceneManager::GetEntity(m_ActiveScene.get(), idcomp.parent);
-                    auto it = m_TestData.skeleton.nameToJointMap.find(parentEntity.GetName());
+                    
+                    auto it = m_TestData.skeleton.nameToJointMap.find(name);
                     if (it != m_TestData.skeleton.nameToJointMap.end())
                     {
                         Joint &joint = m_TestData.skeleton.joints[it->second];
-                        meshTransform = joint.globalTransform * joint.inverseBindPose * tr.worldMatrix;
+                        meshTransform = joint.globalTransform * joint.inverseBindPose * parentTr.worldMatrix;
                     }
                 }
 
@@ -1259,8 +1333,6 @@ namespace ignite
         TestLoader(editor->m_Device, editor->m_ActiveScene,
             "C:/Users/Evangelion/Downloads/Compressed/KayKit_Adventurers_1.0_FREE/Characters/gltf/Rogue.glb",
             animations, skeleton);
-
-        TransformSystem::UpdateTransforms(editor->m_ActiveScene.get());
 
         editor->m_CommandList->open();
 

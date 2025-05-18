@@ -57,25 +57,17 @@ namespace ignite {
             Transform &childTransformComp = childEntity.GetComponent<Transform>();
             ID &childIdComp = childEntity.GetComponent<ID>();
 
-            if (childEntity.HasComponent<SkinnedMeshRenderer>())
-            {
-                childTransformComp.worldMatrix = parentTransformComp.worldMatrix;
-            }
-            else
-            {
-                // Calculate world matrix using parent's world matrix
-                childTransformComp.worldMatrix = parentTransformComp.worldMatrix * childTransformComp.localMatrix;
+            // Calculate world matrix using parent's world matrix
+            childTransformComp.worldMatrix = parentTransformComp.worldMatrix * childTransformComp.localMatrix;
 
-                // Update world matrix using parent's world matrix
-                Math::DecomposeTransform(childTransformComp.worldMatrix,
-                    childTransformComp.translation,
-                    childTransformComp.rotation,
-                    childTransformComp.scale);
+            // Update world matrix using parent's world matrix
+            Math::DecomposeTransform(childTransformComp.worldMatrix,
+                childTransformComp.translation,
+                childTransformComp.rotation,
+                childTransformComp.scale);
 
-                // Mark as clean
-                childTransformComp.dirty = false;
-
-            }
+            // Mark as clean
+            childTransformComp.dirty = false;
 
             // Recursively update this child's children
             UpdateChildTransform(scene, childIdComp.uuid);

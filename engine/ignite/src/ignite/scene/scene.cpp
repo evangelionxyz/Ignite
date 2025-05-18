@@ -44,7 +44,7 @@ namespace ignite
 
     void Scene::OnUpdateEdit(f32 deltaTime)
     {
-        TransformSystem::UpdateTransforms(this);
+        // TransformSystem::UpdateTransforms(this);
     }
 
     void Scene::OnUpdateRuntimeSimulate(f32 deltaTime)
