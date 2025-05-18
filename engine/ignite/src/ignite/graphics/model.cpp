@@ -18,6 +18,11 @@ namespace ignite {
         LOG_ASSERT(scene == nullptr || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || scene->mRootNode,
             "[Model] Failed to load {}: {}", filepath, m_Importer.GetErrorString());
 
+        if (!scene)
+        {
+            return;
+        }
+
         if (scene->HasAnimations())
         {
             MeshLoader::LoadAnimation(scene, animations);
@@ -191,6 +196,7 @@ namespace ignite {
     {
         if (animations.empty() || activeAnimIndex == -1 || activeAnimIndex >= animations.size())
             return nullptr;
+
         return animations[activeAnimIndex];
     }
 

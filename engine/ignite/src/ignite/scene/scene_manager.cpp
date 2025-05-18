@@ -3,6 +3,8 @@
 #include "entity.hpp"
 #include "entity_command_manager.hpp"
 #include "ignite/core/uuid.hpp"
+#include "ignite/math/math.hpp"
+
 #include <string>
 #include <unordered_map>
 
@@ -94,7 +96,7 @@ namespace ignite
         // prepare entity creation logic
         std::function<void()> createFunc = [=, &createdEntity]() mutable
         {
-            createdEntity = CreateEntity(scene, name, EntityType_Common, uuid);
+            createdEntity = CreateEntity(scene, name, EntityType_Node, uuid);
             createdEntity.AddComponent<Sprite2D>();
         };
 
@@ -123,6 +125,23 @@ namespace ignite
         );
        
         return createdEntity;
+    }
+
+    Entity SceneManager::CreateMesh(Scene *scene, const std::string &name, UUID uuid)
+    {
+        scene->SetDirtyFlag(true);
+
+        Entity entity = Entity { scene->registry->create(), scene };
+        
+        std::string uniqueName = GenerateUniqueName(name, scene->entityNames, scene->entityNamesMapCounter);
+
+        entity.AddComponent<ID>(uniqueName, EntityType_Node, uuid); // Common is a basic node
+        entity.AddComponent<Transform>(Transform({ 0.0f, 0.0f, 0.0f }));
+
+        scene->entities[uuid] = entity;
+        scene->entityNames.push_back(uniqueName);
+
+        return entity;
     }
 
     void SceneManager::RenameEntity(Scene *scene, Entity entity, const std::string &newName)
@@ -358,20 +377,6 @@ namespace ignite
         newScene->entityNamesMapCounter = other->entityNamesMapCounter;
 
         return newScene;
-    }
-
-    void SceneManager::CalculateParentTransform(Scene *scene, Transform &transform, UUID parentUUID)
-    {
-        entt::entity parent = scene->entities[parentUUID];
-        Transform &parentTr = scene->registry->get<Transform>(parent);
-
-        const glm::mat4 &transformedMatrix = parentTr.WorldTransform() * transform.LocalTransform();
-
-        static glm::vec3 skew(1.0f);
-        static glm::vec4 perspective(1.0f);
-
-        glm::decompose(transformedMatrix, transform.scale, transform.rotation, transform.translation,
-            skew, perspective); // unused
     }
 
 

@@ -11,9 +11,11 @@
 #include "ignite/graphics/renderer_2d.hpp"
 #include "ignite/graphics/mesh_factory.hpp"
 #include "ignite/imgui/gui_function.hpp"
+#include "ignite/graphics/mesh.hpp"
 #include "ignite/graphics/model.hpp"
 #include "ignite/asset/asset.hpp"
 #include "ignite/asset/asset_importer.hpp"
+#include "ignite/scene/transform_system.hpp"
 
 #include <glm/glm.hpp>
 #include <nvrhi/utils.h>
@@ -22,9 +24,38 @@
 #   include <dwmapi.h>
 #   include <ShellScalingApi.h>
 #endif
+#include <ranges>
 
 namespace ignite
 {
+    static void TestLoader(nvrhi::IDevice *device, Ref<Scene> &scene, const std::filesystem::path &filepath, std::vector<Ref<SkeletalAnimation>> &animations, Skeleton &skeleton)
+    {
+        LOG_ASSERT(std::filesystem::exists(filepath), "[Mesh Loader] File does not exists!");
+        
+        Assimp::Importer importer;
+        const aiScene *assimpScene = importer.ReadFile(filepath.generic_string(), ASSIMP_IMPORTER_FLAGS);
+
+        LOG_ASSERT(assimpScene == nullptr || assimpScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || assimpScene->mRootNode,
+            "[Model] Failed to load {}: {}", filepath, importer.GetErrorString());
+
+        if (!assimpScene)
+        {
+            return;
+        }
+
+        if (assimpScene->HasAnimations())
+        {
+            MeshLoader::LoadAnimation(assimpScene, animations);
+
+            // Process Skeleton
+            MeshLoader::ExtractSkeleton(assimpScene, skeleton);
+            MeshLoader::SortJointsHierchically(skeleton);
+        }
+
+        MeshLoader::ProcessNode(assimpScene, assimpScene->mRootNode, filepath.generic_string(), scene.get(), skeleton, UUID(0));
+        MeshLoader::ClearTextureCache();
+    }
+
     EditorLayer::EditorLayer(const std::string &name)
         : Layer(name)
     {
@@ -110,16 +141,20 @@ namespace ignite
 
         m_ContentBrowserPanel = CreateRef<ContentBrowserPanel>("Content Browser");
 
-        const auto &cmdArgs = Application::GetInstance()->GetCreateInfo().cmdLineArgs;
-        for (int i = 0; i < cmdArgs.count; ++i)
-        {
-            std::string args = cmdArgs[i];
-            if (args.find("-project=") != std::string::npos)
-            {
-                std::string projectFilepath = args.substr(9, args.size() - 9);
-                OpenProject(projectFilepath);
-            }
-        }
+        // const auto &cmdArgs = Application::GetInstance()->GetCreateInfo().cmdLineArgs;
+        // for (int i = 0; i < cmdArgs.count; ++i)
+        // {
+        //     std::string args = cmdArgs[i];
+        //     if (args.find("-project=") != std::string::npos)
+        //     {
+        //         std::string projectFilepath = args.substr(9, args.size() - 9);
+        //         OpenProject(projectFilepath);
+        //     }
+        // }
+
+        NewScene();
+
+        m_TestData.Create(this);
     }
 
     void EditorLayer::OnDetach()
@@ -138,6 +173,13 @@ namespace ignite
 
         // multi select entity
         m_Data.multiSelect = Input::IsKeyPressed(Key::LeftShift);
+
+        // if (AnimationSystem::UpdateSkeleton(m_TestData.skeleton, m_TestData.animations[m_TestData.activeAnimIndex], timeInSeconds))
+        // {
+        //     m_TestData.animations[m_TestData.activeAnimIndex]->isPlaying = true;
+        //     m_TestData.boneTransforms = AnimationSystem::GetFinalJointTransforms(m_TestData.skeleton);
+        // }
+
 
         for (auto &model : m_Models)
         {
@@ -286,6 +328,78 @@ namespace ignite
 
         // render environment
         m_Environment->Render(m_CommandList, viewportFramebuffer, m_EnvPipeline, m_ScenePanel->GetViewportCamera());
+
+        for (entt::entity e : m_ActiveScene->entities | std::views::values)
+        {
+            Entity entity = { e, m_ActiveScene.get() };
+            Transform &tr = entity.GetComponent<Transform>();
+            ID &idcomp = entity.GetComponent<ID>();
+
+            if (!tr.visible)
+                continue;
+
+            if (entity.HasComponent<SkinnedMeshRenderer>())
+            {
+                SkinnedMeshRenderer &smr = entity.GetComponent<SkinnedMeshRenderer>();
+
+                // write material constant buffer
+                m_CommandList->writeBuffer(smr.mesh->materialBuffer, &smr.material.data, sizeof(smr.material.data));
+
+                // write model constant buffer
+
+                ObjectBuffer modelPushConstant;
+
+                glm::mat4 meshTransform = tr.worldMatrix;
+
+                if (m_TestData.activeAnimIndex >= 0 && m_TestData.animations[m_TestData.activeAnimIndex]->isPlaying && idcomp.parent != UUID(0))
+                {
+                    Entity parentEntity = SceneManager::GetEntity(m_ActiveScene.get(), idcomp.parent);
+                    auto it = m_TestData.skeleton.nameToJointMap.find(parentEntity.GetName());
+                    if (it != m_TestData.skeleton.nameToJointMap.end())
+                    {
+                        Joint &joint = m_TestData.skeleton.joints[it->second];
+                        meshTransform = joint.globalTransform * joint.inverseBindPose * tr.worldMatrix;
+                    }
+                }
+
+                modelPushConstant.transformation = meshTransform;
+
+                const size_t numBones = std::min(m_TestData.boneTransforms.size(), static_cast<size_t>(MAX_BONES));
+                for (size_t i = 0; i < numBones; ++i)
+                {
+                    modelPushConstant.boneTransforms[i] = m_TestData.boneTransforms[i];
+                }
+
+                // Set remaining transforms to identity
+                for (size_t i = numBones; i < MAX_BONES; ++i)
+                {
+                    modelPushConstant.boneTransforms[i] = glm::mat4(1.0f);
+                }
+
+                glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(modelPushConstant.transformation)));
+                modelPushConstant.normal = glm::mat4(normalMat3);
+                m_CommandList->writeBuffer(smr.mesh->objectBuffer, &modelPushConstant, sizeof(ObjectBuffer));
+
+                // render
+                auto meshGraphicsState = nvrhi::GraphicsState();
+                meshGraphicsState.pipeline = m_MeshPipeline->GetHandle();
+                meshGraphicsState.framebuffer = viewportFramebuffer;
+                meshGraphicsState.viewport = nvrhi::ViewportState().addViewportAndScissorRect(viewport);
+                meshGraphicsState.addVertexBuffer({ smr.mesh->vertexBuffer, 0, 0 });
+                meshGraphicsState.indexBuffer = { smr.mesh->indexBuffer, nvrhi::Format::R32_UINT };
+
+                if (smr.mesh->bindingSet != nullptr)
+                    meshGraphicsState.addBindingSet(smr.mesh->bindingSet);
+
+                m_CommandList->setGraphicsState(meshGraphicsState);
+
+                nvrhi::DrawArguments args;
+                args.setVertexCount((uint32_t)smr.mesh->indices.size());
+                args.instanceCount = 1;
+
+                m_CommandList->drawIndexed(args);
+            }
+        }
 
         // render objects
         for (auto &model : m_Models)
@@ -603,6 +717,7 @@ namespace ignite
                     {
                         requestToDelete = true;
                         m_SelectedModel = nullptr;
+                        m_SelectedNode = nullptr;
                     }
 
                     ImGui::EndPopup();
@@ -610,23 +725,46 @@ namespace ignite
 
                 if (opened)
                 {
-                    glm::vec3 scale, translation, skew;
+                    /*glm::vec3 scale, translation, skew;
                     glm::vec4 perspective;
                     glm::quat orientation;
                     glm::decompose(model->transform, scale, orientation, translation, skew, perspective);
 
                     ImGui::DragFloat3("Translation", &translation.x, 0.025f);
-
                     glm::vec3 eulerAngle = glm::degrees(glm::eulerAngles(orientation));
                     if (ImGui::DragFloat3("Rotation", &eulerAngle.x, 0.025f))
                         orientation = glm::radians(eulerAngle);
-
                     ImGui::DragFloat3("Scale", &scale.x, 0.025f);
-
-                    model->transform = glm::recompose(scale, orientation, translation, skew, perspective);
+                    model->transform = glm::recompose(scale, orientation, translation, skew, perspective);*/
 
                     if (!requestToDelete)
                     {
+                        if (m_SelectedNode)
+                        {
+                            {
+                                glm::vec3 translation, scale;
+                                glm::quat orientation;
+                                Math::DecomposeTransform(m_SelectedNode->localTransform, translation, orientation, scale);
+                                ImGui::DragFloat3("Translation", &translation.x, 0.025f);
+                                glm::vec3 euler = eulerAngles(orientation);
+                                ImGui::DragFloat3("Rotation", &euler.x, 0.025f);
+                                ImGui::DragFloat3("Scale", &scale.x, 0.025f);
+                            }
+
+                            ImGui::Separator();
+
+
+                            {
+                                glm::vec3 translation, scale;
+                                glm::quat orientation;
+                                Math::DecomposeTransform(m_SelectedNode->worldTransform, translation, orientation, scale);
+                                ImGui::DragFloat3("WTranslation", &translation.x, 0.025f);
+                                glm::vec3 euler = eulerAngles(orientation);
+                                ImGui::DragFloat3("WRotation", &euler.x, 0.025f);
+                                ImGui::DragFloat3("WScale", &scale.x, 0.025f);
+                            }
+                        }
+
                         if (ImGui::TreeNode("Meshes"))
                         {
                             for (const Ref<Mesh> &mesh : model->meshes)
@@ -719,7 +857,7 @@ namespace ignite
             ImGui::Begin("Model Hierarchy");
             if (m_SelectedModel)
             {
-                for (const auto &node : m_SelectedModel->nodes)
+                for (auto &node : m_SelectedModel->nodes)
                 {
                     if (node.parentID == -1)
                     {
@@ -1042,7 +1180,7 @@ namespace ignite
         ImGui::End();
     }
 
-    void EditorLayer::TraverseNodes(Model *model, const NodeInfo &node)
+    void EditorLayer::TraverseNodes(Model *model, NodeInfo &node)
     {
         // Determine if the node is a leaf node (has no children and no meshes)
         bool isLeaf = node.childrenIDs.empty() && node.meshIndices.empty();
@@ -1068,6 +1206,11 @@ namespace ignite
                 mesh->nodeParentID = node.parentID;
             }
             ImGui::EndDragDropTarget();
+        }
+
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+        {
+            m_SelectedNode = &node;
         }
 
         if (opened)
@@ -1110,4 +1253,62 @@ namespace ignite
         }
     }
 
+
+    void EditorLayer::TestData::Create(EditorLayer *editor)
+    {
+        TestLoader(editor->m_Device, editor->m_ActiveScene,
+            "C:/Users/Evangelion/Downloads/Compressed/KayKit_Adventurers_1.0_FREE/Characters/gltf/Rogue.glb",
+            animations, skeleton);
+
+        TransformSystem::UpdateTransforms(editor->m_ActiveScene.get());
+
+        editor->m_CommandList->open();
+
+        for (auto &[uuid, ent] : editor->m_ActiveScene->entities)
+        {
+            Entity entity { ent, editor->m_ActiveScene.get() };
+            ID &idcomp = entity.GetComponent<ID>();
+            Transform &tr = entity.GetComponent<Transform>();
+
+            if (entity.HasComponent<SkinnedMeshRenderer>())
+            {
+                SkinnedMeshRenderer &smr = entity.GetComponent<SkinnedMeshRenderer>();
+
+                smr.mesh->CreateConstantBuffers(editor->m_Device);
+
+                // m_CreateInfo.commandList->open();
+                editor->m_CommandList->writeBuffer(smr.mesh->vertexBuffer, smr.mesh->vertices.data(), sizeof(VertexMesh) * smr.mesh->vertices.size());
+                editor->m_CommandList->writeBuffer(smr.mesh->indexBuffer, smr.mesh->indices.data(), sizeof(uint32_t) * smr.mesh->indices.size());
+
+                // write textures
+                if (smr.material.ShouldWriteTexture())
+                {
+                    smr.material.WriteBuffer(editor->m_CommandList);
+                }
+
+                auto desc = nvrhi::BindingSetDesc();
+
+                desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, editor->m_Environment->GetCameraBuffer()));
+                desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, editor->m_Environment->GetDirLightBuffer()));
+                desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, editor->m_Environment->GetParamsBuffer()));
+                desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, smr.mesh->objectBuffer));
+                desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, smr.mesh->materialBuffer));
+                desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(5, editor->m_DebugRenderBuffer));
+
+                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, smr.material.textures[aiTextureType_DIFFUSE].handle));
+                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(1, smr.material.textures[aiTextureType_SPECULAR].handle));
+                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, smr.material.textures[aiTextureType_EMISSIVE].handle));
+                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, smr.material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
+                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(4, smr.material.textures[aiTextureType_NORMALS].handle));
+                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, editor->m_Environment->GetHDRTexture()));
+                desc.addItem(nvrhi::BindingSetItem::Sampler(0, smr.material.sampler));
+
+                smr.mesh->bindingSet = editor->m_Device->createBindingSet(desc, editor->m_MeshPipeline->GetBindingLayout());
+                LOG_ASSERT(smr.mesh->bindingSet, "Failed to create binding set");
+            }
+        }
+
+        editor->m_CommandList->close();
+        editor->m_Device->executeCommandList(editor->m_CommandList);
+    }
 }

@@ -32,7 +32,7 @@ namespace ignite
             // first, calculate the transformed matrix from parent
             if (id.parent != 0)
             {
-                SceneManager::CalculateParentTransform(m_Scene, tr, id.parent);
+                // SceneManager::CalculateParentTransform(m_Scene, tr, id.parent);
             }
 
             b2BodyDef bodyDef        = b2DefaultBodyDef();
@@ -77,7 +77,7 @@ namespace ignite
         // first, calculate the transformed matrix from parent
         if (id.parent != 0)
         {
-            SceneManager::CalculateParentTransform(m_Scene, tr, id.parent);
+            // SceneManager::CalculateParentTransform(m_Scene, tr, id.parent);
         }
 
         Rigidbody2D &rb          = reg->get<Rigidbody2D>(e);

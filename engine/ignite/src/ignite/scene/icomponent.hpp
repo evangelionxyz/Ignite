@@ -29,6 +29,8 @@ namespace ignite
 
         UUID GetCompID() { return m_UUID; }
 
+        bool dirty = true;
+
         virtual CompType GetType() { return CompType_Invalid; };
     private:
         UUID m_UUID;

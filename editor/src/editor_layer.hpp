@@ -22,6 +22,8 @@ namespace ignite
     class ScenePanel;
     class ContentBrowserPanel;
     class Model;
+    class SkeletalAnimation;
+    struct Skeleton;
 
     struct DebugRenderData
     {
@@ -81,7 +83,7 @@ namespace ignite
 
         void SettingsUI();
 
-        void TraverseNodes(Model *model, const NodeInfo &node);
+        void TraverseNodes(Model *model, NodeInfo &node);
 
         Ref<ScenePanel> m_ScenePanel;
         Ref<ContentBrowserPanel> m_ContentBrowserPanel;
@@ -97,12 +99,23 @@ namespace ignite
         std::vector<Ref<Model>> m_Models;
 
         Model *m_SelectedModel = nullptr;
-
+        NodeInfo *m_SelectedNode = nullptr;
         MaterialData *m_SelectedMaterial = nullptr;
 
         Ref<Environment> m_Environment;
         DebugRenderData m_DebugRenderData;
         EditorData m_Data;
+
+        struct TestData
+        {
+            std::vector<Ref<SkeletalAnimation>> animations;
+            std::vector<glm::mat4> boneTransforms;
+            Skeleton skeleton;
+            i32 activeAnimIndex = 0;
+            void Create(EditorLayer *editor);
+        };
+
+        TestData m_TestData;
 
         std::filesystem::path m_CurrentSceneFilePath;
 

@@ -154,7 +154,7 @@ namespace ignite
         Entity entity = {};
         if (ImGui::MenuItem("Empty"))
         {
-            entity = SetSelectedEntity(SceneManager::CreateEntity(m_Scene, "Empty", EntityType_Common));
+            entity = SetSelectedEntity(SceneManager::CreateEntity(m_Scene, "Empty", EntityType_Node));
         }
 
         if (ImGui::BeginMenu("2D"))
@@ -309,14 +309,31 @@ namespace ignite
             RenderComponent<Transform>("Transform", m_SelectedEntity, [this]()
             {
                 Transform &comp = m_SelectedEntity.GetComponent<Transform>();
-                ImGui::DragFloat3("Translation", &comp.localTranslation.x, 0.025f);
+                if (ImGui::DragFloat3("Translation", &comp.localTranslation.x, 0.025f))
+                {
+                    comp.dirty = true;
+                }
 
                 glm::vec3 euler = eulerAngles(comp.localRotation);
                 if (ImGui::DragFloat3("Rotation", &euler.x, 0.025f))
                 {
                     comp.localRotation = glm::quat(euler);
+                    comp.dirty = true;
                 }
-                ImGui::DragFloat3("Scale", &comp.localScale.x, 0.025f);
+                if (ImGui::DragFloat3("Scale", &comp.localScale.x, 0.025f))
+                {
+                    comp.dirty = true;
+                }
+
+                ImGui::Separator();
+
+                ImGui::DragFloat3("WTranslation", &comp.translation.x, 0.025f);
+                euler = eulerAngles(comp.rotation);
+                if (ImGui::DragFloat3("WRotation", &euler.x, 0.025f))
+                {
+                    comp.rotation = glm::quat(euler);
+                }
+                ImGui::DragFloat3("WScale", &comp.scale.x, 0.025f);
             }, false); // false: not allowed to remove the component
 
             auto &comps = m_Scene->registeredComps[m_SelectedEntity];
@@ -638,24 +655,51 @@ namespace ignite
         for (auto &uuid : m_SelectedEntityIDs)
         {
             Entity entity = SceneManager::GetEntity(m_Scene, uuid);
+            ID &idcomp = entity.GetComponent<ID>();
             ImGuizmo::PushID((u64)uuid);
             
             Transform &tr = entity.GetComponent<Transform>();
 
-            glm::mat4 transformMatrix = tr.WorldTransform();
+            glm::mat4 transformMatrix = tr.worldMatrix;
 
             m_Gizmo.Manipulate(transformMatrix);
 
             if (m_Gizmo.IsManipulating())
             {
-                glm::vec3 scale, translation, skew;
-                glm::vec4 perspective;
-                glm::quat orientation;
-                glm::decompose(transformMatrix, scale, orientation, translation, skew, perspective);
+                glm::vec3 translation, rotation, scale;
+                Math::DecomposeTransformEuler(transformMatrix, translation, rotation, scale);
 
-                tr.localTranslation = translation;
-                tr.localScale = scale;
-                tr.localRotation = orientation;
+                if (idcomp.parent != 0)
+                {
+                    if (Entity parent = SceneManager::GetEntity(m_Scene, idcomp.parent))
+                    {
+                        auto &ptc = parent.GetComponent<Transform>();
+                        glm::vec4 localTranslation = glm::inverse(ptc.worldMatrix) * glm::vec4(translation, 1.0f);
+
+                        // Apply parent's scale to local translation
+                        localTranslation.x *= ptc.scale.x;
+                        localTranslation.y *= ptc.scale.y;
+                        localTranslation.z *= ptc.scale.z;
+
+                        // Convert back to world space
+                        tr.localTranslation = glm::vec3(ptc.worldMatrix * localTranslation);
+                        tr.localTranslation = glm::vec3(localTranslation);
+                        tr.localRotation = glm::inverse(ptc.rotation) * glm::quat(rotation);
+                        tr.localScale = scale;
+
+                        tr.dirty = true;
+                    }
+                }
+                else
+                {
+                    tr.localTranslation = translation;
+                    glm::vec3 localEuler = glm::eulerAngles(tr.localRotation);
+                    localEuler += rotation - localEuler;
+                    tr.localRotation = glm::quat(localEuler);
+                    tr.localScale = scale;
+
+                    tr.dirty = true;
+                }
             }
 
             ImGuizmo::PopID();

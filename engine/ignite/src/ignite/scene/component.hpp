@@ -1,17 +1,20 @@
 #pragma once
 
 #define GLM_ENABLE_EXPERIMENTAL
+
+#include "icomponent.hpp"
+#include "ignite/graphics/material.hpp"
+#include "ignite/core/uuid.hpp"
+
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <nvrhi/nvrhi.h>
 #include <string>
-#include "ignite/core/uuid.hpp"
-#include "icomponent.hpp"
 
 namespace ignite
 {
     class Texture;
-    class Mesh;
+    class EntityMesh;
     class Model;
     struct Material;
 
@@ -26,7 +29,7 @@ namespace ignite
 
     enum EntityType : u8
     {
-        EntityType_Common = 0,
+        EntityType_Node,
         EntityType_Camera,
         EntityType_Mesh,
         EntityType_Prefab,
@@ -37,7 +40,7 @@ namespace ignite
     {
         switch (type)
         {
-        case EntityType_Common: return "Common";
+        case EntityType_Node: return "Node";
         case EntityType_Camera: return "Camera";
         case EntityType_Mesh: return "Mesh";
         case EntityType_Prefab: return "Prefab";
@@ -49,7 +52,7 @@ namespace ignite
 
     static EntityType EntityTypeFromString(const std::string &typeStr)
     {
-        if (typeStr == "Common") return EntityType_Common;
+        if (typeStr == "Node") return EntityType_Node;
         else if (typeStr == "Camera") return EntityType_Camera;
         else if (typeStr == "Mesh") return EntityType_Mesh;
         else if (typeStr == "Prefab") return EntityType_Prefab;
@@ -107,6 +110,10 @@ namespace ignite
         glm::vec3 localTranslation, localScale;
         glm::quat localRotation;
 
+        // cached matrices
+        glm::mat4 localMatrix = glm::mat4(1.0f);
+        glm::mat4 worldMatrix = glm::mat4(1.0f);
+
         bool visible = true;
 
         Transform() = default;
@@ -131,16 +138,54 @@ namespace ignite
         {
         }
 
-        glm::mat4 WorldTransform()
+        // local transformation
+        void SetLocalTranslation(const glm::vec3 &newTranslation)
         {
-            return glm::translate(glm::mat4(1.0f), translation)
-                * glm::toMat4(rotation) * glm::scale(glm::mat4(1.0f), scale);
+            localTranslation = newTranslation;
+            dirty = true;
         }
 
-        glm::mat4 LocalTransform()
+        void SetLocalRotation(const glm::quat &newRotation)
         {
-            return glm::translate(glm::mat4(1.0f), localTranslation)
-                * glm::toMat4(localRotation) * glm::scale(glm::mat4(1.0f), localScale);
+            localRotation = newRotation;
+            dirty = true;
+        }
+
+        void SetLocalScale(const glm::vec3 &newScale)
+        {
+            localScale = newScale;
+            dirty = true;
+        }
+
+        void UpdateLocalMatrix()
+        {
+            localMatrix = glm::translate(glm::mat4(1.0f), localTranslation) 
+                * glm::mat4_cast(localRotation) * glm::scale(glm::mat4(1.0f), localScale);
+        }
+
+        // World transformation
+        void SetWorldTranslation(const glm::vec3 &newTranslation)
+        {
+            translation = newTranslation;
+            dirty = true;
+        }
+
+        void SetWorldRotation(const glm::quat &newRotation)
+        {
+            rotation = newRotation;
+            dirty = true;
+        }
+
+        void SetWorldScale(const glm::vec3 &newScale)
+        {
+            scale = newScale;
+            dirty = true;
+        }
+
+        void UpdateWorldMatrix()
+        {
+            worldMatrix = glm::translate(glm::mat4(1.0f), translation)
+                * glm::mat4_cast(rotation) * glm::scale(glm::mat4(1.0f), scale);
         }
 
         static CompType StaticType() { return CompType_Transform; }
@@ -158,11 +203,10 @@ namespace ignite
         virtual CompType GetType() override { return StaticType(); }
     };
 
-
     class MeshRenderer
     {
     public:
-        Ref<Material> material;
+        Material material;
 
         nvrhi::RasterCullMode cullMode = nvrhi::RasterCullMode::Front;
         nvrhi::RasterFillMode fillMode = nvrhi::RasterFillMode::Solid;
@@ -172,6 +216,8 @@ namespace ignite
     {
     public:
         // Root joint
+
+        Ref<EntityMesh> mesh;
 
         static CompType StaticType() { return CompType_SkinnedMeshRenderer; }
         virtual CompType GetType() override { return StaticType(); }
@@ -185,4 +231,3 @@ namespace ignite
         virtual CompType GetType() override { return StaticType(); }
     };
 }
-

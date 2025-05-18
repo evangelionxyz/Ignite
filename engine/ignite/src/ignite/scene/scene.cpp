@@ -11,6 +11,8 @@
 
 #include "scene_manager.hpp"
 
+#include "transform_system.hpp"
+
 namespace ignite
 {
     Scene::Scene(const std::string &_name)
@@ -42,26 +44,7 @@ namespace ignite
 
     void Scene::OnUpdateEdit(f32 deltaTime)
     {
-        // NOTE: currently we are not updating transformation with edit mode
-        // TODO: calulcate parent & child transformation
-
-        for (entt::entity e: entities | std::views::values)
-        {
-            const ID &id = registry->get<ID>(e);
-            Transform &tr = registry->get<Transform>(e);
-
-            // calculate transform from entity's parent
-            if (id.parent != 0)
-            {
-                SceneManager::CalculateParentTransform(this, tr, id.parent);
-            }
-            else
-            {
-                tr.translation = tr.localTranslation;
-                tr.rotation = tr.localRotation;
-                tr.scale = tr.localScale;
-            }
-        }
+        TransformSystem::UpdateTransforms(this);
     }
 
     void Scene::OnUpdateRuntimeSimulate(f32 deltaTime)
@@ -94,7 +77,7 @@ namespace ignite
             if (entity.HasComponent<Sprite2D>())
             {
                 auto &sprite = entity.GetComponent<Sprite2D>();
-                Renderer2D::DrawQuad(tr.WorldTransform(), sprite.color, sprite.texture);
+                Renderer2D::DrawQuad(tr.worldMatrix, sprite.color, sprite.texture);
             }
         }
 
