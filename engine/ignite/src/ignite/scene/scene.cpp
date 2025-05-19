@@ -12,6 +12,8 @@
 #include "entity.hpp"
 #include "scene_manager.hpp"
 
+#include "ignite/animation/animation_system.hpp"
+
 namespace ignite
 {
     Scene::Scene(const std::string &_name)
@@ -47,6 +49,17 @@ namespace ignite
 
     void Scene::UpdateTransforms(float deltaTime)
     {
+        auto skinnedMeshView = registry->view<SkinnedMesh>();
+        for (auto entity : skinnedMeshView)
+        {
+            SkinnedMesh &skinnedMesh = skinnedMeshView.get<SkinnedMesh>(entity);
+            if (AnimationSystem::UpdateSkeleton(skinnedMesh.skeleton, skinnedMesh.animations[skinnedMesh.activeAnimIndex], timeInSeconds))
+            {
+                skinnedMesh.animations[skinnedMesh.activeAnimIndex]->isPlaying = true;
+                skinnedMesh.boneTransforms = AnimationSystem::GetFinalJointTransforms(skinnedMesh.skeleton);
+            }
+        }
+
         auto view = registry->view<ID, Transform>();
         for (auto eHandle : view)
         {

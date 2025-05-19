@@ -299,12 +299,6 @@ namespace ignite
         // multi select entity
         m_Data.multiSelect = Input::IsKeyPressed(Key::LeftShift);
 
-        // if (AnimationSystem::UpdateSkeleton(m_TestData.skeleton, m_TestData.animations[m_TestData.activeAnimIndex], timeInSeconds))
-        // {
-        //     m_TestData.animations[m_TestData.activeAnimIndex]->isPlaying = true;
-        //     m_TestData.boneTransforms = AnimationSystem::GetFinalJointTransforms(m_TestData.skeleton);
-        // }
-
 
         for (auto &model : m_Models)
         {

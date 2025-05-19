@@ -10,6 +10,7 @@ namespace ignite {
     class AnimationSystem
     {
     public:
+        static void PlayAnimation(std::vector<Ref<SkeletalAnimation>> &animations, int animIndex = 0);
         static void PlayAnimation(const Ref<Model> &model, int animIndex = 0);
         static void UpdateAnimation(const Ref<Model> &model, float timeInSeconds);
         static bool UpdateSkeleton(Skeleton &skeleton, const Ref<SkeletalAnimation> &animation, float timeInSeconds);

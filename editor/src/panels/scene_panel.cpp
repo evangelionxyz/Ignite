@@ -11,6 +11,7 @@
 #include "ignite/core/platform_utils.hpp"
 #include "editor_layer.hpp"
 #include "ignite/graphics/mesh.hpp"
+#include "ignite/animation/animation_system.hpp"
 #include "entt/entt.hpp"
 
 #include <set>
@@ -489,9 +490,35 @@ namespace ignite
                 }
                 case CompType_MeshRenderer:
                 {
-                    RenderComponent<MeshRenderer>("Skinned Mesh Renderer", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
+                    RenderComponent<MeshRenderer>("Mesh Renderer", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
                     {
                         MeshRenderer *c = comp->As<MeshRenderer>();
+                        ImGui::ColorEdit4("Base Color", &c->material.data.baseColor.x);
+                        ImGui::DragFloat("Metallic", &c->material.data.metallic);
+                        ImGui::DragFloat("Roughness", &c->material.data.roughness);
+                        ImGui::DragFloat("Emissive", &c->material.data.emissive);
+                    });
+                    break;
+                }
+                case CompType_SkinnedMesh:
+                {
+                    RenderComponent<SkinnedMesh>("Skinned Mesh", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
+                    {
+                        SkinnedMesh *c = comp->As<SkinnedMesh>();
+
+                        for (size_t animIdx = 0; animIdx < c->animations.size(); ++animIdx)
+                        {
+                            const Ref<SkeletalAnimation> &anim = c->animations[animIdx];
+                            if (ImGui::TreeNodeEx(anim->name.c_str(), ImGuiTreeNodeFlags_Leaf, "%s", anim->name.c_str()))
+                            {
+                                if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                                {
+                                    c->activeAnimIndex = animIdx;
+                                    // AnimationSystem::PlayAnimation(c->animations, animIdx);
+                                }
+                                ImGui::TreePop();
+                            }
+                        }
                     });
                     break;
                 }

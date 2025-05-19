@@ -15,6 +15,14 @@ namespace ignite {
         }
     }
 
+    void AnimationSystem::PlayAnimation(std::vector<Ref<SkeletalAnimation>> &animations, int animIndex /*= 0*/)
+    {
+        if (animIndex < animations.size())
+        {
+            animations[animIndex]->isPlaying = true;
+        }
+    }
+
     void AnimationSystem::UpdateAnimation(const Ref<Model> &model, float timeInSeconds)
     {
         if (UpdateSkeleton(model->skeleton, model->GetActiveAnimation(), timeInSeconds))
