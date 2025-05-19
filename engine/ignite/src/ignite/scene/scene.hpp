@@ -32,6 +32,7 @@ namespace ignite
         void OnStop();
 
         void UpdateTransforms(float deltaTime);
+        void UpdateTransformRecursive(Entity parentEntity, const glm::mat4 &parentWorldTransform);
         
         void OnUpdateRuntimeSimulate(f32 deltaTime);
         void OnUpdateEdit(f32 deltaTime);

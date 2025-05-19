@@ -78,7 +78,6 @@ namespace ignite
                 
                 glm::vec3 skew;
                 glm::vec4 perspective;
-
                 glm::decompose(node.localTransform, tr.localScale, tr.localRotation, tr.localTranslation, skew, perspective);
 
                 tr.dirty = true;

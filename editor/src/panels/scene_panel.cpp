@@ -506,19 +506,39 @@ namespace ignite
                     {
                         SkinnedMesh *c = comp->As<SkinnedMesh>();
 
-                        for (size_t animIdx = 0; animIdx < c->animations.size(); ++animIdx)
+                        ImGui::SeparatorText("Animations");
+                        if (ImGui::Button("Play"))
                         {
-                            const Ref<SkeletalAnimation> &anim = c->animations[animIdx];
-                            if (ImGui::TreeNodeEx(anim->name.c_str(), ImGuiTreeNodeFlags_Leaf, "%s", anim->name.c_str()))
-                            {
-                                if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-                                {
-                                    c->activeAnimIndex = animIdx;
-                                    // AnimationSystem::PlayAnimation(c->animations, animIdx);
-                                }
-                                ImGui::TreePop();
-                            }
+                            const Ref<SkeletalAnimation> &anim = c->animations[c->activeAnimIndex];
+                            anim->isPlaying = true;
                         }
+
+                        ImGui::SameLine();
+
+                        if (ImGui::Button("Stop"))
+                        {
+                            const Ref<SkeletalAnimation> &anim = c->animations[c->activeAnimIndex];
+                            anim->isPlaying = false;
+                        }
+
+                        if (ImGui::TreeNode("Animations"))
+                        {
+                            for (size_t animIdx = 0; animIdx < c->animations.size(); ++animIdx)
+                            {
+                                const Ref<SkeletalAnimation> &anim = c->animations[animIdx];
+                                if (ImGui::TreeNodeEx(anim->name.c_str(), ImGuiTreeNodeFlags_Leaf, "%s", anim->name.c_str()))
+                                {
+                                    if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                                    {
+                                        c->activeAnimIndex = animIdx;
+                                    }
+                                    ImGui::TreePop();
+                                }
+                            }
+                            ImGui::TreePop();
+                        }
+                        
+                        
                     });
                     break;
                 }
