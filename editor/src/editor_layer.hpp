@@ -106,17 +106,6 @@ namespace ignite
         DebugRenderData m_DebugRenderData;
         EditorData m_Data;
 
-        struct TestData
-        {
-            std::vector<Ref<SkeletalAnimation>> animations;
-            std::vector<glm::mat4> boneTransforms;
-            Skeleton skeleton;
-            i32 activeAnimIndex = 0;
-            void Create(EditorLayer *editor);
-        };
-
-        TestData m_TestData;
-
         std::filesystem::path m_CurrentSceneFilePath;
 
         nvrhi::BufferHandle m_DebugRenderBuffer;

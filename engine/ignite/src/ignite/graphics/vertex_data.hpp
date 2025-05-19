@@ -8,7 +8,7 @@
 namespace ignite
 {
 #define VERTEX_MAX_BONES 4
-#define MAX_BONES 200
+#define MAX_BONES 150
 
     struct CameraBuffer
     {

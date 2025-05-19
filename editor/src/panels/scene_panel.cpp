@@ -487,11 +487,11 @@ namespace ignite
 
                     break;
                 }
-                case CompType_SkinnedMeshRenderer:
+                case CompType_MeshRenderer:
                 {
-                    RenderComponent<SkinnedMeshRenderer>("Skinned Mesh Renderer", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
+                    RenderComponent<MeshRenderer>("Skinned Mesh Renderer", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
                     {
-                        SkinnedMeshRenderer *c = comp->As<SkinnedMeshRenderer>();
+                        MeshRenderer *c = comp->As<MeshRenderer>();
                     });
                     break;
                 }
@@ -560,14 +560,14 @@ namespace ignite
                             entity.AddComponent<BoxCollider2D>();
                             break;
                         }
-                        case CompType_SkinnedMeshRenderer:
+                        case CompType_MeshRenderer:
                         {
-                            entity.AddComponent<SkinnedMeshRenderer>();
+                            entity.AddComponent<MeshRenderer>();
                             break;
                         }
-                        case CompType_StaticMeshRenderer:
+                        case CompType_SkinnedMesh:
                         {
-                            entity.AddComponent<StaticMeshRenderer>();
+                            entity.AddComponent<SkinnedMesh>();
                             break;
                         }
                     }
@@ -656,11 +656,11 @@ namespace ignite
         {
             Entity entity = SceneManager::GetEntity(m_Scene, uuid);
             ID &idcomp = entity.GetComponent<ID>();
-            ImGuizmo::PushID((u64)uuid);
+            ImGui::PushID((intptr_t)uuid);
             
             Transform &tr = entity.GetComponent<Transform>();
 
-            glm::mat4 transformMatrix = tr.worldMatrix;
+            glm::mat4 transformMatrix = tr.GetWorldMatrix();
 
             m_Gizmo.Manipulate(transformMatrix);
 
@@ -669,26 +669,23 @@ namespace ignite
                 glm::vec3 translation, rotation, scale;
                 Math::DecomposeTransformEuler(transformMatrix, translation, rotation, scale);
 
-                if (idcomp.parent != 0)
+                if (idcomp.parent != 0; Entity parent = SceneManager::GetEntity(m_Scene, idcomp.parent))
                 {
-                    if (Entity parent = SceneManager::GetEntity(m_Scene, idcomp.parent))
-                    {
-                        auto &ptc = parent.GetComponent<Transform>();
-                        glm::vec4 localTranslation = glm::inverse(ptc.worldMatrix) * glm::vec4(translation, 1.0f);
+                    auto &ptc = parent.GetComponent<Transform>();
+                    glm::vec4 localTranslation = glm::inverse(ptc.GetWorldMatrix()) * glm::vec4(translation, 1.0f);
 
-                        // Apply parent's scale to local translation
-                        localTranslation.x *= ptc.scale.x;
-                        localTranslation.y *= ptc.scale.y;
-                        localTranslation.z *= ptc.scale.z;
+                    // Apply parent's scale to local translation
+                    localTranslation.x *= ptc.scale.x;
+                    localTranslation.y *= ptc.scale.y;
+                    localTranslation.z *= ptc.scale.z;
 
-                        // Convert back to world space
-                        tr.localTranslation = glm::vec3(ptc.worldMatrix * localTranslation);
-                        tr.localTranslation = glm::vec3(localTranslation);
-                        tr.localRotation = glm::inverse(ptc.rotation) * glm::quat(rotation);
-                        tr.localScale = scale;
+                    // Convert back to world space
+                    tr.localTranslation = glm::vec3(ptc.GetWorldMatrix() * localTranslation);
+                    tr.localTranslation = glm::vec3(localTranslation);
+                    tr.localRotation = glm::inverse(ptc.rotation) * glm::quat(rotation);
+                    tr.localScale = scale;
 
-                        tr.dirty = true;
-                    }
+                    tr.dirty = true;
                 }
                 else
                 {
@@ -702,7 +699,7 @@ namespace ignite
                 }
             }
 
-            ImGuizmo::PopID();
+            ImGui::PopID();
 
         }
 

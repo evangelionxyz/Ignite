@@ -30,6 +30,8 @@ namespace ignite
 
         void OnStart();
         void OnStop();
+
+        void UpdateTransforms(float deltaTime);
         
         void OnUpdateRuntimeSimulate(f32 deltaTime);
         void OnUpdateEdit(f32 deltaTime);
@@ -53,6 +55,8 @@ namespace ignite
 
         static AssetType GetStaticType() { return AssetType::Scene; }
         virtual AssetType GetType() override { return GetStaticType(); }
+
+        float timeInSeconds = 0.0f;
     
     private:
         bool m_Playing = false;

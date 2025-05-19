@@ -5,6 +5,9 @@
 #include "icomponent.hpp"
 #include "ignite/graphics/material.hpp"
 #include "ignite/core/uuid.hpp"
+#include "ignite/graphics/vertex_data.hpp"
+#include "ignite/animation/skeletal_animation.hpp"
+#include "ignite/graphics/mesh.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -14,17 +17,14 @@
 namespace ignite
 {
     class Texture;
-    class EntityMesh;
-    class Model;
-    struct Material;
 
     static std::unordered_map<std::string, CompType> s_ComponentsName =
     {
         { "Rigid Body 2D", CompType_Rigidbody2D },
         { "Sprite 2D", CompType_Sprite2D},
         { "Box Collider 2D", CompType_BoxCollider2D },
-        { "Skinned Mesh Renderer", CompType_SkinnedMeshRenderer },
-        { "Static Mesh hRenderer", CompType_StaticMeshRenderer },
+        { "Mesh Renderer", CompType_MeshRenderer },
+        { "Skinne dMesh", CompType_SkinnedMesh},
     };
 
     enum EntityType : u8
@@ -110,10 +110,6 @@ namespace ignite
         glm::vec3 localTranslation, localScale;
         glm::quat localRotation;
 
-        // cached matrices
-        glm::mat4 localMatrix = glm::mat4(1.0f);
-        glm::mat4 worldMatrix = glm::mat4(1.0f);
-
         bool visible = true;
 
         Transform() = default;
@@ -157,10 +153,9 @@ namespace ignite
             dirty = true;
         }
 
-        void UpdateLocalMatrix()
+        glm::mat4 GetLocalMatrix()
         {
-            localMatrix = glm::translate(glm::mat4(1.0f), localTranslation) 
-                * glm::mat4(localRotation) * glm::scale(glm::mat4(1.0f), localScale);
+            return glm::translate(glm::mat4(1.0f), localTranslation) * glm::mat4(localRotation) * glm::scale(glm::mat4(1.0f), localScale);
         }
 
         // World transformation
@@ -182,10 +177,9 @@ namespace ignite
             dirty = true;
         }
 
-        void UpdateWorldMatrix()
+        glm::mat4 GetWorldMatrix()
         {
-            worldMatrix = glm::translate(glm::mat4(1.0f), translation)
-                * glm::mat4(rotation) * glm::scale(glm::mat4(1.0f), scale);
+            return glm::translate(glm::mat4(1.0f), translation) * glm::mat4(rotation) * glm::scale(glm::mat4(1.0f), scale);
         }
 
         static CompType StaticType() { return CompType_Transform; }
@@ -203,32 +197,33 @@ namespace ignite
         virtual CompType GetType() override { return StaticType(); }
     };
 
-    class MeshRenderer
+     class SkinnedMesh : public IComponent
+     {
+     public:
+         Skeleton skeleton;
+         std::vector<glm::mat4> boneTransforms;
+         std::vector<Ref<SkeletalAnimation>> animations;
+         i32 activeAnimIndex = 0;
+
+         static CompType StaticType() { return CompType_SkinnedMesh; }
+         virtual CompType GetType() override { return StaticType(); };
+     };
+
+    class MeshRenderer : public IComponent
     {
     public:
+        Ref<EntityMesh> mesh;
+
+        UUID root = UUID(0); // SkinnedMesh / StaticMesh to get the component data
+        UUID parentNode = UUID(0);
+
+        ObjectBuffer meshBuffer;
         Material material;
 
         nvrhi::RasterCullMode cullMode = nvrhi::RasterCullMode::Front;
         nvrhi::RasterFillMode fillMode = nvrhi::RasterFillMode::Solid;
-    };
 
-    class SkinnedMeshRenderer : public IComponent, public MeshRenderer
-    {
-    public:
-        // Root joint
-
-        Ref<EntityMesh> mesh;
-        UUID parentNode = UUID(0);
-
-        static CompType StaticType() { return CompType_SkinnedMeshRenderer; }
-        virtual CompType GetType() override { return StaticType(); }
-    };
-
-    class StaticMeshRenderer : public IComponent, public MeshRenderer
-    {
-    public:
-
-        static CompType StaticType() { return CompType_StaticMeshRenderer; }
-        virtual CompType GetType() override { return StaticType(); }
+        static CompType StaticType() { return CompType_MeshRenderer; }
+        virtual CompType GetType() override { return StaticType(); };
     };
 }
