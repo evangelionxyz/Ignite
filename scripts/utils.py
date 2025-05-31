@@ -71,14 +71,11 @@ def set_system_path_variable(new_path):
 
 
 def download_file(url, filepath):
-    path = filepath
     filepath = os.path.abspath(filepath)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
     if (type(url) is list):
         for url_option in url:
-            print("Downloading", url_option)
-
             try:
                 download_file(url_option, filepath)
                 return

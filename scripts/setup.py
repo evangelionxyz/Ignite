@@ -53,15 +53,15 @@ class PermakeConfiguration:
             premake_path = f'{self.premake_directory}/premake-{self.premake_version}-linux.tar.gz'
 
         if not os.path.exists(premake_path):
-            print("Downloading {0:s} to {1:s}".format(self.premake_archive_urls, premake_path))
+            print("Downloading premake5 to {0:s}".format(premake_path))
             utils.download_file(self.premake_archive_urls, premake_path)
 
-        print(f"Extracting Premake: {premake_path} to {self.premake_directory}")
-        utils.extract_archive(premake_path, delete_after_extraction=False)
+            premake_license_path = f'{self.premake_directory}/LICENSE.txt'
+            print("Downloading Premake license to {0:s}".format(premake_license_path))
+            utils.download_file(self.permake_license_url, premake_license_path)
 
-        premake_license_path = f'{self.premake_directory}/LICENSE.txt'
-        print("Downloading Premake license from {0:s} to {1:s}".format(self.permake_license_url, premake_license_path))
-        utils.download_file(self.permake_license_url, premake_license_path)
+        print(f"Extracting Premake: {premake_path} to {self.premake_directory}")
+        utils.extract_archive(premake_path, delete_after_extraction=True)
         
         return True
 
