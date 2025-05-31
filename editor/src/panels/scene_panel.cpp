@@ -722,6 +722,8 @@ namespace ignite
                     glm::vec4 localTranslation = glm::inverse(ptc.GetWorldMatrix()) * glm::vec4(translation, 1.0f);
                     tr.localTranslation = localTranslation;
                     tr.localRotation = glm::inverse(ptc.rotation) * glm::quat(rotation);
+                    tr.localScale = scale / ptc.scale;
+
                     tr.dirty = true;
                 }
                 else
