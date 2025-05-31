@@ -5,8 +5,6 @@
 #include "ignite/imgui/imgui_layer.hpp"
 #include "ignite/graphics/renderer.hpp"
 
-#include "ignite/asset/asset_worker.hpp"
-
 #include <nvrhi/utils.h>
 
 namespace ignite
@@ -222,6 +220,11 @@ namespace ignite
     CommandManager *Application::GetCommandManager()
     {
         return GetInstance()->m_CommandManager.get();
+    }
+
+    nvrhi::IDevice* Application::GetRenderDevice()
+    {
+        return GetInstance()->m_Window->GetDeviceManager()->GetDevice();
     }
 
     f32 Application::GetDeltaTime()

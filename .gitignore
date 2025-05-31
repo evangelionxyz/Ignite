@@ -12,3 +12,5 @@ IGN.sln
 *.vcxproj.user
 bin-cmake
 resources/shaders/bin
+scripts/__pycache__
+scripts/premake

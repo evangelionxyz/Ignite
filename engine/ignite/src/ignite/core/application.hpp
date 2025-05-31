@@ -65,6 +65,7 @@ namespace ignite
         static Application *GetInstance();
         static DeviceManager *GetDeviceManager();
         static CommandManager *GetCommandManager();
+        static nvrhi::IDevice *GetRenderDevice();
 
         static f32 GetDeltaTime();
 

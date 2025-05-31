@@ -1,24 +1,27 @@
 #include "graphics_pipeline.hpp"
 #include "ignite/core/logger.hpp"
+
 #include "renderer.hpp"
 
-#include <ShaderMake/ShaderMake.h>
+#include "ignite/core/application.hpp"
 
 namespace ignite {
 
-    GraphicsPipeline::GraphicsPipeline(nvrhi::IDevice *device, const GraphicsPipelineParams &params, const GraphicsPiplineCreateInfo &createInfo)
-        : m_Params(params)
+    GraphicsPipeline::GraphicsPipeline(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo)
+        : m_Params(params), m_CreateInfo(std::move(createInfo))
     {
-        CreateShaders(device);
-
-        m_InputLayout = device->createInputLayout(createInfo.attributes, createInfo.attributeCount, nullptr); // vertex buffer is only for DX11
-        LOG_ASSERT(m_InputLayout, "[Graphics Pipeline] Failed to create input layout");
-
-        m_BindingLayout = device->createBindingLayout(createInfo.bindingLayoutDesc);
-        LOG_ASSERT(m_BindingLayout, "[Graphics Pipeline] Failed to create binding layout");
     }
 
-    void GraphicsPipeline::Create(nvrhi::IDevice *device, nvrhi::IFramebuffer *framebuffer)
+    GraphicsPipeline& GraphicsPipeline::AddShader(const std::string& filepath, nvrhi::ShaderType type, bool recompile)
+    {
+        ShaderMake::ShaderType shaderType = GetShaderMakeShaderType(type);
+        Ref<ShaderMake::ShaderContext> context = CreateRef<ShaderMake::ShaderContext>(filepath, shaderType, ShaderMake::ShaderContextDesc(), recompile);
+        m_ShaderContexts.push_back(std::move(context));
+
+        return *this;
+    }
+
+    void GraphicsPipeline::Create(nvrhi::IFramebuffer *framebuffer)
     {
         if (m_Handle == nullptr)
         {
@@ -43,8 +46,15 @@ namespace ignite {
             renderState.setBlendState(blendState);
 
             nvrhi::GraphicsPipelineDesc pipelineDesc;
-            pipelineDesc.setVertexShader(m_VertexShader);
-            pipelineDesc.setPixelShader(m_PixelShader);
+
+            for (auto& shader : m_Shaders)
+            {
+                if (shader.first == nvrhi::ShaderType::Vertex)
+                    pipelineDesc.setVertexShader(shader.second);
+                else if (shader.first == nvrhi::ShaderType::Pixel)
+                    pipelineDesc.setPixelShader(shader.second);
+            }
+
             pipelineDesc.setInputLayout(m_InputLayout);
             pipelineDesc.setRenderState(renderState);
             pipelineDesc.primType = m_Params.primitiveType;
@@ -52,6 +62,7 @@ namespace ignite {
             pipelineDesc.addBindingLayout(m_BindingLayout);
 
             // create with the same framebuffer to be render
+            nvrhi::IDevice* device = Application::GetRenderDevice();
             m_Handle = device->createGraphicsPipeline(pipelineDesc, framebuffer);
             LOG_ASSERT(m_Handle, "Failed to create graphics pipeline");
         }
@@ -62,22 +73,31 @@ namespace ignite {
         m_Handle.Reset();
     }
 
-    void GraphicsPipeline::CreateShaders(nvrhi::IDevice *device)
+    void GraphicsPipeline::CompileShaders()
     {
-        ShaderMake::ShaderContextDesc shaderDesc = ShaderMake::ShaderContextDesc();
-        Ref<ShaderMake::ShaderContext> vsContext = CreateRef<ShaderMake::ShaderContext>(m_Params.vertexShaderFilepath, ShaderMake::ShaderType::Vertex, shaderDesc, m_Params.recompileShader);
-        Ref<ShaderMake::ShaderContext> psContext = CreateRef<ShaderMake::ShaderContext>(m_Params.pixelShaderFilepath, ShaderMake::ShaderType::Pixel, shaderDesc, m_Params.recompileShader);
+        Renderer::GetShaderContext()->CompileShader(m_ShaderContexts);
 
-        Renderer::GetShaderContext()->CompileShader({ vsContext, psContext });
+        nvrhi::IDevice* device = Application::GetRenderDevice();
+        for (auto& context : m_ShaderContexts)
+        {
+            nvrhi::ShaderType shaderType = GetNVRHIShaderType(context->GetType());
+            m_Shaders[shaderType] = device->createShader(shaderType, context->blob.data.data(), context->blob.dataSize());
 
-        m_VertexShader = device->createShader(nvrhi::ShaderType::Vertex, vsContext->blob.data.data(), vsContext->blob.dataSize());
-        m_PixelShader = device->createShader(nvrhi::ShaderType::Pixel, psContext->blob.data.data(), psContext->blob.dataSize());
-        LOG_ASSERT(m_VertexShader && m_PixelShader, "[Graphics Pipline] Failed to create shaders");
+            LOG_ASSERT(m_Shaders[shaderType], "[Graphics Pipline] Failed to create shader");
+        }
+
+        m_ShaderContexts.clear();
+
+        m_InputLayout = device->createInputLayout(m_CreateInfo->attributes, m_CreateInfo->attributeCount, nullptr);
+        LOG_ASSERT(m_InputLayout, "[Graphics Pipeline] Failed to create input layout");
+
+        m_BindingLayout = device->createBindingLayout(m_CreateInfo->bindingLayoutDesc);
+        LOG_ASSERT(m_BindingLayout, "[Graphics Pipeline] Failed to create binding layout");
     }
 
-    Ref<GraphicsPipeline> GraphicsPipeline::Create(nvrhi::IDevice *device, const GraphicsPipelineParams &params, const GraphicsPiplineCreateInfo &createInfo)
+    Ref<GraphicsPipeline> GraphicsPipeline::Create(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo)
     {
-        return CreateRef<GraphicsPipeline>(device, params, createInfo);
+        return CreateRef<GraphicsPipeline>(params, createInfo);
     }
 
 }

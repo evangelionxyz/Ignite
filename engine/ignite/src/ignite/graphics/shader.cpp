@@ -44,18 +44,6 @@ namespace ignite
         return "Invalid shader type";
     }
 
-    nvrhi::ShaderType ShaderTypeToNVRHIShaderType(ShaderMake::ShaderType type)
-    {
-        switch (type)
-        {
-            case ShaderMake::ShaderType::Vertex: return nvrhi::ShaderType::Vertex;
-            case ShaderMake::ShaderType::Pixel: return nvrhi::ShaderType::Pixel;
-        }
-
-        LOG_ASSERT(false, "Invalid shader stage");
-        return nvrhi::ShaderType::None;
-    }
-
     static const char *GetShaderExtension(nvrhi::GraphicsAPI api)
     {
         switch (api)
@@ -78,7 +66,7 @@ namespace ignite
         LOG_ASSERT(blob.data.data(), "[Shader] Blob data is not valid");
 
         nvrhi::ShaderDesc shaderDesc;
-        shaderDesc.shaderType = ShaderTypeToNVRHIShaderType(type);
+        shaderDesc.shaderType = GetNVRHIShaderType(type);
 
         m_Handle = device->createShader(shaderDesc, blob.data.data(), blob.dataSize());
 
