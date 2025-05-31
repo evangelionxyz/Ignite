@@ -164,8 +164,6 @@ namespace ignite
             params.recompileShader = true;
             params.fillMode = nvrhi::RasterFillMode::Solid;
             params.cullMode = nvrhi::RasterCullMode::Front;
-            params.vertexShaderFilepath = "default_mesh.vertex.hlsl";
-            params.pixelShaderFilepath = "default_mesh.pixel.hlsl";
 
             auto attributes = VertexMesh::GetAttributes();
             GraphicsPiplineCreateInfo pci;
@@ -173,7 +171,10 @@ namespace ignite
             pci.attributeCount = static_cast<uint32_t>(attributes.size());
             pci.bindingLayoutDesc = VertexMesh::GetBindingLayoutDesc();
 
-            m_MeshPipeline = GraphicsPipeline::Create(m_Device, params, pci);
+            m_MeshPipeline = GraphicsPipeline::Create(params, &pci);
+            m_MeshPipeline->AddShader("default_mesh.vertex.hlsl", nvrhi::ShaderType::Vertex)
+                .AddShader("default_mesh.pixel.hlsl", nvrhi::ShaderType::Pixel)
+                .CompileShaders();
         }
 
         // create skybox graphics pipeline
@@ -185,8 +186,6 @@ namespace ignite
             params.recompileShader = false;
             params.cullMode = nvrhi::RasterCullMode::Front;
             params.comparison = nvrhi::ComparisonFunc::Always;
-            params.vertexShaderFilepath = "skybox.vertex.hlsl";
-            params.pixelShaderFilepath = "skybox.pixel.hlsl";
 
             auto attribute = Environment::GetAttribute();
             GraphicsPiplineCreateInfo pci;
@@ -194,7 +193,10 @@ namespace ignite
             pci.attributeCount = 1;
             pci.bindingLayoutDesc = Environment::GetBindingLayoutDesc();
 
-            m_EnvPipeline = GraphicsPipeline::Create(m_Device, params, pci);
+            m_EnvPipeline = GraphicsPipeline::Create(params, &pci);
+            m_EnvPipeline->AddShader("skybox.vertex.hlsl", nvrhi::ShaderType::Vertex)
+                .AddShader("skybox.pixel.hlsl", nvrhi::ShaderType::Pixel)
+                .CompileShaders();
 
             // create env
             m_Environment = Environment::Create(m_Device);
@@ -429,9 +431,8 @@ namespace ignite
         nvrhi::Viewport viewport = viewportFramebuffer->getFramebufferInfo().getViewport();
 
         // create pipelines
-        m_EnvPipeline->Create(m_Device, viewportFramebuffer);
-
-        m_MeshPipeline->Create(m_Device, viewportFramebuffer);
+        m_EnvPipeline->Create(viewportFramebuffer);
+        m_MeshPipeline->Create(viewportFramebuffer);
 
         // main scene rendering
         m_CommandList->open();

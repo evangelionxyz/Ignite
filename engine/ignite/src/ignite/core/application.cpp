@@ -224,6 +224,11 @@ namespace ignite
         return GetInstance()->m_CommandManager.get();
     }
 
+    nvrhi::IDevice* Application::GetRenderDevice()
+    {
+        return GetInstance()->m_Window->GetDeviceManager()->GetDevice();
+    }
+
     f32 Application::GetDeltaTime()
     {
         return GetInstance()->m_DeltaTime;

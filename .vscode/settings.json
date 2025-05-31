@@ -90,5 +90,6 @@
         "ranges": "cpp",
         "stack": "cpp"
     },
-    "FSharp.suggestGitignore": false
+    "FSharp.suggestGitignore": false,
+    "cmake.ignoreCMakeListsMissing": true
 }

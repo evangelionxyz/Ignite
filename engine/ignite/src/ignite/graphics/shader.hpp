@@ -16,9 +16,34 @@ namespace ignite
 {
     static std::string GetShaderCacheDirectory();
     static void CreateShaderCachedDirectoryIfNeeded();
-    static nvrhi::ShaderType ShaderTypeToNVRHIShaderType(ShaderMake::ShaderType type);
 
-    class  Shader
+    static nvrhi::ShaderType GetNVRHIShaderType(ShaderMake::ShaderType type)
+    {
+        switch (type)
+        {
+        case ShaderMake::ShaderType::Vertex: return nvrhi::ShaderType::Vertex;
+        case ShaderMake::ShaderType::Pixel: return nvrhi::ShaderType::Pixel;
+        case ShaderMake::ShaderType::Geometry: return nvrhi::ShaderType::Geometry;
+        }
+
+        LOG_ASSERT(false, "Invalid shader stage");
+        return nvrhi::ShaderType::None;
+    }
+
+    static ShaderMake::ShaderType GetShaderMakeShaderType(nvrhi::ShaderType type)
+    {
+        switch (type)
+        {
+        case nvrhi::ShaderType::Vertex: return ShaderMake::ShaderType::Vertex;
+        case nvrhi::ShaderType::Pixel: return ShaderMake::ShaderType::Pixel;
+        case nvrhi::ShaderType::Geometry: return ShaderMake::ShaderType::Geometry;
+        }
+
+        LOG_ASSERT(false, "Invalid shader stage");
+        return ShaderMake::ShaderType::Vertex;
+    }
+
+    class Shader
     {
     public:
         Shader() = default;
