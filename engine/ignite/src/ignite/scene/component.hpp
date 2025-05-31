@@ -24,7 +24,7 @@ namespace ignite
         { "Sprite 2D", CompType_Sprite2D},
         { "Box Collider 2D", CompType_BoxCollider2D },
         { "Mesh Renderer", CompType_MeshRenderer },
-        { "Skinne dMesh", CompType_SkinnedMesh},
+        { "Skinned Mesh", CompType_SkinnedMesh},
     };
 
     enum EntityType : u8

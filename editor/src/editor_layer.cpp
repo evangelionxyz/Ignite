@@ -78,15 +78,14 @@ namespace ignite
                 
                 glm::vec3 skew;
                 glm::vec4 perspective;
-                glm::decompose(node.localTransform, tr.localScale, tr.localRotation, tr.localTranslation, skew, perspective);
+                // glm::decompose(node.localTransform, tr.localScale, tr.localRotation, tr.localTranslation, skew, perspective);
+                glm::decompose(node.worldTransform, tr.scale, tr.rotation, tr.translation, skew, perspective);
 
                 tr.dirty = true;
             }
         }
 
         // Second pass: establish hierarchy and add meshes
-
-
         for (auto &node : nodes)
         {
             Entity nodeEntity = SceneManager::GetEntity(scene.get(), node.uuid);
@@ -231,7 +230,7 @@ namespace ignite
 
         NewScene();
 
-        // TestLoader(m_Device, m_ActiveScene, "C:/Users/Evangelion/Downloads/Compressed/KayKit_Adventurers_1.0_FREE/Characters/gltf/Rogue.glb");
+        TestLoader(m_Device, m_ActiveScene, "resources/models/Walking.fbx");
 
         m_CommandList->open();
 

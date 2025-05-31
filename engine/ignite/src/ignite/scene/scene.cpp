@@ -53,7 +53,7 @@ namespace ignite
         for (auto entity : skinnedMeshView)
         {
             SkinnedMesh &skinnedMesh = skinnedMeshView.get<SkinnedMesh>(entity);
-            if (skinnedMesh.animations[skinnedMesh.activeAnimIndex]->isPlaying)
+            if (!skinnedMesh.animations.empty() && skinnedMesh.animations[skinnedMesh.activeAnimIndex]->isPlaying)
             {
                 if (AnimationSystem::UpdateSkeleton(skinnedMesh.skeleton, skinnedMesh.animations[skinnedMesh.activeAnimIndex], timeInSeconds))
                 {

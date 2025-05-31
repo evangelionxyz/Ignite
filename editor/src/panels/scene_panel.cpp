@@ -720,18 +720,8 @@ namespace ignite
                 {
                     auto &ptc = parent.GetComponent<Transform>();
                     glm::vec4 localTranslation = glm::inverse(ptc.GetWorldMatrix()) * glm::vec4(translation, 1.0f);
-
-                    // Apply parent's scale to local translation
-                    localTranslation.x *= ptc.scale.x;
-                    localTranslation.y *= ptc.scale.y;
-                    localTranslation.z *= ptc.scale.z;
-
-                    // Convert back to world space
-                    tr.localTranslation = glm::vec3(ptc.GetWorldMatrix() * localTranslation);
-                    tr.localTranslation = glm::vec3(localTranslation);
+                    tr.localTranslation = localTranslation;
                     tr.localRotation = glm::inverse(ptc.rotation) * glm::quat(rotation);
-                    tr.localScale = scale;
-
                     tr.dirty = true;
                 }
                 else
