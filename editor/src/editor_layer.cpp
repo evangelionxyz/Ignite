@@ -1,4 +1,4 @@
-﻿#include "editor_layer.hpp"
+#include "editor_layer.hpp"
 
 #include "panels/scene_panel.hpp"
 #include "panels/content_browser_panel.hpp"
@@ -231,7 +231,7 @@ namespace ignite
 
         NewScene();
 
-        TestLoader(m_Device, m_ActiveScene, "C:/Users/Evangelion/Downloads/Compressed/KayKit_Adventurers_1.0_FREE/Characters/gltf/Rogue.glb");
+        // TestLoader(m_Device, m_ActiveScene, "C:/Users/Evangelion/Downloads/Compressed/KayKit_Adventurers_1.0_FREE/Characters/gltf/Rogue.glb");
 
         m_CommandList->open();
 

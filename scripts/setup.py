@@ -1,6 +1,7 @@
 import os
 import platform
 import utils
+import subprocess
 from pathlib import Path
 
 class PermakeConfiguration:
@@ -57,17 +58,13 @@ class PermakeConfiguration:
 
         print(f"Extracting Premake: {premake_path} to {self.premake_directory}")
         utils.extract_archive(premake_path, delete_after_extraction=False)
-        print(f"Premake {self.premake_version} has been downloaded to '{self.premake_directory}'")
 
         premake_license_path = f'{self.premake_directory}/LICENSE.txt'
         print("Downloading Premake license from {0:s} to {1:s}".format(self.permake_license_url, premake_license_path))
         utils.download_file(self.permake_license_url, premake_license_path)
-        print(f"Premake license has been downloaded to '{premake_license_path}'")
         
         return True
 
-
-os.chdir("./../")
 
 if __name__ == "__main__":
     premake_config = PermakeConfiguration()
@@ -76,5 +73,11 @@ if __name__ == "__main__":
     if not premake_config.validate():
         print("Premake validation failed. Exiting setup.")
         exit(1)
-    
+
     print("Premake is installed and validated successfully.")
+
+    premake_path = f"{premake_config.premake_directory}/premake5"
+    arguments = ["vs2022", "--file=premake5.lua"] if platform.system() == "Windows" else ["gmake2", "--file=premake5.lua"]
+
+    # Execute premake5 with arguments
+    subprocess.run([premake_path] + arguments)
