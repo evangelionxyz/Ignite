@@ -1,6 +1,10 @@
 #pragma once
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 namespace ignite
 {
@@ -14,6 +18,16 @@ namespace ignite
         AABB(const glm::vec3 &center, const glm::vec3 &size)
             : min(center - size * 0.5f), max(center + size * 0.5f)
         {
+        }
+
+        const glm::vec3 GetCenter() const
+        { 
+            return (min + max) / 2.0f; 
+        }
+
+        const glm::vec3 GetSize() const
+        { 
+            return max - min; 
         }
 
         bool RayIntersection(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection)

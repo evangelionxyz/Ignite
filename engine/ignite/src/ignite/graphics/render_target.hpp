@@ -12,14 +12,13 @@ namespace ignite {
     struct FramebufferAttachments
     {
         nvrhi::Format format;
+        nvrhi::ResourceStates state =  nvrhi::ResourceStates::Unknown;
     };
 
     struct RenderTargetCreateInfo
     {
         std::vector<FramebufferAttachments> attachments;
         nvrhi::IDevice *device = nullptr;
-        bool depthRead = false;
-        bool depthWrite = false;
 
         uint32_t width = 1280;
         uint32_t height = 720;
@@ -43,7 +42,9 @@ namespace ignite {
         nvrhi::TextureHandle GetColorAttachment(uint32_t index);
         std::vector<nvrhi::TextureHandle> &GetColorAttachments();
 
-        void ClearColorAttachment(nvrhi::CommandListHandle commandList, uint32_t index = 0, const glm::vec3 &clearColor = glm::vec3(0.0f, 0.0f, 0.0f));
+        void ClearColorAttachmentFloat(nvrhi::CommandListHandle commandList, uint32_t attachmentIndex = 0, const glm::vec3 &clearColor = glm::vec3(0.0f, 0.0f, 0.0f));
+        void ClearColorAttachmentUint(nvrhi::CommandListHandle commandList, uint32_t attachmentIndex = 0, uint32_t clearColor = 0);
+
         void ClearDepthAttachment(nvrhi::CommandListHandle commandList, float depth, uint32_t stencil);
 
     private:

@@ -7,18 +7,30 @@ struct PSInput
     float2 tilingFactor : TILINGFACTOR;
     float4 color        : COLOR;
     uint texIndex       : TEXINDEX;
+    uint entityID       : ENTITYID;
 };
 
 Texture2D textures[16]    : register(t0);
 SamplerState samplerState : register(s0);
 
-float4 main(PSInput input) : SV_TARGET
+struct PSOutput
+{
+    float4 color : SV_TARGET0;
+    uint4 entityID : SV_TARGET1;
+};
+
+
+PSOutput main(PSInput input)
 {
     float4 texColor = textures[input.texIndex].Sample(samplerState, input.texCoord * input.tilingFactor);
     float4 finalColor = input.color * texColor;
     
     // Discard pixel if alpha is zero
     clip(finalColor.a == 0.0f ? -1.0f : 1.0f);
+    
+    PSOutput result;
+    result.color = finalColor;
+    result.entityID = uint4(input.entityID, input.entityID, input.entityID, input.entityID);
 
-    return finalColor;
+    return result;
 }

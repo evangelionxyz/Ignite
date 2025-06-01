@@ -54,10 +54,11 @@ namespace ignite
     {
         RenderTargetCreateInfo createInfo = {};
         createInfo.device = device;
-        createInfo.depthWrite = true;
-        createInfo.attachments = {
-            FramebufferAttachments{ nvrhi::Format::D32S8},
-            FramebufferAttachments{ nvrhi::Format::SRGBA8_UNORM },
+        createInfo.attachments = 
+        {
+            FramebufferAttachments{ nvrhi::Format::D32S8, nvrhi::ResourceStates::DepthWrite },
+            FramebufferAttachments{ nvrhi::Format::SRGBA8_UNORM, nvrhi::ResourceStates::RenderTarget },
+            FramebufferAttachments{ nvrhi::Format::R32_UINT, nvrhi::ResourceStates::RenderTarget },
         };
 
         m_RenderTarget = CreateRef<RenderTarget>(createInfo);
@@ -661,25 +662,38 @@ namespace ignite
         ImGui::Begin("Viewport", nullptr, windowFlags);
 
         const ImGuiWindow *window = ImGui::GetCurrentWindow();
+
         m_ViewportData.isFocused = ImGui::IsWindowFocused();
         m_ViewportData.isHovered = ImGui::IsWindowHovered();
 
-        ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
-        ImVec2 canvas_size = ImGui::GetContentRegionMax();
+        ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+        ImVec2 canvasSize = ImGui::GetContentRegionMax();
 
-        m_ViewportData.rect.min = { canvas_pos.x, canvas_pos.y };
-        m_ViewportData.rect.max = { canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y };
+        m_ViewportData.rect.min = { canvasPos.x, canvasPos.y };
+        m_ViewportData.rect.max = { canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y };
 
         uint32_t vpWidth = static_cast<uint32_t>(m_ViewportData.rect.GetSize().x);
-        uint32_t vpHeght = static_cast<uint32_t>(m_ViewportData.rect.GetSize().y);
+        uint32_t vpHeight = static_cast<uint32_t>(m_ViewportData.rect.GetSize().y);
+
+
+        // Mouse position in screen space
+        ImVec2 mousePos = ImGui::GetMousePos();
+
+        // Mouse position relative to viewport
+        glm::vec2 localMouse = { mousePos.x - canvasPos.x, mousePos.y - canvasPos.y };
+
+        // Clamp to valid range [0, size - 1]
+        localMouse = glm::clamp(localMouse, glm::vec2(0.0f), glm::vec2(vpWidth - 1, vpHeight - 1));
+
+        m_ViewportData.mousePos = localMouse;
 
         // trigger resize
-        if (vpWidth > 0 && vpHeght > 0 && (vpWidth != m_RenderTarget->GetWidth() || vpHeght != m_RenderTarget->GetHeight()))
+        if (vpWidth > 0 && vpHeight > 0 && (vpWidth != m_RenderTarget->GetWidth() || vpHeight != m_RenderTarget->GetHeight()))
         {
             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
-                m_RenderTarget->Resize(vpWidth, vpHeght);
-                m_ViewportCamera->SetSize(vpWidth, vpHeght);
+                m_RenderTarget->Resize(vpWidth, vpHeight);
+                m_ViewportCamera->SetSize(vpWidth, vpHeight);
                 m_ViewportCamera->UpdateProjectionMatrix();
             }
         }
@@ -698,6 +712,8 @@ namespace ignite
 
         m_Gizmo.SetInfo(gizmoInfo);
 
+        m_Data.isGizmoBeingUse = false;
+
         for (auto &uuid : m_SelectedEntityIDs)
         {
             Entity entity = SceneManager::GetEntity(m_Scene, uuid);
@@ -714,9 +730,10 @@ namespace ignite
                 glm::vec3 translation, rotation, scale;
                 Math::DecomposeTransformEuler(transformMatrix, translation, rotation, scale);
 
-                if (entity.GetParentUUID() != 0; Entity parent = SceneManager::GetEntity(m_Scene, entity.GetParentUUID()))
+                if (entity.GetParentUUID() != UUID(0))
                 {
-                    auto &ptc = parent.GetComponent<Transform>();
+                    Entity parent = SceneManager::GetEntity(m_Scene, entity.GetParentUUID());
+                    Transform &ptc = parent.GetTransform();
                     glm::vec4 localTranslation = glm::inverse(ptc.GetWorldMatrix()) * glm::vec4(translation, 1.0f);
                     tr.localTranslation = localTranslation;
                     tr.localRotation = glm::inverse(ptc.rotation) * glm::quat(rotation);
@@ -734,22 +751,22 @@ namespace ignite
 
                     tr.dirty = true;
                 }
+
             }
 
+            m_Data.isGizmoBeingUse = m_Gizmo.IsManipulating() || m_Gizmo.IsHovered();
+
             ImGui::PopID();
-
         }
-
-        // m_Gizmo.DrawGrid(1000.0f);
-
         ImGui::End();
     }
 
     void ScenePanel::CameraSettingsUI()
     {
+        ImGui::Text("Mouse Pos: %.2f, %.2f Entity: (%d)", m_ViewportData.mousePos.x, m_ViewportData.mousePos.y, static_cast<entt::entity>(m_SelectedEntity));
+
         // =================================
         // Camera settings
-
         static const char *cameraModeStr[2] = { "Orthographic", "Perspective" };
         const char *currentCameraModeStr = cameraModeStr[static_cast<i32>(m_ViewportCamera->projectionType)];
         if (ImGui::BeginCombo("Mode", currentCameraModeStr))

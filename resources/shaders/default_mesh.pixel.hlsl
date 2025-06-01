@@ -59,6 +59,7 @@ struct PSInput
     float2 uv           : TEXCOORD;
     float2 tilingFactor : TILINGFACTOR;
     float4 color        : COLOR;
+    uint entityID       : ENTITYID;
 };
 
 Texture2D diffuseTex : register(t0);
@@ -85,7 +86,13 @@ float3 CalcDirLight(float3 ldirection, float3 lcolor, float3 normal, float3 view
     return (ambientColor + diffuseColor + specularColor) * diffTexColor;
 }
 
-float4 main(PSInput input) : SV_TARGET
+struct PSOutput
+{
+    float4 color : SV_TARGET0;
+    uint4 entityID : SV_TARGET1;
+};
+
+PSOutput main(PSInput input)
 {
     float3 lighting = float3(0.0f, 0.0f, 0.0f);
 
@@ -145,26 +152,35 @@ float4 main(PSInput input) : SV_TARGET
     // Add emissive
     float3 emissive = TextureEmissive(emissiveCol, material.emissive);
     lighting += emissive;
+    
+    PSOutput result;
+    result.entityID = uint4(input.entityID, input.entityID, input.entityID, input.entityID);
+    
 
     switch (debug.renderIndex)
     {
         case 0:
         default:
-        {
             // ===== TONE MAPPING & OUTPUT =====
-            lighting= FilmicTonemap(lighting, env.exposure, env.gamma);
-            return float4(lighting, 1.0f);
-        }
+            lighting = FilmicTonemap(lighting, env.exposure, env.gamma);
+            result.color = float4(lighting, 1.0);
+            break;
         case 1:
-            return float4((normal * 0.5 + 0.5) * normalColTex, 1.0);
+            result.color = float4((normal * 0.5 + 0.5) * normalColTex, 1.0);
+            break;
         case 2:
             // Debug view for roughness
-            return float4(filteredRoughness, filteredRoughness, filteredRoughness, 1.0);
+            result.color = float4(filteredRoughness, filteredRoughness, filteredRoughness, 1.0);
+            break;
         case 3:
             // Debug view for metallic
-            return float4(finalMetallic, finalMetallic, finalMetallic, 1.0);
+            result.color = float4(finalMetallic, finalMetallic, finalMetallic, 1.0);
+            break;
         case 4:
             // Debug reflection only
-            return float4(reflectedSpecular, 1.0);
+            result.color = float4(reflectedSpecular, 1.0);
+            break;
     }
+    
+    return result;
 }

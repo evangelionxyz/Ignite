@@ -141,8 +141,8 @@ namespace ignite
         delete[] indices;
         
         s_r2d->quadPositions[0] = {-0.5f, -0.5f, 0.0f, 1.0f }; // bottom-left
-        s_r2d->quadPositions[1] = {-0.5f,  0.5f, 0.0f, 1.0f }; // top-left
-        s_r2d->quadPositions[2] = { 0.5f,  0.5f, 0.0f, 1.0f }; // top-right
+        s_r2d->quadPositions[1] = { 0.5f,  0.5f, 0.0f, 1.0f }; // top-right
+        s_r2d->quadPositions[2] = {-0.5f,  0.5f, 0.0f, 1.0f }; // top-left
         s_r2d->quadPositions[3] = { 0.5f, -0.5f, 0.0f, 1.0f }; // bottom-right
     }
 
@@ -272,7 +272,7 @@ namespace ignite
         s_r2d->lineBatch.pipeline->CreatePipeline(framebuffer);
     }
 
-    void Renderer2D::DrawBox(const glm::mat4& transform, const glm::vec4& color)
+    void Renderer2D::DrawBox(const glm::mat4& transform, const glm::vec4& color, uint32_t entityID)
     {
         if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
             Renderer2D::Flush();
@@ -301,6 +301,7 @@ namespace ignite
                 glm::vec4 position = transform * cubeVertices[edgeIndices[i][j]];
                 s_r2d->lineBatch.vertexBufferPtr->position = position;
                 s_r2d->lineBatch.vertexBufferPtr->color = color;
+                s_r2d->lineBatch.vertexBufferPtr->entityID = entityID;
                 s_r2d->lineBatch.vertexBufferPtr++;
                 s_r2d->lineBatch.indexCount++;
             }
@@ -309,7 +310,7 @@ namespace ignite
         s_r2d->lineBatch.count++;
     }
 
-    void Renderer2D::DrawRect(const glm::mat4& transform, const glm::vec4& color)
+    void Renderer2D::DrawRect(const glm::mat4& transform, const glm::vec4& color, uint32_t entityID)
     {
         if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
             Renderer2D::Flush();
@@ -328,6 +329,7 @@ namespace ignite
                 glm::vec4 position = transform * s_r2d->quadPositions[indices[i][j]];
                 s_r2d->lineBatch.vertexBufferPtr->position = position;
                 s_r2d->lineBatch.vertexBufferPtr->color = color;
+                s_r2d->lineBatch.vertexBufferPtr->entityID = entityID;
                 s_r2d->lineBatch.vertexBufferPtr++;
                 s_r2d->lineBatch.indexCount++;
             }
@@ -336,7 +338,7 @@ namespace ignite
         s_r2d->lineBatch.count++;
     }
 
-    void Renderer2D::DrawLine(const std::vector<glm::vec3>& positions, const glm::vec4& color)
+    void Renderer2D::DrawLine(const std::vector<glm::vec3>& positions, const glm::vec4& color, uint32_t entityID)
     {
         if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
             Renderer2D::Flush();
@@ -345,6 +347,7 @@ namespace ignite
         {
             s_r2d->lineBatch.vertexBufferPtr->position = pos;
             s_r2d->lineBatch.vertexBufferPtr->color = color;
+            s_r2d->lineBatch.vertexBufferPtr->entityID = entityID;
             s_r2d->lineBatch.vertexBufferPtr++;
 
             s_r2d->lineBatch.indexCount++;
@@ -353,38 +356,40 @@ namespace ignite
         s_r2d->lineBatch.count++;
     }
 
-    void Renderer2D::DrawLine(const glm::vec3& pos0, const glm::vec3& pos1, const glm::vec4& color)
+    void Renderer2D::DrawLine(const glm::vec3& pos0, const glm::vec3& pos1, const glm::vec4& color, uint32_t entityID)
     {
         if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
             Renderer2D::Flush();
 
         s_r2d->lineBatch.vertexBufferPtr->position = pos0;
         s_r2d->lineBatch.vertexBufferPtr->color = color;
+        s_r2d->lineBatch.vertexBufferPtr->entityID = entityID;
         s_r2d->lineBatch.vertexBufferPtr++;
 
         s_r2d->lineBatch.vertexBufferPtr->position = pos1;
         s_r2d->lineBatch.vertexBufferPtr->color = color;
+        s_r2d->lineBatch.vertexBufferPtr->entityID = entityID;
         s_r2d->lineBatch.vertexBufferPtr++;
 
         s_r2d->lineBatch.indexCount += 2;
         s_r2d->lineBatch.count++;
     }
 
-    void Renderer2D::DrawQuad(const glm::vec3 &position, const glm::vec2 &size, f32 rotation, const glm::vec4 &color, Ref<Texture> texture, const glm::vec2 &tilingFactor)
+    void Renderer2D::DrawQuad(const glm::vec3 &position, const glm::vec2 &size, f32 rotation, const glm::vec4 &color, Ref<Texture> texture, const glm::vec2 &tilingFactor, uint32_t entityID)
     {
         glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) 
             * glm::rotate(glm::mat4(1.0f), rotation, {0.0f, 0.0f, 1.0f }) 
             * glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
-        DrawQuad(transform, color, texture, tilingFactor);
+        DrawQuad(transform, color, texture, tilingFactor, entityID);
     }
 
-    void Renderer2D::DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color, Ref<Texture> texture, const glm::vec2 &tilingFactor)
+    void Renderer2D::DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color, Ref<Texture> texture, const glm::vec2 &tilingFactor, uint32_t entityID)
     {
         glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
-        DrawQuad(transform, color, texture, tilingFactor);
+        DrawQuad(transform, color, texture, tilingFactor, entityID);
     }
     
-    void Renderer2D::DrawQuad(const glm::mat4 &transform, const glm::vec4 &color, Ref<Texture> texture, const glm::vec2 &tilingFactor)
+    void Renderer2D::DrawQuad(const glm::mat4 &transform, const glm::vec4 &color, Ref<Texture> texture, const glm::vec2 &tilingFactor, uint32_t entityID)
     {
         if (s_r2d->quadBatch.count >= s_r2d->quadBatch.maxCount)
             Renderer2D::Flush();
@@ -406,6 +411,7 @@ namespace ignite
             s_r2d->quadBatch.vertexBufferPtr->tilingFactor = tilingFactor;
             s_r2d->quadBatch.vertexBufferPtr->color        = color;
             s_r2d->quadBatch.vertexBufferPtr->texIndex     = texIndex;
+            s_r2d->quadBatch.vertexBufferPtr->entityID     = entityID;
             s_r2d->quadBatch.vertexBufferPtr++;
         }
 

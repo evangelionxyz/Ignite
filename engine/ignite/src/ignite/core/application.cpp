@@ -155,9 +155,9 @@ namespace ignite
                                 m_ImGuiLayer->EndFrame(framebuffer);
                             }
                         }
+
                         if (!deviceManager->Present())
                             continue;
-
                     }
                 }
             }

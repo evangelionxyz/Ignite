@@ -5,7 +5,7 @@
 
 #include "ignite/asset/asset.hpp"
 #include "ignite/core/uuid.hpp"
-#include "ignite/core/uuid.hpp"
+#include "ignite/math/aabb.hpp"
 #include "ignite/core/buffer.hpp"
 #include "ignite/animation/skeletal_animation.hpp"
 
@@ -92,6 +92,8 @@ namespace ignite {
         std::vector<BoneInfo> boneInfo; // Bone weights and indices
         std::unordered_map<std::string, uint32_t> boneMapping; // Maps bone names to indices
 
+        AABB aabb;
+        
         void CreateConstantBuffers(nvrhi::IDevice *device);
         void CreateBuffers();
     };
@@ -114,6 +116,8 @@ namespace ignite {
 
         std::vector<BoneInfo> boneInfo; // Bone weights and indices
         std::unordered_map<std::string, uint32_t> boneMapping; // Maps bone namse to indices
+
+        AABB aabb;
 
         void CreateConstantBuffers(nvrhi::IDevice *device);
         void CreateBuffers();

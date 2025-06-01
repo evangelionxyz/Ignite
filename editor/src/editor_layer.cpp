@@ -121,12 +121,19 @@ namespace ignite
                 meshRenderer.name = mesh->name;
                 meshRenderer.root = rootNode.GetUUID();
 
+                for (auto &vertex : mesh->vertices)
+                {
+                    entt::entity e = static_cast<entt::entity>(nodeEntity);
+                    vertex.entityID = entt::to_integral(e);
+                }
+
                 meshRenderer.mesh = CreateRef<EntityMesh>();
 
                 meshRenderer.mesh->vertices = mesh->vertices;
                 meshRenderer.mesh->indices = mesh->indices;
                 meshRenderer.mesh->indexBuffer = mesh->indexBuffer;
                 meshRenderer.mesh->vertexBuffer = mesh->vertexBuffer;
+                meshRenderer.mesh->aabb = mesh->aabb;
 
                 meshRenderer.material = mesh->material;
             }
@@ -339,6 +346,7 @@ namespace ignite
 
         EventDispatcher dispatcher(e);
         dispatcher.Dispatch<KeyPressedEvent>(BIND_CLASS_EVENT_FN(EditorLayer::OnKeyPressedEvent));
+        dispatcher.Dispatch<MouseButtonPressedEvent>(BIND_CLASS_EVENT_FN(EditorLayer::OnMouseButtonPressed));
     }
 
     bool EditorLayer::OnKeyPressedEvent(KeyPressedEvent &event)
@@ -416,6 +424,16 @@ namespace ignite
         return false;
     }
 
+    bool EditorLayer::OnMouseButtonPressed(MouseButtonPressedEvent &event)
+    {
+        if (event.Is(Mouse::ButtonLeft) && !m_ScenePanel->IsGizmoBeingUse() && m_ScenePanel->IsViewportHovered())
+        {
+            m_Data.isPickingEntity = true;
+        }
+
+        return false;
+    }
+
     void EditorLayer::OnRender(nvrhi::IFramebuffer *mainFramebuffer)
     {
         Layer::OnRender(mainFramebuffer);
@@ -433,6 +451,8 @@ namespace ignite
         nvrhi::IFramebuffer *viewportFramebuffer = m_ScenePanel->GetRT()->GetCurrentFramebuffer();
         nvrhi::Viewport viewport = viewportFramebuffer->getFramebufferInfo().getViewport();
 
+        // Copy from render target to staging texture
+
         // create pipelines
         m_EnvPipeline->CreatePipeline(viewportFramebuffer);
         m_MeshPipeline->CreatePipeline(viewportFramebuffer);
@@ -443,7 +463,8 @@ namespace ignite
         // clear main framebuffer color attachment
         nvrhi::utils::ClearColorAttachment(m_CommandList, mainFramebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
 
-        m_ScenePanel->GetRT()->ClearColorAttachment(m_CommandList);
+        m_ScenePanel->GetRT()->ClearColorAttachmentFloat(m_CommandList, 0);
+        m_ScenePanel->GetRT()->ClearColorAttachmentUint(m_CommandList, 1, uint32_t(-1));
 
         float farDepth = 1.0f; // LessOrEqual
         m_CommandList->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), nvrhi::AllSubresources, true, farDepth, true, 0);
@@ -492,8 +513,59 @@ namespace ignite
 
         m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer);
 
+        // Create staging texture for readback
+        if (m_Data.isPickingEntity)
+        {
+            nvrhi::TextureDesc stagingDesc = m_ScenePanel->GetRT()->GetColorAttachment(1)->getDesc();
+            stagingDesc.initialState = nvrhi::ResourceStates::CopyDest;
+            m_EntityIDStagingTexture = m_Device->createStagingTexture(stagingDesc, nvrhi::CpuAccessMode::Read);
+            LOG_ASSERT(m_EntityIDStagingTexture, "Failed to create staging texture");
+            m_CommandList->copyTexture(m_EntityIDStagingTexture, nvrhi::TextureSlice(), m_ScenePanel->GetRT()->GetColorAttachment(1), nvrhi::TextureSlice());
+        }
+
         m_CommandList->close();
         m_Device->executeCommandList(m_CommandList);
+
+        if (m_Data.isPickingEntity)
+        {
+            // Map and read the pixel data
+            size_t rowPitch = 0;
+            void *mappedData = m_Device->mapStagingTexture(m_EntityIDStagingTexture, nvrhi::TextureSlice(), nvrhi::CpuAccessMode::Read, &rowPitch);
+            if (mappedData) {
+                uint32_t *pixelData = static_cast<uint32_t *>(mappedData);
+
+                glm::vec2 mousePos = m_ScenePanel->GetViewportMousePos();
+                int pixelX = static_cast<i32>(mousePos.x);
+                int pixelY = static_cast<i32>(mousePos.y);
+
+                // Get row pitch from texture mapping
+                m_Data.hoveredEntity = pixelData[pixelY * (rowPitch / sizeof(uint32_t)) + pixelX];
+
+                bool found = false;
+                auto view = m_ActiveScene->registry->view<Transform>();
+                for (entt::entity e : view)
+                {
+                    uint32_t eId = entt::to_integral(e);
+                    if (eId == m_Data.hoveredEntity)
+                    {
+                        Entity selectedEntity{ e, m_ActiveScene.get() };
+                        m_ScenePanel->SetSelectedEntity(selectedEntity);
+
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    m_ScenePanel->SetSelectedEntity(Entity{});
+                }
+
+                m_Device->unmapStagingTexture(m_EntityIDStagingTexture);
+            }
+
+            m_Data.isPickingEntity = false;
+        }
     }
 
     void EditorLayer::OnGuiRender()
@@ -518,7 +590,6 @@ namespace ignite
         const ImVec2 minPos = viewport->Pos;
         const ImVec2 maxPos = ImVec2(viewport->Pos.x + viewport->Size.x, totalTitlebarHeight);
         drawList->AddRectFilled(minPos, maxPos, IM_COL32(30, 30, 30, 255));
-
 
         // =========== Menubar ===========
         const glm::vec2 menuBarButtonSize = { 45.0f, 20.0f };
@@ -865,7 +936,6 @@ namespace ignite
         m_ActiveProject = openedProject;
 
         m_ContentBrowserPanel->SetActiveProject(m_ActiveProject);
-
 
         if (m_ActiveProject->GetActiveScene())
         {

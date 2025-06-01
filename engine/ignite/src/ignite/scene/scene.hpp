@@ -7,10 +7,8 @@
 #include "ignite/core/logger.hpp"
 #include "ignite/core/types.hpp"
 #include "ignite/core/uuid.hpp"
-
 #include "ignite/asset/asset.hpp"
-
-#include <variant>
+#include "ignite/math/aabb.hpp"
 
 namespace ignite
 {
@@ -59,6 +57,12 @@ namespace ignite
 
         static AssetType GetStaticType() { return AssetType::Scene; }
         virtual AssetType GetType() override { return GetStaticType(); }
+
+        struct DebugBoundingBox
+        {
+            AABB aabb;
+            glm::mat4 transform;
+        };
 
         float timeInSeconds = 0.0f;
     

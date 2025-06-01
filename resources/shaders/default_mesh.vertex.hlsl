@@ -28,6 +28,7 @@ struct VSInput
     float4 color        : COLOR;
     uint4 boneIDs       : BONEIDS;
     float4 weights      : WEIGHTS;
+    uint entityID       : ENTITYID;
 };
 
 struct PSInput
@@ -38,6 +39,7 @@ struct PSInput
     float2 UV           : TEXCOORD;
     float2 tilingFactor : TILINGFACTOR;
     float4 color        : COLOR;
+    uint entityID       : ENTITYID;
 };
 
 PSInput main(VSInput input)
@@ -70,14 +72,15 @@ PSInput main(VSInput input)
         normalL = input.normal;
     }
 
-    float4 worldPos     = mul(object.transformMatrix, posL);
+    float4 worldPos    = mul(object.transformMatrix, posL);
     float3 worldNormal = normalize(mul((float3x3)object.normalMatrix, normalL));
 
     output.position     = mul(camera.viewProjection, worldPos);
     output.normal       = worldNormal;
     output.worldPos     = worldPos.xyz;
-    output.UV     = input.UV;
+    output.UV           = input.UV;
     output.tilingFactor = input.tilingFactor;
     output.color        = input.color;
+    output.entityID     = input.entityID;
     return output;
 }

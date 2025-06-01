@@ -136,11 +136,17 @@ namespace ignite {
         VertexMesh vertex;
         mesh->vertices.resize(assimpMesh->mNumVertices);
 
+        mesh->aabb.min = glm::vec3(FLT_MAX);
+        mesh->aabb.max = glm::vec3(-FLT_MAX);
+
         for (uint32_t i = 0; i < assimpMesh->mNumVertices; ++i)
         {
             vertex.position = { assimpMesh->mVertices[i].x, assimpMesh->mVertices[i].y, assimpMesh->mVertices[i].z };
-            vertex.color = { 1.0f, 1.0f, 1.0f, 1.0f };
 
+            mesh->aabb.min = glm::min(mesh->aabb.min, vertex.position);
+            mesh->aabb.max = glm::max(mesh->aabb.max, vertex.position);
+
+            vertex.color = { 1.0f, 1.0f, 1.0f, 1.0f };
             if (assimpMesh->HasNormals())
                 vertex.normal = { assimpMesh->mNormals[i].x, assimpMesh->mNormals[i].y, assimpMesh->mNormals[i].z };
             else 

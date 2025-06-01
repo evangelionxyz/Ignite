@@ -104,7 +104,6 @@ namespace ignite
     class Transform : public IComponent
     {
     public:
-
         // world transforms
         glm::vec3 translation, scale;
         glm::quat rotation;
@@ -112,8 +111,6 @@ namespace ignite
         // local transforms
         glm::vec3 localTranslation, localScale;
         glm::quat localRotation;
-
-        AABB boundingBox;
 
         bool isAnimated = false;
         bool visible = true;

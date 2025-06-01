@@ -105,9 +105,14 @@ namespace ignite
 
             const size_t numBones = std::min(skinnedMesh.boneTransforms.size(), static_cast<size_t>(MAX_BONES));
             for (size_t i = 0; i < numBones; ++i)
+            {
                 meshRenderer.meshBuffer.boneTransforms[i] = skinnedMesh.boneTransforms[i];
+            }
+
             for (size_t i = numBones; i < MAX_BONES; ++i)
+            {
                 meshRenderer.meshBuffer.boneTransforms[i] = glm::mat4(1.0f);
+            }
 
             glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(meshRenderer.meshBuffer.transformation)));
             meshRenderer.meshBuffer.normal = glm::mat4(normalMat3);
@@ -153,12 +158,6 @@ namespace ignite
     {
         Renderer2D::Begin(camera, commandList, framebuffer);
 
-        Renderer2D::DrawRect(glm::mat4(1.0f), { 1.0f, 0.0f, 1.0f, 1.0f });
-        Renderer2D::DrawLine({ { -5.0f, 2.0f, 0.0f }, { 0.0f, 7.0f, 0.0f }, { 0.0f, 7.0f, 0.0f }, { 5.0f, 2.0f, 0.0f }, { 5.0f, 2.0f, 0.0f }, { -5.0f, 2.0f, 0.0f } }, { 0.0f, 1.0f, 0.0f, 1.0f });
-        Renderer2D::DrawLine({ { -5.0f, 5.0f, 0.0f }, { 0.0f, 12.0f, 0.0f }, { 0.0f, 12.0f, 0.0f }, { 5.0f, 5.0f, 0.0f }, { 5.0f, 5.0f, 0.0f }, { -5.0f, 5.0f, 0.0f } }, { 0.0f, 0.0f, 1.0f, 1.0f });
-
-        Renderer2D::DrawLine({ -5.0f, 0.0f, 0.0f }, { 5.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f });
-
         for (entt::entity e: entities | std::views::values)
         {
             Entity entity = { e, this };
@@ -170,7 +169,7 @@ namespace ignite
             if (entity.HasComponent<Sprite2D>())
             {
                 auto &sprite = entity.GetComponent<Sprite2D>();
-                Renderer2D::DrawQuad(tr.GetWorldMatrix(), sprite.color, sprite.texture);
+                Renderer2D::DrawQuad(tr.GetWorldMatrix(), sprite.color, sprite.texture, sprite.tilingFactor, static_cast<u32>(e));
             }
         }
 

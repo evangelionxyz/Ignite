@@ -73,6 +73,7 @@ namespace ignite {
 
             // create with the same framebuffer to be render
             nvrhi::IDevice* device = Application::GetRenderDevice();
+
             m_Handle = device->createGraphicsPipeline(pipelineDesc, framebuffer);
             LOG_ASSERT(m_Handle, "Failed to create graphics pipeline");
         }

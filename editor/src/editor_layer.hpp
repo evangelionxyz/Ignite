@@ -40,6 +40,8 @@ namespace ignite
             bool multiSelect = false;
             bool settingsWindow = false;
             bool popupNewProjectModal = false;
+            bool isPickingEntity = false;
+            uint32_t hoveredEntity = uint32_t(-1);
 
             ProjectInfo projectCreateInfo;
 
@@ -55,7 +57,10 @@ namespace ignite
         void OnDetach() override;
         void OnUpdate(f32 deltaTime) override;
         void OnEvent(Event& e) override;
+
         bool OnKeyPressedEvent(KeyPressedEvent &event);
+        bool OnMouseButtonPressed(MouseButtonPressedEvent &event);
+
         void OnRender(nvrhi::IFramebuffer *framebuffer) override;
         void OnGuiRender() override;
 
@@ -90,9 +95,7 @@ namespace ignite
         Ref<Scene> m_EditorScene;
         Ref<Project> m_ActiveProject;
         
-        Ref<GraphicsPipeline> m_MeshPipeline;
-
-        Ref<GraphicsPipeline> m_EnvPipeline;
+        Ref<GraphicsPipeline> m_MeshPipeline, m_EnvPipeline;
 
         Ref<Environment> m_Environment;
         DebugRenderData m_DebugRenderData;
@@ -103,6 +106,8 @@ namespace ignite
         nvrhi::BufferHandle m_DebugRenderBuffer;
         
         nvrhi::CommandListHandle m_CommandList;
+        nvrhi::StagingTextureHandle m_EntityIDStagingTexture;
+        
         nvrhi::IDevice *m_Device = nullptr;
     };
 }
