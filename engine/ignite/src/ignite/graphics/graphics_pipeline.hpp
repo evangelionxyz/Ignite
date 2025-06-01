@@ -26,7 +26,6 @@ namespace ignite {
         bool enableBlend = true;
         bool depthWrite = false;
         bool depthTest = false;
-        bool recompileShader = false;
     };
 
     class GraphicsPipeline

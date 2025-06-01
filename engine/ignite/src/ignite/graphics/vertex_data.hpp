@@ -157,4 +157,36 @@ namespace ignite
             return bindingDesc;
         }
     };
+
+    struct Vertex2DLine
+    {
+        glm::vec3 position;
+        glm::vec4 color;
+
+        static std::array<nvrhi::VertexAttributeDesc, 2> GetAttributes()
+        {
+            return
+            {
+                nvrhi::VertexAttributeDesc()
+                    .setName("POSITION")
+                    .setBufferIndex(0)
+                    .setFormat(nvrhi::Format::RGB32_FLOAT)
+                    .setOffset(offsetof(Vertex2DLine, position))
+                    .setElementStride(sizeof(Vertex2DLine)),
+                nvrhi::VertexAttributeDesc()
+                    .setName("COLOR")
+                    .setFormat(nvrhi::Format::RGBA32_FLOAT)
+                    .setOffset(offsetof(Vertex2DLine, color))
+                    .setElementStride(sizeof(Vertex2DLine)),
+            };
+        }
+
+        static nvrhi::BindingLayoutDesc GetBindingLayoutDesc()
+        {
+            nvrhi::BindingLayoutDesc bindingDesc;
+            bindingDesc.setVisibility(nvrhi::ShaderType::All);
+            bindingDesc.addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0));
+            return bindingDesc;
+        }
+    };
 }

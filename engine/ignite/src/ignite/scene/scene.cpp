@@ -153,6 +153,8 @@ namespace ignite
     {
         Renderer2D::Begin(camera, commandList, framebuffer);
 
+        Renderer2D::DrawLine({ -5.0f, 0.0f, 0.0f }, { 5.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f });
+
         for (entt::entity e: entities | std::views::values)
         {
             Entity entity = { e, this };

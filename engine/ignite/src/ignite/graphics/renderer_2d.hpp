@@ -18,6 +18,7 @@ namespace ignite
         glm::mat4 mvpMatrix;
     };
 
+    template<typename VertexType>
     struct BatchRender
     {
         const size_t maxCount = 1024 * 3;
@@ -25,8 +26,8 @@ namespace ignite
         const size_t maxIndices = maxCount * 6;
         const i32 maxTextureCount = 16;
 
-        Vertex2DQuad* vertexBufferBase = nullptr;
-        Vertex2DQuad*vertexBufferPtr = nullptr;
+        VertexType* vertexBufferBase = nullptr;
+        VertexType*vertexBufferPtr = nullptr;
         nvrhi::BufferHandle vertexBuffer = nullptr;
         nvrhi::BufferHandle indexBuffer = nullptr;
         nvrhi::SamplerHandle sampler = nullptr;
@@ -50,7 +51,9 @@ namespace ignite
 
     struct Renderer2DData
     {
-        BatchRender quadBatch;
+        BatchRender<Vertex2DQuad> quadBatch;
+        BatchRender<Vertex2DLine> lineBatch;
+
         glm::vec4 quadPositions[4];
         nvrhi::BufferHandle constantBuffer = nullptr;
     };
@@ -67,11 +70,14 @@ namespace ignite
 
         static void CreateGraphicsPipeline(nvrhi::IFramebuffer *framebuffer);
 
+        static void DrawLine(const glm::vec3 &posA, const glm::vec3 &posB, const glm::vec4 &color);
+
         static void DrawQuad(const glm::vec3 &position, const glm::vec2 &size, f32 rotation, const glm::vec4 &color, Ref<Texture> texture = nullptr, const glm::vec2 &tilingFactor = glm::vec2(1.0f));
         static void DrawQuad(const glm::vec3 &position, const glm::vec2 &size, const glm::vec4 &color, Ref<Texture> texture = nullptr, const glm::vec2 &tilingFactor = glm::vec2(1.0f));
         static void DrawQuad(const glm::mat4 &transform, const glm::vec4 &color, Ref<Texture> texture = nullptr, const glm::vec2 &tilingFactor = glm::vec2(1.0f));
 
         static void InitQuadData(nvrhi::ICommandList *commandList);
+        static void InitLineData(nvrhi::ICommandList *commandList);
 
         static u32 GetOrInsertTexture(Ref<Texture> texture);
         static void UpdateTextureBindings();

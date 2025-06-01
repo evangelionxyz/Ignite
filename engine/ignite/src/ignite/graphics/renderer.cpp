@@ -95,7 +95,8 @@ namespace ignite
     {
         // create shaders
         // m_Shaders["default_mesh"] = VPShader(device, "default_mesh");
-        m_Shaders["quadBatch2D"] = VPShader(device, "quad_batch_2d");
+        m_Shaders["batch_2d_quad"] = VPShader(device, "batch_2d_quad");
+        m_Shaders["batch_2d_line"] = VPShader(device, "batch_2d_line");
         m_Shaders["imgui"] = VPShader(device, "imgui");
         m_Shaders["skybox"] = VPShader(device, "skybox");
 

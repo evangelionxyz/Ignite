@@ -178,7 +178,6 @@ namespace ignite
             params.enableBlend = true;
             params.depthWrite = true;
             params.depthTest = true;
-            params.recompileShader = true;
             params.fillMode = nvrhi::RasterFillMode::Solid;
             params.cullMode = nvrhi::RasterCullMode::Front;
 
@@ -200,7 +199,6 @@ namespace ignite
             params.enableBlend = true;
             params.depthWrite = true;
             params.depthTest = true;
-            params.recompileShader = false;
             params.cullMode = nvrhi::RasterCullMode::Front;
             params.comparison = nvrhi::ComparisonFunc::Always;
 
@@ -229,6 +227,7 @@ namespace ignite
 
         // write buffer with command list
         Renderer2D::InitQuadData(m_CommandList);
+        Renderer2D::InitLineData(m_CommandList);
 
         m_ScenePanel = CreateRef<ScenePanel>("Scene Panel", this);
         m_ScenePanel->CreateRenderTarget(m_Device);
