@@ -141,8 +141,8 @@ namespace ignite
         delete[] indices;
         
         s_r2d->quadPositions[0] = {-0.5f, -0.5f, 0.0f, 1.0f }; // bottom-left
-        s_r2d->quadPositions[1] = { 0.5f,  0.5f, 0.0f, 1.0f }; // top-right
-        s_r2d->quadPositions[2] = {-0.5f,  0.5f, 0.0f, 1.0f }; // top-left
+        s_r2d->quadPositions[1] = {-0.5f,  0.5f, 0.0f, 1.0f }; // top-left
+        s_r2d->quadPositions[2] = { 0.5f,  0.5f, 0.0f, 1.0f }; // top-right
         s_r2d->quadPositions[3] = { 0.5f, -0.5f, 0.0f, 1.0f }; // bottom-right
     }
 
@@ -156,7 +156,7 @@ namespace ignite
         params.depthTest = true;
         params.fillMode = nvrhi::RasterFillMode::Wireframe;
         params.cullMode = nvrhi::RasterCullMode::None;
-        params.primitiveType = nvrhi::PrimitiveType::LineStrip;
+        params.primitiveType = nvrhi::PrimitiveType::LineList;
 
         auto attributes = Vertex2DLine::GetAttributes();
         GraphicsPiplineCreateInfo pci;
@@ -272,19 +272,83 @@ namespace ignite
         s_r2d->lineBatch.pipeline->CreatePipeline(framebuffer);
     }
 
-    void Renderer2D::DrawLine(const glm::vec3& posA, const glm::vec3& posB, const glm::vec4& color)
+    void Renderer2D::DrawRect(const glm::mat4& transform, const glm::vec4& color)
     {
         if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
             Renderer2D::Flush();
 
-        glm::vec3 positions[2] = { posA, posB };
+        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[0];
+        s_r2d->lineBatch.vertexBufferPtr->color = color;
+        s_r2d->lineBatch.vertexBufferPtr++;
+        s_r2d->lineBatch.indexCount++;
 
-        for (u32 i = 0; i < 2; ++i)
+        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[1];
+        s_r2d->lineBatch.vertexBufferPtr->color = color;
+        s_r2d->lineBatch.vertexBufferPtr++;
+        s_r2d->lineBatch.indexCount++;
+
+        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[1];
+        s_r2d->lineBatch.vertexBufferPtr->color = color;
+        s_r2d->lineBatch.vertexBufferPtr++;
+        s_r2d->lineBatch.indexCount++;
+
+        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[2];
+        s_r2d->lineBatch.vertexBufferPtr->color = color;
+        s_r2d->lineBatch.vertexBufferPtr++;
+        s_r2d->lineBatch.indexCount++;
+
+        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[2];
+        s_r2d->lineBatch.vertexBufferPtr->color = color;
+        s_r2d->lineBatch.vertexBufferPtr++;
+        s_r2d->lineBatch.indexCount++;
+
+        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[3];
+        s_r2d->lineBatch.vertexBufferPtr->color = color;
+        s_r2d->lineBatch.vertexBufferPtr++;
+        s_r2d->lineBatch.indexCount++;
+
+        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[3];
+        s_r2d->lineBatch.vertexBufferPtr->color = color;
+        s_r2d->lineBatch.vertexBufferPtr++;
+        s_r2d->lineBatch.indexCount++;
+
+        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[0];
+        s_r2d->lineBatch.vertexBufferPtr->color = color;
+        s_r2d->lineBatch.vertexBufferPtr++;
+        s_r2d->lineBatch.indexCount++;
+
+        s_r2d->lineBatch.count++;
+    }
+
+    void Renderer2D::DrawLine(const std::vector<glm::vec3>& positions, const glm::vec4& color)
+    {
+        if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
+            Renderer2D::Flush();
+
+        for (auto& pos : positions)
         {
-            s_r2d->lineBatch.vertexBufferPtr->position = positions[i];
+            s_r2d->lineBatch.vertexBufferPtr->position = pos;
             s_r2d->lineBatch.vertexBufferPtr->color = color;
             s_r2d->lineBatch.vertexBufferPtr++;
+
+            s_r2d->lineBatch.indexCount++;
         }
+
+        s_r2d->lineBatch.count++;
+    }
+
+    void Renderer2D::DrawLine(const glm::vec3& pos0, const glm::vec3& pos1, const glm::vec4& color)
+    {
+        if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
+            Renderer2D::Flush();
+
+        s_r2d->lineBatch.vertexBufferPtr->position = pos0;
+        s_r2d->lineBatch.vertexBufferPtr->color = color;
+        s_r2d->lineBatch.vertexBufferPtr++;
+
+        s_r2d->lineBatch.vertexBufferPtr->position = pos1;
+        s_r2d->lineBatch.vertexBufferPtr->color = color;
+        s_r2d->lineBatch.vertexBufferPtr++;
 
         s_r2d->lineBatch.indexCount += 2;
         s_r2d->lineBatch.count++;
