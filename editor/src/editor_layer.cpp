@@ -549,7 +549,44 @@ namespace ignite
                     if (eId == m_Data.hoveredEntity)
                     {
                         Entity selectedEntity{ e, m_ActiveScene.get() };
-                        m_ScenePanel->SetSelectedEntity(selectedEntity);
+
+                        if (selectedEntity.HasComponent<MeshRenderer>())
+                        {
+                            MeshRenderer &mr = selectedEntity.GetComponent<MeshRenderer>();
+                            Entity rootNode = SceneManager::GetEntity(m_ActiveScene.get(), mr.root);
+
+                            bool shouldSelectRoot = false;
+                            if (m_ScenePanel->GetSelectedEntity().IsValid())
+                            {
+                                Entity currentSelectedEntity = m_ScenePanel->GetSelectedEntity();
+                                if (currentSelectedEntity.HasComponent<MeshRenderer>())
+                                {
+                                    MeshRenderer &cmr = currentSelectedEntity.GetComponent<MeshRenderer>();
+                                    if (cmr.root != mr.root)
+                                        shouldSelectRoot = true;
+                                }
+                                else if (currentSelectedEntity.HasComponent<SkinnedMesh>())
+                                {
+                                    if (currentSelectedEntity != rootNode)
+                                        shouldSelectRoot = true;
+                                }
+                            }
+
+                            // select root node for the first click
+                            if (!m_ScenePanel->GetSelectedEntity().IsValid() && m_ScenePanel->GetSelectedEntity() != rootNode || shouldSelectRoot)
+                            {
+                                m_ScenePanel->SetSelectedEntity(rootNode);
+                            }
+                            else
+                            {
+                                m_ScenePanel->SetSelectedEntity(selectedEntity);
+                            }
+                        }
+                        else
+                        {
+                            m_ScenePanel->SetSelectedEntity(selectedEntity);
+                        }
+
 
                         found = true;
                         break;
