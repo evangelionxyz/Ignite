@@ -184,7 +184,7 @@ namespace ignite
             return;
 
         ImGuiTreeNodeFlags flags = (m_SelectedEntity == entity ? ImGuiTreeNodeFlags_Selected : 0) | (!idComp.HasChild() ? ImGuiTreeNodeFlags_Leaf : 0)
-            | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen
+            | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow
             | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
 
         void *imguiPushId = (void*)(uint64_t)(uint32_t)entity;
@@ -327,15 +327,6 @@ namespace ignite
                     comp.dirty = true;
                 }
 
-                ImGui::Separator();
-
-                ImGui::DragFloat3("WTranslation", &comp.translation.x, 0.025f);
-                euler = eulerAngles(comp.rotation);
-                if (ImGui::DragFloat3("WRotation", &euler.x, 0.025f))
-                {
-                    comp.rotation = glm::quat(euler);
-                }
-                ImGui::DragFloat3("WScale", &comp.scale.x, 0.025f);
             }, false); // false: not allowed to remove the component
 
             auto &comps = m_Scene->registeredComps[m_SelectedEntity];
@@ -710,10 +701,9 @@ namespace ignite
         for (auto &uuid : m_SelectedEntityIDs)
         {
             Entity entity = SceneManager::GetEntity(m_Scene, uuid);
-            ID &idcomp = entity.GetComponent<ID>();
             ImGui::PushID((intptr_t)uuid);
             
-            Transform &tr = entity.GetComponent<Transform>();
+            Transform &tr = entity.GetTransform();
 
             glm::mat4 transformMatrix = tr.GetWorldMatrix();
 
@@ -724,7 +714,7 @@ namespace ignite
                 glm::vec3 translation, rotation, scale;
                 Math::DecomposeTransformEuler(transformMatrix, translation, rotation, scale);
 
-                if (idcomp.parent != 0; Entity parent = SceneManager::GetEntity(m_Scene, idcomp.parent))
+                if (entity.GetParentUUID() != 0; Entity parent = SceneManager::GetEntity(m_Scene, entity.GetParentUUID()))
                 {
                     auto &ptc = parent.GetComponent<Transform>();
                     glm::vec4 localTranslation = glm::inverse(ptc.GetWorldMatrix()) * glm::vec4(translation, 1.0f);
