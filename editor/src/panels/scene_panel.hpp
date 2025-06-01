@@ -98,8 +98,7 @@ namespace ignite
         {
             bool isHovered = false;
             bool isFocused = false;
-            f32 width = 0.0f;
-            f32 height = 0.0f;
+            Rect rect = { 0, 0, 1, 1 };
             glm::vec2 relativeMousePos = glm::vec2(0.0f);
         } m_ViewportData;
 

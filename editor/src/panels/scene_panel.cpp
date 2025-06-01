@@ -34,6 +34,9 @@ namespace ignite
         m_ViewportCamera->position = {3.0f, 2.0f, 3.0f};
         m_ViewportCamera->yaw = -0.729f;
         m_ViewportCamera->pitch = 0.410f;
+
+        m_ViewportCamera->UpdateViewMatrix();
+        m_ViewportCamera->UpdateProjectionMatrix();
     }
 
     void ScenePanel::SetActiveScene(Scene *scene, bool reset)
@@ -77,8 +80,6 @@ namespace ignite
     void ScenePanel::OnUpdate(f32 deltaTime)
     {
         UpdateCameraInput(deltaTime);
-        m_ViewportCamera->UpdateProjectionMatrix();
-        m_ViewportCamera->UpdateViewMatrix();
     }
 
     void ScenePanel::RenderHierarchy()
@@ -672,20 +673,25 @@ namespace ignite
         m_ViewportData.isFocused = ImGui::IsWindowFocused();
         m_ViewportData.isHovered = ImGui::IsWindowHovered();
 
-        m_ViewportData.width = window->Size.x;
-        m_ViewportData.height = window->Size.y;
+        ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+        ImVec2 canvas_size = ImGui::GetContentRegionMax();
 
-        uint32_t vpWidth = static_cast<uint32_t>(m_ViewportData.width);
-        uint32_t vpHeght = static_cast<uint32_t>(m_ViewportData.height);
+        m_ViewportData.rect.min = { canvas_pos.x, canvas_pos.y };
+        m_ViewportData.rect.max = { canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y };
+
+        uint32_t vpWidth = static_cast<uint32_t>(m_ViewportData.rect.GetSize().x);
+        uint32_t vpHeght = static_cast<uint32_t>(m_ViewportData.rect.GetSize().y);
 
         // trigger resize
         if (vpWidth > 0 && vpHeght > 0 && (vpWidth != m_RenderTarget->GetWidth() || vpHeght != m_RenderTarget->GetHeight()))
         {
             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
                 m_RenderTarget->Resize(vpWidth, vpHeght);
+                m_ViewportCamera->SetSize(vpWidth, vpHeght);
+                m_ViewportCamera->UpdateProjectionMatrix();
+            }
         }
-
-        m_ViewportCamera->SetSize(window->Size.x, window->Size.y);
 
         const ImTextureID imguiTex = reinterpret_cast<ImTextureID>(m_RenderTarget->GetColorAttachment(0).Get());
         ImGui::Image(imguiTex, window->Size);
@@ -696,7 +702,8 @@ namespace ignite
         gizmoInfo.cameraView = m_ViewportCamera->viewMatrix;
         gizmoInfo.cameraProjection = m_ViewportCamera->projectionMatrix;
         gizmoInfo.cameraType = m_ViewportCamera->projectionType;
-        gizmoInfo.viewRect = { window->Pos.x, window->Pos.y, window->Size.x, window->Size.y };
+
+        gizmoInfo.viewRect = m_ViewportData.rect;
 
         m_Gizmo.SetInfo(gizmoInfo);
 
@@ -776,6 +783,9 @@ namespace ignite
                     {
                         m_ViewportCamera->position = m_CameraData.lastPosition;
                     }
+
+                    m_ViewportCamera->UpdateProjectionMatrix();
+                    m_ViewportCamera->UpdateViewMatrix();
                 }
 
                 if (isSelected)
@@ -885,7 +895,7 @@ namespace ignite
                 case Camera::Type::Orthographic:
                 default:
                 {
-                    const f32 scaleFactor = std::max(m_ViewportData.width, m_ViewportData.height);
+                    const f32 scaleFactor = std::max(m_ViewportData.rect.GetSize().x, m_ViewportData.rect.GetSize().y);
                     const f32 zoomSqrt = glm::sqrt(m_ViewportCamera->zoom * m_ViewportCamera->zoom);
                     const f32 moveSpeed = 50.0f / scaleFactor;
                     const f32 mulFactor = moveSpeed * m_ViewportCamera->GetAspectRatio() * zoomSqrt;
@@ -980,8 +990,8 @@ namespace ignite
 
         lastMousePos = currentMousePos;
 
-        const f32 x = std::min(m_ViewportData.width * 0.01f, 1.8f);
-        const f32 y = std::min(m_ViewportData.height * 0.01f, 1.8f);
+        const f32 x = std::min(m_ViewportData.rect.GetSize().x * 0.01f, 1.8f);
+        const f32 y = std::min(m_ViewportData.rect.GetSize().y * 0.01f, 1.8f);
         const f32 xFactor = 0.0366f * (x * x) - 0.1778f * x + 0.3021f;
         const f32 yFactor = 0.0366f * (y * y) - 0.1778f * y + 0.3021f;
         const f32 yawSign = m_ViewportCamera->GetUpDirection().y < 0 ? -1.0f : 1.0f;
@@ -1036,6 +1046,8 @@ namespace ignite
                 m_ViewportCamera->position += m_ViewportCamera->GetRightDirection() * deltaTime * m_CameraData.moveSpeed;
             }
         }
+
+        m_ViewportCamera->UpdateViewMatrix();
     }
 
     void ScenePanel::DestroyEntity(Entity entity)
