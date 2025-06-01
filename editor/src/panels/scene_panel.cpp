@@ -931,6 +931,8 @@ namespace ignite
             if (m_ViewportData.isFocused)
             {
             }
+
+            m_ViewportCamera->UpdateViewMatrix();
         }
 
         return false;
