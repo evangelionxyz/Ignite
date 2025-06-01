@@ -834,21 +834,17 @@ namespace ignite
 
             ImGui::PushID(compID);
 
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2 { 0.5f, 2.0f });
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2 { 0.5f, 6.0f });
             ImGui::Separator();
 
             const bool open = ImGui::TreeNodeEx((const char *)(uint32_t *)(uint64_t *)&compID, treeNdeFlags, name.c_str());
             ImGui::PopStyleVar();
 
             ImGui::SameLine(ImGui::GetContentRegionAvail().x - 24.0f);
-            if (ImGui::Button("+", { 14.0f, 14.0f }))
+            if (ImGui::Button("+", {24.0f, 24.0f}))
                 ImGui::OpenPopup("comp_settings");
 
             bool componentRemoved = false;
-            if (allowedToRemove)
-            {
-
-            }
 
             if (ImGui::BeginPopup("comp_settings"))
             {
