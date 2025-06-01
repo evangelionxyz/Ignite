@@ -272,50 +272,66 @@ namespace ignite
         s_r2d->lineBatch.pipeline->CreatePipeline(framebuffer);
     }
 
+    void Renderer2D::DrawBox(const glm::mat4& transform, const glm::vec4& color)
+    {
+        if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
+            Renderer2D::Flush();
+
+        static glm::vec4 cubeVertices[8] = {
+            {-0.5f, -0.5f, -0.5f, 1.0f}, // 0
+            { 0.5f, -0.5f, -0.5f, 1.0f}, // 1
+            { 0.5f,  0.5f, -0.5f, 1.0f}, // 2
+            {-0.5f,  0.5f, -0.5f, 1.0f}, // 3
+            {-0.5f, -0.5f,  0.5f, 1.0f}, // 4
+            { 0.5f, -0.5f,  0.5f, 1.0f}, // 5
+            { 0.5f,  0.5f,  0.5f, 1.0f}, // 6
+            {-0.5f,  0.5f,  0.5f, 1.0f}  // 7
+        };
+
+        static int edgeIndices[12][2] = {
+            {0, 1}, {1, 2}, {2, 3}, {3, 0}, // bottom face
+            {4, 5}, {5, 6}, {6, 7}, {7, 4}, // top face
+            {0, 4}, {1, 5}, {2, 6}, {3, 7}  // vertical edges
+        };
+
+        for (int i = 0; i < 12; ++i)
+        {
+            for (int j = 0; j < 2; ++j)
+            {
+                glm::vec4 position = transform * cubeVertices[edgeIndices[i][j]];
+                s_r2d->lineBatch.vertexBufferPtr->position = position;
+                s_r2d->lineBatch.vertexBufferPtr->color = color;
+                s_r2d->lineBatch.vertexBufferPtr++;
+                s_r2d->lineBatch.indexCount++;
+            }
+        }
+
+        s_r2d->lineBatch.count++;
+    }
+
     void Renderer2D::DrawRect(const glm::mat4& transform, const glm::vec4& color)
     {
         if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
             Renderer2D::Flush();
 
-        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[0];
-        s_r2d->lineBatch.vertexBufferPtr->color = color;
-        s_r2d->lineBatch.vertexBufferPtr++;
-        s_r2d->lineBatch.indexCount++;
+        static constexpr int indices[8][2] = {
+            {0, 1},
+            {1, 2},
+            {2, 3},
+            {3, 0}
+        };
 
-        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[1];
-        s_r2d->lineBatch.vertexBufferPtr->color = color;
-        s_r2d->lineBatch.vertexBufferPtr++;
-        s_r2d->lineBatch.indexCount++;
-
-        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[1];
-        s_r2d->lineBatch.vertexBufferPtr->color = color;
-        s_r2d->lineBatch.vertexBufferPtr++;
-        s_r2d->lineBatch.indexCount++;
-
-        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[2];
-        s_r2d->lineBatch.vertexBufferPtr->color = color;
-        s_r2d->lineBatch.vertexBufferPtr++;
-        s_r2d->lineBatch.indexCount++;
-
-        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[2];
-        s_r2d->lineBatch.vertexBufferPtr->color = color;
-        s_r2d->lineBatch.vertexBufferPtr++;
-        s_r2d->lineBatch.indexCount++;
-
-        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[3];
-        s_r2d->lineBatch.vertexBufferPtr->color = color;
-        s_r2d->lineBatch.vertexBufferPtr++;
-        s_r2d->lineBatch.indexCount++;
-
-        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[3];
-        s_r2d->lineBatch.vertexBufferPtr->color = color;
-        s_r2d->lineBatch.vertexBufferPtr++;
-        s_r2d->lineBatch.indexCount++;
-
-        s_r2d->lineBatch.vertexBufferPtr->position = transform * s_r2d->quadPositions[0];
-        s_r2d->lineBatch.vertexBufferPtr->color = color;
-        s_r2d->lineBatch.vertexBufferPtr++;
-        s_r2d->lineBatch.indexCount++;
+        for (int i = 0; i < 4; ++i)
+        {
+            for (int j = 0; j < 2; ++j)
+            {
+                glm::vec4 position = transform * s_r2d->quadPositions[indices[i][j]];
+                s_r2d->lineBatch.vertexBufferPtr->position = position;
+                s_r2d->lineBatch.vertexBufferPtr->color = color;
+                s_r2d->lineBatch.vertexBufferPtr++;
+                s_r2d->lineBatch.indexCount++;
+            }
+        }
 
         s_r2d->lineBatch.count++;
     }

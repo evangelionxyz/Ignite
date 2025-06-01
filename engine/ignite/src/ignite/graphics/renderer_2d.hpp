@@ -70,6 +70,7 @@ namespace ignite
 
         static void CreateGraphicsPipeline(nvrhi::IFramebuffer *framebuffer);
 
+        static void DrawBox(const glm::mat4& transform, const glm::vec4& color = glm::vec4(1.0f));
         static void DrawRect(const glm::mat4& transform, const glm::vec4& color = glm::vec4(1.0f));
         static void DrawLine(const std::vector<glm::vec3>& positions, const glm::vec4& color = glm::vec4(1.0f));
         static void DrawLine(const glm::vec3 &pos0, const glm::vec3 &pos1, const glm::vec4& color = glm::vec4(1.0f));
