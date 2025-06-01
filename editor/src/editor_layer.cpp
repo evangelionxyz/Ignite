@@ -42,7 +42,7 @@ namespace ignite
             return;
         }
 
-        Entity rootNode = SceneManager::CreateEntity(scene.get(), "Model", EntityType_Node);
+        Entity rootNode = SceneManager::CreateEntity(scene.get(), filepath.stem().string(), EntityType_Node);
         SkinnedMesh &skinnedMesh = rootNode.AddComponent<SkinnedMesh>();
 
         if (assimpScene->HasAnimations())
@@ -78,8 +78,8 @@ namespace ignite
                 
                 glm::vec3 skew;
                 glm::vec4 perspective;
-                // glm::decompose(node.localTransform, tr.localScale, tr.localRotation, tr.localTranslation, skew, perspective);
-                glm::decompose(node.worldTransform, tr.scale, tr.rotation, tr.translation, skew, perspective);
+                glm::decompose(node.localTransform, tr.localScale, tr.localRotation, tr.localTranslation, skew, perspective);
+                // glm::decompose(node.worldTransform, tr.scale, tr.rotation, tr.translation, skew, perspective);
 
                 tr.dirty = true;
             }
@@ -230,6 +230,7 @@ namespace ignite
 
         NewScene();
 
+        TestLoader(m_Device, m_ActiveScene, "resources/models/Rogue.glb");
         TestLoader(m_Device, m_ActiveScene, "resources/models/Walking.fbx");
 
         m_CommandList->open();

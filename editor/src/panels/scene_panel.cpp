@@ -494,9 +494,9 @@ namespace ignite
                     {
                         MeshRenderer *c = comp->As<MeshRenderer>();
                         ImGui::ColorEdit4("Base Color", &c->material.data.baseColor.x);
-                        ImGui::DragFloat("Metallic", &c->material.data.metallic);
-                        ImGui::DragFloat("Roughness", &c->material.data.roughness);
-                        ImGui::DragFloat("Emissive", &c->material.data.emissive);
+                        ImGui::DragFloat("Metallic", &c->material.data.metallic, 0.025f);
+                        ImGui::DragFloat("Roughness", &c->material.data.roughness, 0.025f);
+                        ImGui::DragFloat("Emissive", &c->material.data.emissive, 0.025f);
                     });
                     break;
                 }

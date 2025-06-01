@@ -155,19 +155,19 @@ namespace ignite
 
         glm::mat4 worldMatrix = parentWorldTransform * transform.GetLocalMatrix();
 
-
         // Special logic for MeshRenderer (e.g., skeletal animation)
         if (parentEntity.HasComponent<MeshRenderer>())
         {
             MeshRenderer &meshRenderer = parentEntity.GetComponent<MeshRenderer>();
             Entity rootNodeEntity = SceneManager::GetEntity(this, meshRenderer.root);
+            Transform& rootNodeTr = rootNodeEntity.GetComponent<Transform>();
+
             SkinnedMesh &skinnedMesh = rootNodeEntity.GetComponent<SkinnedMesh>();
 
             Entity parentNodeEntity = SceneManager::GetEntity(this, meshRenderer.parentNode);
-            Transform &parentNodeTr = parentNodeEntity.GetComponent<Transform>();
             const std::string &name = parentNodeEntity.GetName();
 
-            glm::mat4 transformMatrix = worldMatrix;
+            meshRenderer.meshBuffer.transformation = worldMatrix;
 
             if (skinnedMesh.activeAnimIndex >= 0 && skinnedMesh.animations[skinnedMesh.activeAnimIndex]->isPlaying && id.parent != UUID(0))
             {
@@ -175,11 +175,9 @@ namespace ignite
                 if (it != skinnedMesh.skeleton.nameToJointMap.end())
                 {
                     Joint &joint = skinnedMesh.skeleton.joints[it->second];
-                    transformMatrix = joint.globalTransform * joint.inverseBindPose * worldMatrix;
+                    meshRenderer.meshBuffer.transformation = rootNodeTr.GetWorldMatrix() * joint.globalTransform * transform.GetLocalMatrix();
                 }
             }
-
-            meshRenderer.meshBuffer.transformation = transformMatrix;
 
             glm::decompose(meshRenderer.meshBuffer.transformation, transform.scale, transform.rotation, transform.translation, skew, perspective);
 
