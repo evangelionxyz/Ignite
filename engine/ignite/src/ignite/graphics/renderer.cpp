@@ -65,7 +65,7 @@ namespace ignite
         
         device->executeCommandList(commandList);
 
-        Renderer2D::Init(device);
+        Renderer2D::Init();
     }
 
     Renderer::~Renderer()
@@ -94,9 +94,9 @@ namespace ignite
     void Renderer::LoadDefaultShaders(nvrhi::IDevice *device)
     {
         // create shaders
+        // m_Shaders["default_mesh"] = VPShader(device, "default_mesh");
         m_Shaders["quadBatch2D"] = VPShader(device, "quad_batch_2d");
         m_Shaders["imgui"] = VPShader(device, "imgui");
-        m_Shaders["default_mesh"] = VPShader(device, "default_mesh");
         m_Shaders["skybox"] = VPShader(device, "skybox");
 
         std::vector<Ref<ShaderMake::ShaderContext>> contexts;

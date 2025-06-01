@@ -149,9 +149,9 @@ namespace ignite
         return CreateRef<Scene>(name);
     }
 
-    void Scene::OnRenderRuntimeSimulate(Camera *camera, nvrhi::IFramebuffer *framebuffer)
+    void Scene::OnRenderRuntimeSimulate(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer)
     {
-        Renderer2D::Begin(camera, framebuffer);
+        Renderer2D::Begin(camera, commandList, framebuffer);
 
         for (entt::entity e: entities | std::views::values)
         {

@@ -191,7 +191,7 @@ namespace ignite
             m_MeshPipeline = GraphicsPipeline::Create(params, &pci);
             m_MeshPipeline->AddShader("default_mesh.vertex.hlsl", nvrhi::ShaderType::Vertex)
                 .AddShader("default_mesh.pixel.hlsl", nvrhi::ShaderType::Pixel)
-                .CompileShaders();
+                .Build();
         }
 
         // create skybox graphics pipeline
@@ -213,7 +213,7 @@ namespace ignite
             m_EnvPipeline = GraphicsPipeline::Create(params, &pci);
             m_EnvPipeline->AddShader("skybox.vertex.hlsl", nvrhi::ShaderType::Vertex)
                 .AddShader("skybox.pixel.hlsl", nvrhi::ShaderType::Pixel)
-                .CompileShaders();
+                .Build();
 
             // create env
             m_Environment = Environment::Create(m_Device);
@@ -228,7 +228,7 @@ namespace ignite
         }
 
         // write buffer with command list
-        Renderer2D::InitQuadData(m_Device, m_CommandList);
+        Renderer2D::InitQuadData(m_CommandList);
 
         m_ScenePanel = CreateRef<ScenePanel>("Scene Panel", this);
         m_ScenePanel->CreateRenderTarget(m_Device);
@@ -435,8 +435,8 @@ namespace ignite
         nvrhi::Viewport viewport = viewportFramebuffer->getFramebufferInfo().getViewport();
 
         // create pipelines
-        m_EnvPipeline->Create(viewportFramebuffer);
-        m_MeshPipeline->Create(viewportFramebuffer);
+        m_EnvPipeline->CreatePipeline(viewportFramebuffer);
+        m_MeshPipeline->CreatePipeline(viewportFramebuffer);
 
         // main scene rendering
         m_CommandList->open();
@@ -491,7 +491,7 @@ namespace ignite
             }
         }
 
-        m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
+        m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer);
 
         m_CommandList->close();
         m_Device->executeCommandList(m_CommandList);

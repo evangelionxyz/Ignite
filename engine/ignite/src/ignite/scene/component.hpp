@@ -5,9 +5,10 @@
 #include "icomponent.hpp"
 #include "ignite/graphics/material.hpp"
 #include "ignite/core/uuid.hpp"
+#include "ignite/math/aabb.hpp"
+#include "ignite/graphics/mesh.hpp"
 #include "ignite/graphics/vertex_data.hpp"
 #include "ignite/animation/skeletal_animation.hpp"
-#include "ignite/graphics/mesh.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -111,6 +112,8 @@ namespace ignite
         // local transforms
         glm::vec3 localTranslation, localScale;
         glm::quat localRotation;
+
+        AABB boundingBox;
 
         bool isAnimated = false;
         bool visible = true;

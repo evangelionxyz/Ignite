@@ -38,7 +38,7 @@ namespace ignite
         void OnUpdateRuntimeSimulate(f32 deltaTime);
         void OnUpdateEdit(f32 deltaTime);
 
-        void OnRenderRuntimeSimulate(Camera *camera, nvrhi::IFramebuffer *framebuffer);
+        void OnRenderRuntimeSimulate(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer);
         void OnRenderRuntime(nvrhi::IFramebuffer *framebuffer);
 
         std::string name;

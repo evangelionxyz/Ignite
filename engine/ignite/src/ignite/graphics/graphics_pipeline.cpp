@@ -18,10 +18,20 @@ namespace ignite {
         Ref<ShaderMake::ShaderContext> context = CreateRef<ShaderMake::ShaderContext>(filepath, shaderType, ShaderMake::ShaderContextDesc(), recompile);
         m_ShaderContexts.push_back(std::move(context));
 
+        m_NeedsToCompileShader = true;
+
         return *this;
     }
 
-    void GraphicsPipeline::Create(nvrhi::IFramebuffer *framebuffer)
+    GraphicsPipeline& GraphicsPipeline::AddShader(nvrhi::ShaderHandle& handle, nvrhi::ShaderType type)
+    {
+        m_NeedsToCompileShader = false;
+        m_Shaders[type] = handle;
+
+        return *this;
+    }
+
+    void GraphicsPipeline::CreatePipeline(nvrhi::IFramebuffer *framebuffer)
     {
         if (m_Handle == nullptr)
         {
@@ -73,20 +83,24 @@ namespace ignite {
         m_Handle.Reset();
     }
 
-    void GraphicsPipeline::CompileShaders()
+    void GraphicsPipeline::Build()
     {
-        Renderer::GetShaderContext()->CompileShader(m_ShaderContexts);
-
         nvrhi::IDevice* device = Application::GetRenderDevice();
-        for (auto& context : m_ShaderContexts)
+
+        if (m_NeedsToCompileShader)
         {
-            nvrhi::ShaderType shaderType = GetNVRHIShaderType(context->GetType());
-            m_Shaders[shaderType] = device->createShader(shaderType, context->blob.data.data(), context->blob.dataSize());
+            Renderer::GetShaderContext()->CompileShader(m_ShaderContexts);
 
-            LOG_ASSERT(m_Shaders[shaderType], "[Graphics Pipline] Failed to create shader");
+            for (auto& context : m_ShaderContexts)
+            {
+                nvrhi::ShaderType shaderType = GetNVRHIShaderType(context->GetType());
+                m_Shaders[shaderType] = device->createShader(shaderType, context->blob.data.data(), context->blob.dataSize());
+
+                LOG_ASSERT(m_Shaders[shaderType], "[Graphics Pipline] Failed to create shader");
+            }
+
+            m_ShaderContexts.clear();
         }
-
-        m_ShaderContexts.clear();
 
         m_InputLayout = device->createInputLayout(m_CreateInfo->attributes, m_CreateInfo->attributeCount, nullptr);
         LOG_ASSERT(m_InputLayout, "[Graphics Pipeline] Failed to create input layout");

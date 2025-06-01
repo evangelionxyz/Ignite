@@ -98,7 +98,7 @@ namespace ignite
         }
     };
 
-    struct VertexQuad
+    struct Vertex2DQuad
     {
         glm::vec3 position;
         glm::vec2 texCoord;
@@ -114,28 +114,28 @@ namespace ignite
                     .setName("POSITION")
                     .setBufferIndex(0)
                     .setFormat(nvrhi::Format::RGB32_FLOAT)
-                    .setOffset(offsetof(VertexQuad, position))
-                    .setElementStride(sizeof(VertexQuad)),
+                    .setOffset(offsetof(Vertex2DQuad, position))
+                    .setElementStride(sizeof(Vertex2DQuad)),
                 nvrhi::VertexAttributeDesc()
                     .setName("TEXCOORD")
                     .setFormat(nvrhi::Format::RG32_FLOAT)
-                    .setOffset(offsetof(VertexQuad, texCoord))
-                    .setElementStride(sizeof(VertexQuad)),
+                    .setOffset(offsetof(Vertex2DQuad, texCoord))
+                    .setElementStride(sizeof(Vertex2DQuad)),
                 nvrhi::VertexAttributeDesc()
                     .setName("TILINGFACTOR")
                     .setFormat(nvrhi::Format::RG32_FLOAT)
-                    .setOffset(offsetof(VertexQuad, tilingFactor))
-                    .setElementStride(sizeof(VertexQuad)),
+                    .setOffset(offsetof(Vertex2DQuad, tilingFactor))
+                    .setElementStride(sizeof(Vertex2DQuad)),
                 nvrhi::VertexAttributeDesc()
                     .setName("COLOR")
                     .setFormat(nvrhi::Format::RGBA32_FLOAT)
-                    .setOffset(offsetof(VertexQuad, color))
-                    .setElementStride(sizeof(VertexQuad)),
+                    .setOffset(offsetof(Vertex2DQuad, color))
+                    .setElementStride(sizeof(Vertex2DQuad)),
                 nvrhi::VertexAttributeDesc()
                     .setName("TEXINDEX")
                     .setFormat(nvrhi::Format::R32_UINT)
-                    .setOffset(offsetof(VertexQuad, texIndex))
-                    .setElementStride(sizeof(VertexQuad))
+                    .setOffset(offsetof(Vertex2DQuad, texIndex))
+                    .setElementStride(sizeof(Vertex2DQuad))
             };
         }
 
