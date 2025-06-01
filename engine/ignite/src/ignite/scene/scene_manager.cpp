@@ -83,8 +83,12 @@ namespace ignite
         std::string uniqueName = GenerateUniqueName(name, scene->entityNames, scene->entityNamesMapCounter);
         entity.AddComponent<ID>(uniqueName, type, uuid);
         entity.AddComponent<Transform>(Transform({0.0f, 0.0f, 0.0f}));
+
         scene->entities[uuid] = entity;
-        scene->entityNames.push_back(uniqueName);
+        scene->nameToUUID[uniqueName] = uuid;
+        
+        // scene->entityNames.push_back(uniqueName);
+        
         return entity;
     }
 
@@ -263,6 +267,17 @@ namespace ignite
         }
 
         return newEntity;
+    }
+
+    Entity SceneManager::GetEntity(Scene* scene, const std::string& name)
+    {
+        if (scene->nameToUUID.contains(name))
+        {
+            const UUID uuid = scene->nameToUUID.at(name);
+            return GetEntity(scene, uuid);
+        }
+        
+        return Entity{};
     }
 
     Entity SceneManager::GetEntity(Scene *scene, UUID uuid)

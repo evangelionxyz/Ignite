@@ -21,6 +21,7 @@ namespace ignite
     class IComponent
     {
     public:
+        virtual ~IComponent() = default;
 
         template<typename T>
         T *As()

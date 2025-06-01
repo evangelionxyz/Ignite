@@ -11,10 +11,11 @@ namespace ignite {
     {
     public:
         static void PlayAnimation(std::vector<Ref<SkeletalAnimation>> &animations, int animIndex = 0);
-        static void PlayAnimation(const Ref<Model> &model, int animIndex = 0);
-        static void UpdateAnimation(const Ref<Model> &model, float timeInSeconds);
-        static bool UpdateSkeleton(Skeleton &skeleton, const Ref<SkeletalAnimation> &animation, float timeInSeconds);
-        static void UpdateGlobalTransforms(Skeleton &skeleton);
-        static std::vector<glm::mat4> GetFinalJointTransforms(const Skeleton &skeleton);
+        static void PlayAnimation(Ref<Model> &model, int animIndex = 0);
+        static void UpdateAnimation(Ref<Model> &model, float timeInSeconds);
+        static void ApplySkeletonToEntities(Scene *scene, Ref<Skeleton> &skeleton); 
+        static bool UpdateSkeleton(Ref<Skeleton> &skeleton, const Ref<SkeletalAnimation> &animation, float timeInSeconds);
+        static void UpdateGlobalTransforms(Ref<Skeleton> &skeleton);
+        static std::vector<glm::mat4> GetFinalJointTransforms(const Ref<Skeleton> &skeleton);
     };
 }

@@ -33,6 +33,7 @@ namespace ignite
         EntityType_Camera,
         EntityType_Mesh,
         EntityType_Prefab,
+        EntityType_Joint,
         EntityType_Invalid
     };
 
@@ -44,22 +45,23 @@ namespace ignite
         case EntityType_Camera: return "Camera";
         case EntityType_Mesh: return "Mesh";
         case EntityType_Prefab: return "Prefab";
+        case EntityType_Joint: return "Joint";
         case EntityType_Invalid:
-        default:
-            return "Invalid";
+        default: return "Invalid";
         }
     }
 
     static EntityType EntityTypeFromString(const std::string &typeStr)
     {
         if (typeStr == "Node") return EntityType_Node;
-        else if (typeStr == "Camera") return EntityType_Camera;
-        else if (typeStr == "Mesh") return EntityType_Mesh;
-        else if (typeStr == "Prefab") return EntityType_Prefab;
+        if (typeStr == "Camera") return EntityType_Camera;
+        if (typeStr == "Mesh") return EntityType_Mesh;
+        if (typeStr == "Prefab") return EntityType_Prefab;
+        if (typeStr == "Joint") return EntityType_Prefab;
         return EntityType_Invalid;
     }
 
-    class ID : public IComponent
+    class ID final : public IComponent
     {
     public:
         std::string name;
@@ -110,6 +112,7 @@ namespace ignite
         glm::vec3 localTranslation, localScale;
         glm::quat localRotation;
 
+        bool isAnimated = false;
         bool visible = true;
 
         Transform() = default;
@@ -200,7 +203,7 @@ namespace ignite
      class SkinnedMesh : public IComponent
      {
      public:
-         Skeleton skeleton;
+         Ref<Skeleton> skeleton;
          std::vector<glm::mat4> boneTransforms;
          std::vector<Ref<SkeletalAnimation>> animations;
          i32 activeAnimIndex = 0;
@@ -212,10 +215,9 @@ namespace ignite
     class MeshRenderer : public IComponent
     {
     public:
+        std::string name;
         Ref<EntityMesh> mesh;
-
         UUID root = UUID(0); // SkinnedMesh / StaticMesh to get the component data
-        UUID parentNode = UUID(0);
 
         ObjectBuffer meshBuffer;
         Material material;
@@ -224,6 +226,6 @@ namespace ignite
         nvrhi::RasterFillMode fillMode = nvrhi::RasterFillMode::Solid;
 
         static CompType StaticType() { return CompType_MeshRenderer; }
-        virtual CompType GetType() override { return StaticType(); };
+        virtual CompType GetType() override { return StaticType(); }
     };
 }

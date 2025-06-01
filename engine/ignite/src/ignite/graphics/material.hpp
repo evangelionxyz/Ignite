@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ranges>
+
 #include "ignite/core/buffer.hpp"
 
 #include <glm/glm.hpp>
@@ -36,13 +38,13 @@ namespace ignite {
         bool IsReflective() const { return _reflective; }
         bool ShouldWriteTexture() const { return _shouldWriteTexture; }
 
-        void WriteBuffer(nvrhi::CommandListHandle commandList)
+        void WriteBuffer(nvrhi::ICommandList *commandList)
         {
-            for (auto [type, texData] : textures)
+            for (const auto& [buffer, rowPitch, handle] : textures | std::views::values)
             {
-                if (texData.buffer.Data)
+                if (buffer.Data)
                 {
-                    commandList->writeTexture(texData.handle, 0, 0, texData.buffer.Data, texData.rowPitch);
+                    commandList->writeTexture(handle, 0, 0, buffer.Data, rowPitch);
                 }
             }
         }

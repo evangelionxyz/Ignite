@@ -39,13 +39,16 @@ namespace ignite {
     {
         std::vector<Joint> joints;
         std::unordered_map<std::string, i32> nameToJointMap; // for fast lookup by name
+
+        std::unordered_map<i32, UUID> jointEntityMap;
     };
 
     struct NodeInfo
     {
         i32 id = -1;
         i32 parentID = -1;
-
+        bool isJoint = false;
+        
         UUID uuid = UUID(0);
 
         std::string name;
@@ -87,7 +90,7 @@ namespace ignite {
         i32 nodeID = -1; // ID of the bone this mesh is attached to
 
         std::vector<BoneInfo> boneInfo; // Bone weights and indices
-        std::unordered_map<std::string, uint32_t> boneMapping; // Maps bone namse to indices
+        std::unordered_map<std::string, uint32_t> boneMapping; // Maps bone names to indices
 
         void CreateConstantBuffers(nvrhi::IDevice *device);
         void CreateBuffers();
@@ -120,16 +123,16 @@ namespace ignite {
     {
     public:
 
-        static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &mesh, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID);
+        static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &mesh, std::vector<NodeInfo> &nodes, const Ref<Skeleton> &skeleton, i32 parentNodeID);
         template<typename T>
-        static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, Ref<T> &meshes, const std::string &filepath, const Skeleton &skeleton);
+        static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, Ref<T> &meshes, const std::string &filepath, const Ref<Skeleton> &skeleton);
 
         template<typename T>
-        static void ProcessBoneWeights(aiMesh *assimpMesh, Ref<T> &mesh, const Skeleton &skeleton);
+        static void ProcessBoneWeights(aiMesh *assimpMesh, Ref<T> &mesh, const Ref<Skeleton> &skeleton);
 
-        static void ExtractSkeleton(const aiScene *scene, Skeleton &skeleton);
-        static void ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Skeleton &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices);
-        static void SortJointsHierchically(Skeleton &skeleton);
+        static void ExtractSkeleton(const aiScene *scene, Ref<Skeleton> &skeleton);
+        static void ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Ref<Skeleton> &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices);
+        static void SortJointsHierarchically(Ref<Skeleton> &skeleton);
         static void LoadAnimation(const aiScene *scene, std::vector<Ref<SkeletalAnimation>> &animations);
         static void LoadMaterial(const aiScene *scene, aiMaterial *assimpMaterial, const std::string &filepath, Material &material);
         static void LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type);

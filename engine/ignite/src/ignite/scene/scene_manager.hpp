@@ -17,6 +17,7 @@ namespace ignite
         static void RenameEntity(Scene *scene, Entity entity, const std::string &newName);
         static void DestroyEntity(Scene *scene, Entity entity);
         static void DestroyEntity(Scene *scene, UUID uuid);
+        static Entity GetEntity(Scene* scene, const std::string& name);
         static Entity GetEntity(Scene *scene, UUID uuid);
         static Entity DuplicateEntity(Scene *scene, Entity entity, bool addToParent = true);
 

@@ -24,11 +24,11 @@ namespace ignite {
         Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo);
 
         void SetEnvironment(const Ref<Environment> &env);
-        void CreateBindingSet(nvrhi::BindingLayoutHandle bindingLayout);
+        void CreateBindingSet(const nvrhi::BindingLayoutHandle& bindingLayout);
         void WriteBuffer(nvrhi::ICommandList *commandList);
 
         void OnUpdate(f32 deltaTime);
-        void Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline);
+        void Render(const nvrhi::CommandListHandle& commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline);
         const std::filesystem::path &GetFilepath() const { return m_Filepath; }
         static Ref<Model> Create(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo);
 
@@ -40,7 +40,7 @@ namespace ignite {
         std::vector<Ref<SkeletalAnimation>> animations;
         std::vector<NodeInfo> nodes;
         std::vector<glm::mat4> boneTransforms;
-        Skeleton skeleton;
+        Ref<Skeleton> skeleton;
         std::vector<Ref<Mesh>> meshes;
         i32 activeAnimIndex = -1;
 

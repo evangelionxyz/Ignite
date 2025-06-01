@@ -12,7 +12,6 @@
 #include "ignite/graphics/mesh_factory.hpp"
 #include "ignite/imgui/gui_function.hpp"
 #include "ignite/graphics/mesh.hpp"
-#include "ignite/graphics/model.hpp"
 #include "ignite/asset/asset.hpp"
 #include "ignite/asset/asset_importer.hpp"
 
@@ -27,7 +26,7 @@
 
 namespace ignite
 {
-    static void TestLoader(nvrhi::IDevice *device, Ref<Scene> &scene, const std::filesystem::path &filepath)
+    static void TestLoader(Ref<Scene> &scene, const std::filesystem::path &filepath)
     {
         LOG_ASSERT(std::filesystem::exists(filepath), "[Mesh Loader] File does not exists!");
         
@@ -35,35 +34,38 @@ namespace ignite
         const aiScene *assimpScene = importer.ReadFile(filepath.generic_string(), ASSIMP_IMPORTER_FLAGS);
 
         LOG_ASSERT(assimpScene == nullptr || assimpScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || assimpScene->mRootNode,
-            "[Model] Failed to load {}: {}", filepath, importer.GetErrorString());
+            "[Model] Failed to load {}: {}",
+            filepath,
+            importer.GetErrorString());
 
         if (!assimpScene)
         {
             return;
         }
 
-        Entity rootNode = SceneManager::CreateEntity(scene.get(), filepath.stem().string(), EntityType_Node);
-        SkinnedMesh &skinnedMesh = rootNode.AddComponent<SkinnedMesh>();
-
+        Entity rootNode;
+        Ref<Skeleton> skeleton = CreateRef<Skeleton>();
+        std::vector<Ref<SkeletalAnimation>> animations;
+        
         if (assimpScene->HasAnimations())
         {
-            MeshLoader::LoadAnimation(assimpScene, skinnedMesh.animations);
+            MeshLoader::LoadAnimation(assimpScene, animations);
 
             // Process Skeleton
-            MeshLoader::ExtractSkeleton(assimpScene, skinnedMesh.skeleton);
-            MeshLoader::SortJointsHierchically(skinnedMesh.skeleton);
+            MeshLoader::ExtractSkeleton(assimpScene, skeleton);
+            MeshLoader::SortJointsHierarchically(skeleton);
         }
 
         std::vector<Ref<Mesh>> meshes;
         meshes.resize(assimpScene->mNumMeshes);
-        for (size_t i = 0; i < meshes.size(); ++i)
+        for (auto& mesh : meshes)
         {
-            meshes[i] = CreateRef<Mesh>();
+            mesh = CreateRef<Mesh>();
         }
 
         std::vector<NodeInfo> nodes;
 
-        MeshLoader::ProcessNode(assimpScene, assimpScene->mRootNode, filepath.generic_string(), meshes, nodes, skinnedMesh.skeleton, -1);
+        MeshLoader::ProcessNode(assimpScene, assimpScene->mRootNode, filepath.generic_string(), meshes, nodes, skeleton, -1);
         MeshLoader::CalculateWorldTransforms(nodes, meshes);
 
         // First pass: create all node entities
@@ -79,7 +81,6 @@ namespace ignite
                 glm::vec3 skew;
                 glm::vec4 perspective;
                 glm::decompose(node.localTransform, tr.localScale, tr.localRotation, tr.localTranslation, skew, perspective);
-                // glm::decompose(node.worldTransform, tr.scale, tr.rotation, tr.translation, skew, perspective);
 
                 tr.dirty = true;
             }
@@ -93,7 +94,14 @@ namespace ignite
             if (node.parentID == -1)
             {
                 // Attach the node to root node
-                SceneManager::AddChild(scene.get(), rootNode, nodeEntity);
+                rootNode = nodeEntity;
+
+                ID &id = rootNode.GetComponent<ID>();
+                id.name = filepath.stem().string();
+                
+                SkinnedMesh &skinnedMesh = rootNode.AddComponent<SkinnedMesh>();
+                skinnedMesh.skeleton = skeleton;
+                skinnedMesh.animations = animations;
             }
             else
             {
@@ -107,16 +115,13 @@ namespace ignite
             for (i32 meshIdx : node.meshIndices)
             {
                 const auto &mesh = meshes[meshIdx];
-                Entity meshEntity = SceneManager::CreateEntity(scene.get(), mesh->name, EntityType_Mesh);
-                SceneManager::AddChild(scene.get(), nodeEntity, meshEntity);
 
-                MeshRenderer &meshRenderer = meshEntity.AddComponent<MeshRenderer>();
+                MeshRenderer &meshRenderer = nodeEntity.AddComponent<MeshRenderer>();
+                
+                meshRenderer.name = mesh->name;
                 meshRenderer.root = rootNode.GetUUID();
 
                 meshRenderer.mesh = CreateRef<EntityMesh>();
-
-                const auto &parentNode = nodes[node.parentID];
-                meshRenderer.parentNode = parentNode.uuid;
 
                 meshRenderer.mesh->vertices = mesh->vertices;
                 meshRenderer.mesh->indices = mesh->indices;
@@ -124,6 +129,19 @@ namespace ignite
                 meshRenderer.mesh->vertexBuffer = mesh->vertexBuffer;
 
                 meshRenderer.material = mesh->material;
+            }
+
+            // Extract skeleton joints into entity
+            for (size_t i = 0; i < skeleton->joints.size(); ++i)
+            {
+                if (const std::string &name = skeleton->joints[i].name; scene->nameToUUID.contains(name))
+                {
+                    UUID uuid = scene->nameToUUID[name];
+                    skeleton->jointEntityMap[static_cast<i32>(i)] = uuid;
+                    
+                    Entity entity = SceneManager::GetEntity(scene.get(), uuid);
+                    entity.GetComponent<ID>().type = EntityType_Joint;
+                }
             }
         }
 
@@ -230,16 +248,15 @@ namespace ignite
 
         NewScene();
 
-        TestLoader(m_Device, m_ActiveScene, "resources/models/Rogue.glb");
-        TestLoader(m_Device, m_ActiveScene, "resources/models/Walking.fbx");
+        TestLoader(m_ActiveScene, "resources/models/Rogue.glb");
+        // TestLoader(m_ActiveScene, "resources/models/Walking.fbx");
 
         m_CommandList->open();
 
-        for (auto &[uuid, ent] : m_ActiveScene->entities)
+        for (auto& ent : m_ActiveScene->entities | std::views::values)
         {
             Entity entity { ent, m_ActiveScene.get() };
-            ID &idcomp = entity.GetComponent<ID>();
-            Transform &tr = entity.GetComponent<Transform>();
+            Transform &tr = entity.GetTransform();
 
             if (entity.HasComponent<MeshRenderer>())
             {
@@ -295,20 +312,8 @@ namespace ignite
 
         AssetImporter::SyncMainThread(m_CommandList, m_Device);
 
-        float timeInSeconds = static_cast<float>(glfwGetTime());
-
         // multi select entity
         m_Data.multiSelect = Input::IsKeyPressed(Key::LeftShift);
-
-
-        for (auto &model : m_Models)
-        {
-            if (!model)
-                continue;
-
-            AnimationSystem::UpdateAnimation(model, timeInSeconds);
-            model->OnUpdate(deltaTime);
-        }
 
         switch (m_Data.sceneState)
         {
@@ -342,8 +347,7 @@ namespace ignite
         bool control = Input::IsKeyPressed(KEY_LEFT_CONTROL);
         bool shift = Input::IsKeyPressed(KEY_LEFT_SHIFT);
 
-        bool imguiWantTextInput = ImGui::GetIO().WantTextInput;
-        if (imguiWantTextInput)
+        if (ImGui::GetIO().WantTextInput)
             return false;
 
         switch (event.GetKeyCode())
@@ -421,8 +425,8 @@ namespace ignite
         const uint32_t &backBufferIndex = Application::GetDeviceManager()->GetCurrentBackBufferIndex();
         static uint32_t backBufferCount = Application::GetDeviceManager()->GetBackBufferCount();
         const nvrhi::Viewport &mainViewport = mainFramebuffer->getFramebufferInfo().getViewport();
-        uint32_t width = (uint32_t)mainViewport.width();
-        uint32_t height = (uint32_t)mainViewport.height();
+        uint32_t width = static_cast<uint32_t>(mainViewport.width());
+        uint32_t height = static_cast<uint32_t>(mainViewport.height());
 
         // m_ScenePanel->GetRT()->CreateFramebuffers(backBufferCount, backBufferIndex);
         m_ScenePanel->GetRT()->CreateSingleFramebuffer();
@@ -452,7 +456,6 @@ namespace ignite
         {
             Entity entity = { e, m_ActiveScene.get() };
             Transform &tr = entity.GetComponent<Transform>();
-            ID &idcomp = entity.GetComponent<ID>();
 
             if (!tr.visible)
             {
@@ -481,21 +484,11 @@ namespace ignite
                 m_CommandList->setGraphicsState(meshGraphicsState);
 
                 nvrhi::DrawArguments args;
-                args.setVertexCount((uint32_t)meshRenderer.mesh->indices.size());
+                args.setVertexCount(static_cast<uint32_t>(meshRenderer.mesh->indices.size()));
                 args.instanceCount = 1;
 
                 m_CommandList->drawIndexed(args);
             }
-        }
-
-        // render objects
-        for (auto &model : m_Models)
-        {
-            if (!model)
-            {
-                continue;
-            }
-            model->Render(m_CommandList, viewportFramebuffer, m_MeshPipeline);
         }
 
         m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), viewportFramebuffer);
@@ -751,7 +744,7 @@ namespace ignite
 
                     for (auto &[handle, metadata] : assetRegistry)
                     {
-                        ImGui::Text("Handle: %ull", (uint64_t)handle);
+                        ImGui::Text("Handle: %ull", static_cast<uint64_t>(handle));
                         ImGui::Text("Type: %s", AssetTypeToString(metadata.type).c_str());
                         ImGui::Text("Filepath: %s", metadata.filepath.generic_string().c_str());
                     }
@@ -759,211 +752,7 @@ namespace ignite
             }
 
             ImGui::End();
-
-            ImGui::Begin("Models");
-
-            if (ImGui::Button("Add GLTF/GLB"))
-            {
-                std::vector<std::string> filepaths = FileDialogs::OpenFiles("GLTF/GLB Files (*.gltf;*.glb)\0*.gltf;*.glb\0All Files (*.*)\0*.*\0");
-                if (!filepaths.empty())
-                {
-                    ModelCreateInfo modelCI;
-                    modelCI.device = m_Device;
-                    modelCI.debugBuffer = m_DebugRenderBuffer;
-                    modelCI.cameraBuffer = m_Environment->GetCameraBuffer();
-                    modelCI.lightBuffer = m_Environment->GetDirLightBuffer();
-                    modelCI.envBuffer = m_Environment->GetParamsBuffer();
-
-                    ModelImporter::LoadAsync(&m_Models, filepaths, modelCI, m_Environment, m_MeshPipeline);
-                }
-            }
-
-            int index = 0;
-            for (auto it = m_Models.begin(); it != m_Models.end(); )
-            {
-                auto &model = *it;
-                if (!model)
-                {
-                    ++it;
-                    continue;
-                }
-
-                bool requestToDelete = false;
-
-                const std::string modelName = model->GetFilepath().stem().generic_string();
-                bool opened = ImGui::TreeNodeEx((void *)(uint64_t *) &model, ImGuiTreeNodeFlags_OpenOnArrow, "%s", modelName.c_str());
-
-                if (ImGui::IsItemClicked())
-                {
-                    m_SelectedModel = model.get();
-                }
-
-                if (ImGui::BeginPopupContextItem(modelName.c_str()))
-                {
-                    if (ImGui::MenuItem("Delete"))
-                    {
-                        requestToDelete = true;
-                        m_SelectedModel = nullptr;
-                        m_SelectedNode = nullptr;
-                    }
-
-                    ImGui::EndPopup();
-                }
-
-                if (opened)
-                {
-                    /*glm::vec3 scale, translation, skew;
-                    glm::vec4 perspective;
-                    glm::quat orientation;
-                    glm::decompose(model->transform, scale, orientation, translation, skew, perspective);
-
-                    ImGui::DragFloat3("Translation", &translation.x, 0.025f);
-                    glm::vec3 eulerAngle = glm::degrees(glm::eulerAngles(orientation));
-                    if (ImGui::DragFloat3("Rotation", &eulerAngle.x, 0.025f))
-                        orientation = glm::radians(eulerAngle);
-                    ImGui::DragFloat3("Scale", &scale.x, 0.025f);
-                    model->transform = glm::recompose(scale, orientation, translation, skew, perspective);*/
-
-                    if (!requestToDelete)
-                    {
-                        if (m_SelectedNode)
-                        {
-                            {
-                                glm::vec3 translation, scale;
-                                glm::quat orientation;
-                                Math::DecomposeTransform(m_SelectedNode->localTransform, translation, orientation, scale);
-                                ImGui::DragFloat3("Translation", &translation.x, 0.025f);
-                                glm::vec3 euler = eulerAngles(orientation);
-                                ImGui::DragFloat3("Rotation", &euler.x, 0.025f);
-                                ImGui::DragFloat3("Scale", &scale.x, 0.025f);
-                            }
-
-                            ImGui::Separator();
-
-
-                            {
-                                glm::vec3 translation, scale;
-                                glm::quat orientation;
-                                Math::DecomposeTransform(m_SelectedNode->worldTransform, translation, orientation, scale);
-                                ImGui::DragFloat3("WTranslation", &translation.x, 0.025f);
-                                glm::vec3 euler = eulerAngles(orientation);
-                                ImGui::DragFloat3("WRotation", &euler.x, 0.025f);
-                                ImGui::DragFloat3("WScale", &scale.x, 0.025f);
-                            }
-                        }
-
-                        if (ImGui::TreeNode("Meshes"))
-                        {
-                            for (const Ref<Mesh> &mesh : model->meshes)
-                            {
-                                bool opened = ImGui::TreeNode(mesh->name.c_str());
-
-                                if (ImGui::BeginDragDropSource())
-                                {
-                                    ImGui::SetDragDropPayload("MESH_ITEM", &mesh, sizeof(Ref<Mesh>));
-                                    ImGui::EndDragDropSource();
-                                }
-
-                                if (opened)
-                                {
-                                    ImGui::TreePop();
-                                }
-                            }
-
-                            ImGui::TreePop();
-                        }
-
-                        if (!model->animations.empty() && ImGui::TreeNode("Animation"))
-                        {
-                            for (size_t animIdx = 0; animIdx < model->animations.size(); ++animIdx)
-                            {
-                                const Ref<SkeletalAnimation> &anim = model->animations[animIdx];
-                                if (ImGui::TreeNodeEx(anim->name.c_str(), ImGuiTreeNodeFlags_Leaf, "%s", anim->name.c_str()))
-                                {
-                                    if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-                                    {
-                                        AnimationSystem::PlayAnimation(model, animIdx);
-                                    }
-                                    ImGui::TreePop();
-                                }
-                            }
-                            ImGui::TreePop();
-                        }
-
-                        if (ImGui::TreeNode("Skeleton"))
-                        {
-                            for (auto &joint : model->skeleton.joints)
-                            {
-                                if (ImGui::TreeNodeEx(joint.name.c_str(), ImGuiTreeNodeFlags_None, "%s: %d", joint.name.c_str(), joint.id))
-                                {
-                                    ImGui::Text("Parent: %d", joint.parentJointId);
-
-                                    ImGui::Text("Inv Bind Pose");
-                                    ImGui::InputFloat4("BP 0", &joint.inverseBindPose[0].x);
-                                    ImGui::InputFloat4("BP 1", &joint.inverseBindPose[1].x);
-                                    ImGui::InputFloat4("BP 2", &joint.inverseBindPose[2].x);
-                                    ImGui::InputFloat4("BP 3", &joint.inverseBindPose[3].x);
-
-                                    ImGui::Text("Local Transform");
-                                    ImGui::InputFloat4("LT 0", &joint.localTransform[0].x);
-                                    ImGui::InputFloat4("LT 1", &joint.localTransform[1].x);
-                                    ImGui::InputFloat4("LT 2", &joint.localTransform[2].x);
-                                    ImGui::InputFloat4("LT 3", &joint.localTransform[3].x);
-
-                                    ImGui::Text("World Transform");
-                                    ImGui::InputFloat4("WT 0", &joint.globalTransform[0].x);
-                                    ImGui::InputFloat4("WT 1", &joint.globalTransform[1].x);
-                                    ImGui::InputFloat4("WT 2", &joint.globalTransform[2].x);
-                                    ImGui::InputFloat4("WT 3", &joint.globalTransform[3].x);
-
-                                    ImGui::TreePop();
-                                }
-                            }
-
-                            ImGui::TreePop();
-                        }
-
-                    }
-
-                    ImGui::TreePop();
-                }
-
-                if (requestToDelete)
-                {
-                    it = m_Models.erase(it);
-                }
-                else
-                {
-                    ++it;
-                    ++index;
-                }
-            }
-
-            ImGui::End();
-
-            ImGui::Begin("Model Hierarchy");
-            if (m_SelectedModel)
-            {
-                for (auto &node : m_SelectedModel->nodes)
-                {
-                    if (node.parentID == -1)
-                    {
-                        TraverseNodes(m_SelectedModel, node);
-                    }
-                }
-            }
-            ImGui::End();
-
-            ImGui::Begin("Material");
-            if (m_SelectedMaterial)
-            {
-                ImGui::ColorEdit4("Base Color", &m_SelectedMaterial->baseColor.x);
-                ImGui::DragFloat("Metallic", &m_SelectedMaterial->metallic, 0.005f, 0.0f, 1.0f);
-                ImGui::DragFloat("Rougness", &m_SelectedMaterial->roughness, 0.005f, 0.0f, 1.0f);
-                ImGui::DragFloat("Emissive", &m_SelectedMaterial->emissive, 0.005f, 0.0f, 1000.0f);
-            }
-            ImGui::End();
-
+            
             // Render GUI
             SettingsUI();
         }
@@ -1171,7 +960,7 @@ namespace ignite
             }
 
             static const char *renderFillMode[] = { "Solid", "Wireframe" };
-            const char *currentRenderFillMode = renderFillMode[(int)m_Data.rasterFillMode];
+            const char *currentRenderFillMode = renderFillMode[static_cast<int>(m_Data.rasterFillMode)];
 
             if (ImGui::BeginCombo("Fill Mode", currentRenderFillMode))
             {
@@ -1181,7 +970,7 @@ namespace ignite
                     
                     if (ImGui::Selectable(renderFillMode[i], isSelected))
                     {
-                        m_Data.rasterFillMode = (nvrhi::RasterFillMode)i;
+                        m_Data.rasterFillMode = static_cast<nvrhi::RasterFillMode>(i);
                         m_MeshPipeline->GetParams().fillMode = m_Data.rasterFillMode;
                         m_MeshPipeline->ResetHandle();
                     }
@@ -1205,7 +994,7 @@ namespace ignite
 
                     if (ImGui::Selectable(rasterCullMode[i], isSelected))
                     {
-                        m_Data.rasterCullMode = (nvrhi::RasterCullMode)i;
+                        m_Data.rasterCullMode = static_cast<nvrhi::RasterCullMode>(i);
                         m_MeshPipeline->GetParams().cullMode = m_Data.rasterCullMode;
 
                         m_MeshPipeline->ResetHandle();
@@ -1265,78 +1054,5 @@ namespace ignite
         }
 
         ImGui::End();
-    }
-
-    void EditorLayer::TraverseNodes(Model *model, NodeInfo &node)
-    {
-        // Determine if the node is a leaf node (has no children and no meshes)
-        bool isLeaf = node.childrenIDs.empty() && node.meshIndices.empty();
-
-        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow
-            | ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
-
-        if (isLeaf)
-            flags |= ImGuiTreeNodeFlags_Leaf;
-
-        // Tree node UI
-        bool opened = ImGui::TreeNodeEx((void *)(intptr_t)node.id, flags, node.name.c_str());
-
-        // Handle drag drop target for meshes
-        if (ImGui::BeginDragDropTarget())
-        {
-            if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("MESH_ITEM"))
-            {
-                LOG_ASSERT(payload->DataSize == sizeof(Ref<Mesh>), "Wrong mesh item");
-
-                Ref<Mesh> mesh = *static_cast<Ref<Mesh> *>(payload->Data);
-                mesh->nodeID = node.id;
-                mesh->nodeParentID = node.parentID;
-            }
-            ImGui::EndDragDropTarget();
-        }
-
-        if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-        {
-            m_SelectedNode = &node;
-        }
-
-        if (opened)
-        {
-            // Display meshes under this node
-            for (i32 meshIndex : node.meshIndices)
-            {
-                Ref<Mesh> mesh = model->meshes[meshIndex];
-                bool meshOpened = ImGui::TreeNodeEx((void *)(intptr_t)meshIndex, ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow, "%s", mesh->name.c_str());
-
-                if (ImGui::BeginDragDropSource())
-                {
-                    ImGui::SetDragDropPayload("MESH_ITEM", &mesh, sizeof(Ref<Mesh>));
-                    ImGui::Text("%s", mesh->name.c_str());
-                    ImGui::EndDragDropSource();
-                }
-
-                if (meshOpened)
-                {
-                    if (ImGui::TreeNodeEx("Material", ImGuiTreeNodeFlags_Leaf, "Material"))
-                    {
-                        if (ImGui::IsItemClicked())
-                        {
-                            m_SelectedMaterial = &mesh->material.data;
-                        }
-                        ImGui::TreePop();
-                    }
-
-                    ImGui::TreePop(); // mesh node
-                }
-            }
-
-            // Recurse into children
-            for (i32 child : node.childrenIDs)
-            {
-                TraverseNodes(model, model->nodes[child]);
-            }
-
-            ImGui::TreePop(); // current node
-        }
     }
 }

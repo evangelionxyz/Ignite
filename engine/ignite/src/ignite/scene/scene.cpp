@@ -57,6 +57,7 @@ namespace ignite
             {
                 if (AnimationSystem::UpdateSkeleton(skinnedMesh.skeleton, skinnedMesh.animations[skinnedMesh.activeAnimIndex], timeInSeconds))
                 {
+                    AnimationSystem::ApplySkeletonToEntities(this, skinnedMesh.skeleton);
                     skinnedMesh.boneTransforms = AnimationSystem::GetFinalJointTransforms(skinnedMesh.skeleton);
                 }
             }
@@ -66,89 +67,17 @@ namespace ignite
         for (auto ent : view)
         {
             const auto &[id, transform] = view.get<ID, Transform>(ent);
-            if (id.parent == 0) // root node
+            if (id.parent == 0)
             {
                 UpdateTransformRecursive(Entity { ent, this }, glm::mat4(1.0f));
             }
         }
-
-#if 0
-        auto view = registry->view<ID, Transform>();
-        for (auto eHandle : view)
-        {
-            Entity entity { eHandle, this };
-            Transform &transform = entity.GetComponent<Transform>();
-            ID &id = entity.GetComponent<ID>();
-
-            glm::vec3 skew;
-            glm::vec4 perspective;
-\
-            if (id.parent != 0)
-            {
-                if (entity.HasComponent<MeshRenderer>())
-                {
-                    MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
-
-                    Entity rootNodeEntity = SceneManager::GetEntity(this, meshRenderer.root);
-                    SkinnedMesh &skinnedMesh = rootNodeEntity.GetComponent<SkinnedMesh>();
-
-                    Entity parentNodeEntity = SceneManager::GetEntity(this, meshRenderer.parentNode);
-                    Transform &parentNodeTr = parentNodeEntity.GetComponent<Transform>();
-                    const std::string &name = parentNodeEntity.GetName();
-
-                    glm::mat4 transformMatrix = parentNodeTr.GetWorldMatrix();
-
-                    if (skinnedMesh.activeAnimIndex >= 0 && skinnedMesh.animations[skinnedMesh.activeAnimIndex]->isPlaying && id.parent != UUID(0))
-                    {
-                        auto it = skinnedMesh.skeleton.nameToJointMap.find(name);
-                        if (it != skinnedMesh.skeleton.nameToJointMap.end())
-                        {
-                            Joint &joint = skinnedMesh.skeleton.joints[it->second];
-                            transformMatrix = joint.globalTransform * joint.inverseBindPose * parentNodeTr.GetWorldMatrix();
-                        }
-                    }
-
-                    meshRenderer.meshBuffer.transformation = transformMatrix;
-                    
-                    glm::decompose(meshRenderer.meshBuffer.transformation * transform.GetLocalMatrix(), transform.scale, transform.rotation, transform.translation, skew, perspective);
-
-                    const size_t numBones = std::min(skinnedMesh.boneTransforms.size(), static_cast<size_t>(MAX_BONES));
-                    for (size_t i = 0; i < numBones; ++i)
-                    {
-                        meshRenderer.meshBuffer.boneTransforms[i] = skinnedMesh.boneTransforms[i];
-                    }
-
-                    // Set remaining transforms to identity
-                    for (size_t i = numBones; i < MAX_BONES; ++i)
-                    {
-                        meshRenderer.meshBuffer.boneTransforms[i] = glm::mat4(1.0f);
-                    }
-
-                    glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(meshRenderer.meshBuffer.transformation)));
-                    meshRenderer.meshBuffer.normal = glm::mat4(normalMat3);
-                }
-                else
-                {
-                    Entity parent = SceneManager::GetEntity(this, id.parent);
-                    Transform &parentTransform = parent.GetComponent<Transform>();
-
-                    glm::mat4 transformMatrix = parentTransform.GetWorldMatrix() * transform.GetLocalMatrix();
-
-                    glm::decompose(transformMatrix, transform.scale, transform.rotation, transform.translation, skew, perspective);
-                }
-            }
-            else
-            {
-                glm::decompose(transform.GetLocalMatrix(), transform.scale, transform.rotation, transform.translation, skew, perspective);
-            }
-        }
-#endif
     }
 
-    void Scene::UpdateTransformRecursive(Entity parentEntity, const glm::mat4 &parentWorldTransform)
+    void Scene::UpdateTransformRecursive(Entity entity, const glm::mat4 &parentWorldTransform)
     {
-        Transform &transform = parentEntity.GetComponent<Transform>();
-        ID &id = parentEntity.GetComponent<ID>();
+        Transform &transform = entity.GetTransform();
+        ID &id = entity.GetComponent<ID>();
 
         glm::vec3 skew;
         glm::vec4 perspective;
@@ -156,28 +85,14 @@ namespace ignite
         glm::mat4 worldMatrix = parentWorldTransform * transform.GetLocalMatrix();
 
         // Special logic for MeshRenderer (e.g., skeletal animation)
-        if (parentEntity.HasComponent<MeshRenderer>())
+        if (entity.HasComponent<MeshRenderer>())
         {
-            MeshRenderer &meshRenderer = parentEntity.GetComponent<MeshRenderer>();
+            MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
+            
             Entity rootNodeEntity = SceneManager::GetEntity(this, meshRenderer.root);
-            Transform& rootNodeTr = rootNodeEntity.GetComponent<Transform>();
-
             SkinnedMesh &skinnedMesh = rootNodeEntity.GetComponent<SkinnedMesh>();
-
-            Entity parentNodeEntity = SceneManager::GetEntity(this, meshRenderer.parentNode);
-            const std::string &name = parentNodeEntity.GetName();
-
+            
             meshRenderer.meshBuffer.transformation = worldMatrix;
-
-            if (skinnedMesh.activeAnimIndex >= 0 && skinnedMesh.animations[skinnedMesh.activeAnimIndex]->isPlaying && id.parent != UUID(0))
-            {
-                auto it = skinnedMesh.skeleton.nameToJointMap.find(name);
-                if (it != skinnedMesh.skeleton.nameToJointMap.end())
-                {
-                    Joint &joint = skinnedMesh.skeleton.joints[it->second];
-                    meshRenderer.meshBuffer.transformation = rootNodeTr.GetWorldMatrix() * joint.globalTransform * transform.GetLocalMatrix();
-                }
-            }
 
             glm::decompose(meshRenderer.meshBuffer.transformation, transform.scale, transform.rotation, transform.translation, skew, perspective);
 
@@ -193,7 +108,14 @@ namespace ignite
         else
         {
             // Standard transform decompose
-            glm::decompose(worldMatrix, transform.scale, transform.rotation, transform.translation, skew, perspective);
+            if (!transform.isAnimated)
+            {
+                glm::decompose(worldMatrix, transform.scale, transform.rotation, transform.translation, skew, perspective);
+            }
+            else
+            {
+                worldMatrix = transform.GetWorldMatrix();
+            }
         }
 
         // Recurse for children
@@ -237,7 +159,7 @@ namespace ignite
         for (entt::entity e: entities | std::views::values)
         {
             Entity entity = { e, this };
-            auto &tr = entity.GetComponent<Transform>();
+            auto &tr = entity.GetTransform();
             
             if (!tr.visible)
                 continue;

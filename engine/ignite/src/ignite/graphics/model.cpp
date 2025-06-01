@@ -28,7 +28,7 @@ namespace ignite {
             MeshLoader::LoadAnimation(scene, animations);
             // Process Skeleton
             MeshLoader::ExtractSkeleton(scene, skeleton);
-            MeshLoader::SortJointsHierchically(skeleton);
+            MeshLoader::SortJointsHierarchically(skeleton);
         }
 
         meshes.resize(scene->mNumMeshes);
@@ -37,6 +37,7 @@ namespace ignite {
             meshes[i] = CreateRef<Mesh>();
         }
 
+        skeleton = CreateRef<Skeleton>();
         MeshLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), meshes, nodes, skeleton, -1);
         MeshLoader::CalculateWorldTransforms(nodes, meshes);
 
@@ -54,11 +55,11 @@ namespace ignite {
         m_Environment = env.get();
     }
 
-    void Model::CreateBindingSet(nvrhi::BindingLayoutHandle bindingLayout)
+    void Model::CreateBindingSet(const nvrhi::BindingLayoutHandle& bindingLayout)
     {
         m_BindingLayout = bindingLayout;
 
-        for (auto &mesh : meshes)
+        for (const auto &mesh : meshes)
         {
             auto desc = nvrhi::BindingSetDesc();
 
@@ -97,7 +98,7 @@ namespace ignite {
         if (m_BufferWritten)
             return;
 
-        for (auto &mesh : meshes)
+        for (const auto &mesh : meshes)
         {
             // m_CreateInfo.commandList->open();
             commandList->writeBuffer(mesh->vertexBuffer, mesh->vertices.data(), sizeof(VertexMesh) * mesh->vertices.size());
@@ -122,7 +123,7 @@ namespace ignite {
         }
     }
 
-    void Model::Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline)
+    void Model::Render(const nvrhi::CommandListHandle& commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline)
     {
         nvrhi::Viewport viewport = framebuffer->getFramebufferInfo().getViewport();
 
@@ -139,10 +140,10 @@ namespace ignite {
 
             if (activeAnimIndex >= 0 && animations[activeAnimIndex]->isPlaying && mesh->nodeParentID != -1)
             {
-                auto it = skeleton.nameToJointMap.find(nodes[mesh->nodeParentID].name);
-                if (it != skeleton.nameToJointMap.end())
+                auto it = skeleton->nameToJointMap.find(nodes[mesh->nodeParentID].name);
+                if (it != skeleton->nameToJointMap.end())
                 {
-                    Joint &joint = skeleton.joints[it->second];
+                    Joint &joint = skeleton->joints[it->second];
                     meshTransform = joint.globalTransform * joint.inverseBindPose * mesh->worldTransform;
                 }
             }
@@ -179,7 +180,7 @@ namespace ignite {
             commandList->setGraphicsState(meshGraphicsState);
 
             nvrhi::DrawArguments args;
-            args.setVertexCount((uint32_t)mesh->indices.size());
+            args.setVertexCount(static_cast<uint32_t>(mesh->indices.size()));
             args.instanceCount = 1;
 
             commandList->drawIndexed(args);

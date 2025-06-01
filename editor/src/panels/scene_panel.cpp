@@ -493,6 +493,7 @@ namespace ignite
                     RenderComponent<MeshRenderer>("Mesh Renderer", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
                     {
                         MeshRenderer *c = comp->As<MeshRenderer>();
+                        ImGui::Text("Mesh: %s", c->name.c_str());
                         ImGui::ColorEdit4("Base Color", &c->material.data.baseColor.x);
                         ImGui::DragFloat("Metallic", &c->material.data.metallic, 0.025f);
                         ImGui::DragFloat("Roughness", &c->material.data.roughness, 0.025f);

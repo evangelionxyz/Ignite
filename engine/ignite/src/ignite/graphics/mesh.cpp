@@ -70,7 +70,7 @@ namespace ignite {
     }
 
     // Mesh loader
-    void MeshLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID)
+    void MeshLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Ref<Skeleton> &skeleton, i32 parentNodeID)
     {
         // Create a node entry and get its index
         NodeInfo nodeInfo;
@@ -103,8 +103,8 @@ namespace ignite {
             {
                 // Go up 
                 NodeInfo parentNode = nodes[nodeInfo.parentID];
-                auto it = skeleton.nameToJointMap.find(parentNode.name);
-                if (it != skeleton.nameToJointMap.end())
+                auto it = skeleton->nameToJointMap.find(parentNode.name);
+                if (it != skeleton->nameToJointMap.end())
                 {
                     meshes[meshIndex]->nodeParentID = nodeInfo.parentID;
                 }
@@ -128,90 +128,9 @@ namespace ignite {
             ProcessNode(scene, node->mChildren[i], filepath, meshes, nodes, skeleton, currentNodeID);
         }
     }
-    
-#if 0
-    UUID MeshLoader::ProcessNode(const aiScene *assimpScene, aiNode *node, const std::string &filepath, Scene *scene, std::vector<EntityNodeInfo> &nodes, const Skeleton &skeleton, UUID parentUUID, i32 parentId)
-    {
-        EntityNodeInfo nodeInfo;
-        nodeInfo.localTransform
-
-        // Create a node entity
-        Entity entity = SceneManager::CreateEntity(scene, node->mName.C_Str(), EntityType_Node);
-        UUID currentNodeId = entity.GetUUID();
-
-        // Get required components
-        ID &entityId = entity.GetComponent<ID>();
-        Transform &transform = entity.GetComponent<Transform>();
-
-        // Convert assimp transform to local transform components
-        glm::mat4 localTransform = Math::AssimpToGlmMatrix(node->mTransformation);
-        Math::DecomposeTransform(localTransform, 
-            transform.localTranslation, 
-            transform.localRotation, 
-            transform.localScale);
-
-        // Update local matrix
-        transform.UpdateLocalMatrix();
-        
-        // Handle parent-child relationships
-        if (parentId != UUID(0))
-        {
-            Entity parentEntity = SceneManager::GetEntity(scene, parentId);
-            SceneManager::AddChild(scene, parentEntity, entity);
-        }
-        else
-        {
-            // Root node - initialize world transform same as local
-            transform.worldMatrix = transform.localMatrix;
-            Math::DecomposeTransform(transform.worldMatrix,
-                transform.translation,
-                transform.rotation,
-                transform.scale);
-        }
-
-        // Presses mesh attached to this node
-        for (uint32_t i = 0; i < node->mNumMeshes; ++i)
-        {
-            i32 meshIndex = node->mMeshes[i];
-            aiMesh *assimpMesh = assimpScene->mMeshes[meshIndex];
-
-            // Create an entity for the mesh
-            std::string meshName = assimpMesh->mName.length > 0 
-                ? assimpMesh->mName.C_Str() 
-                : node->mName.C_Str() + std::string("_Mesh") + std::to_string(i);
-
-            Entity meshEntity = SceneManager::CreateEntity(scene, meshName, EntityType_Mesh);
-
-            // Add as child of the node entity
-            SceneManager::AddChild(scene, entity, meshEntity);
-
-            // Add the skinned mesh renderer component
-            SkinnedMeshRenderer &smr = meshEntity.AddComponent<SkinnedMeshRenderer>();
-            smr.mesh = CreateRef<EntityMesh>();
-
-            // Process material if available
-            if (assimpMesh->mMaterialIndex >= 0)
-            {
-                aiMaterial *mat = assimpScene->mMaterials[assimpMesh->mMaterialIndex];
-                LoadMaterial(assimpScene, mat, filepath, smr.material);
-            }
-
-            // Load mesh data (vertices, indices)
-            LoadSingleMesh<EntityMesh>(assimpScene, meshIndex, assimpMesh, smr.mesh, filepath, skeleton);
-        }
-
-        // Process all children with this node as parent
-        for (u32 i = 0; i < node->mNumChildren; ++i)
-        {
-            ProcessNode(assimpScene, node->mChildren[i], filepath, scene, skeleton, currentNodeId);
-        }
-
-        return currentNodeId;
-    }
-#endif
 
     template<typename T>
-    void MeshLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *assimpMesh, Ref<T> &mesh, const std::string &filepath, const Skeleton &skeleton)
+    void MeshLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *assimpMesh, Ref<T> &mesh, const std::string &filepath, const Ref<Skeleton> &skeleton)
     {
         // vertices;
         VertexMesh vertex;
@@ -261,16 +180,16 @@ namespace ignite {
     }
 
     template<typename T>
-    void MeshLoader::ProcessBoneWeights(aiMesh *assimpMesh, Ref<T> &mesh, const Skeleton &skeleton)
+    void MeshLoader::ProcessBoneWeights(aiMesh *assimpMesh, Ref<T> &mesh, const Ref<Skeleton> &skeleton)
     {
         mesh->boneMapping.clear();
-        mesh->boneInfo.resize(skeleton.joints.size());
+        mesh->boneInfo.resize(skeleton->joints.size());
 
         // Copy bone offset from skeleton
-        for (size_t i = 0; i < skeleton.joints.size(); ++i)
+        for (size_t i = 0; i < skeleton->joints.size(); ++i)
         {
-            mesh->boneInfo[i].offsetMatrix = skeleton.joints[i].inverseBindPose;
-            mesh->boneMapping[skeleton.joints[i].name] = i;
+            mesh->boneInfo[i].offsetMatrix = skeleton->joints[i].inverseBindPose;
+            mesh->boneMapping[skeleton->joints[i].name] = static_cast<i32>(i);
         }
 
         for (uint32_t boneIndex = 0; boneIndex < assimpMesh->mNumBones; ++boneIndex)
@@ -279,8 +198,8 @@ namespace ignite {
             std::string boneName = bone->mName.C_Str();
 
             // Get bone ID from skeleton
-            auto it = skeleton.nameToJointMap.find(boneName);
-            if (it == skeleton.nameToJointMap.end())
+            auto it = skeleton->nameToJointMap.find(boneName);
+            if (it == skeleton->nameToJointMap.end())
             {
                 LOG_WARN("[Model Loader]: Bone {} not found in skeleton!", boneName);
                 continue;
@@ -326,21 +245,20 @@ namespace ignite {
         }
     }
 
-    void MeshLoader::ExtractSkeleton(const aiScene *scene, Skeleton &skeleton)
+    void MeshLoader::ExtractSkeleton(const aiScene *scene, Ref<Skeleton> &skeleton)
     {
-        // count the number of bones
-        std::unordered_set<std::string> uniqueBoneNames;
+        // count the number of joints
+        std::unordered_set<std::string> uniqueJointNames;
         for (uint32_t m = 0; m < scene->mNumMeshes; ++m)
         {
             aiMesh *mesh = scene->mMeshes[m];
             for (uint32_t b = 0; b < mesh->mNumBones; ++b)
             {
-                uniqueBoneNames.insert(mesh->mBones[b]->mName.C_Str());
+                uniqueJointNames.insert(mesh->mBones[b]->mName.C_Str());
             }
         }
 
-        skeleton.joints.reserve(uniqueBoneNames.size());
-
+        skeleton->joints.reserve(uniqueJointNames.size());
         // create joints map and collect inverse bind matrices
         std::unordered_map<std::string, glm::mat4> inverseBindMatrices;
         for (uint32_t m = 0; m < scene->mNumMeshes; ++m)
@@ -356,29 +274,26 @@ namespace ignite {
 
         // Find all nodes related to the skeleton
         ExtractSkeletonRecursive(scene->mRootNode, -1, skeleton, inverseBindMatrices);
-        
     }
 
-    void MeshLoader::ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Skeleton &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices)
+    void MeshLoader::ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Ref<Skeleton> &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices)
     {
         std::string nodeName = node->mName.C_Str();
         bool isJoint = inverseBindMatrices.contains(nodeName);
-
         i32 currentJointId = -1;
-
         if (isJoint)
         {
             // Add this node as a joint
             Joint joint;
             joint.name = nodeName;
-            joint.id = skeleton.joints.size();
+            joint.id = static_cast<i32>(skeleton->joints.size());
             joint.parentJointId = parentJointId;
             joint.inverseBindPose = inverseBindMatrices.at(nodeName);
             joint.localTransform = Math::AssimpToGlmMatrix(node->mTransformation);
 
             currentJointId = joint.id;
-            skeleton.nameToJointMap[nodeName] = currentJointId;
-            skeleton.joints.push_back(joint);
+            skeleton->nameToJointMap[nodeName] = currentJointId;
+            skeleton->joints.push_back(joint);
         }
 
         // process childe (use parent id if this node is not a joint)
@@ -389,36 +304,31 @@ namespace ignite {
         }
     }
 
-    void MeshLoader::SortJointsHierchically(Skeleton &skeleton)
+    void MeshLoader::SortJointsHierarchically(Ref<Skeleton> &skeleton)
     {
         std::vector<Joint> sortedJoints;
-        sortedJoints.reserve(skeleton.joints.size());
-
+        sortedJoints.reserve(skeleton->joints.size());
         // use a queue to process joints level by level
         std::queue<i32> queue;
-
         // start with root joints
-        for (size_t i = 0; i < skeleton.joints.size(); ++i)
+        for (size_t i = 0; i < skeleton->joints.size(); ++i)
         {
-            if (skeleton.joints[i].parentJointId == -1)
+            if (skeleton->joints[i].parentJointId == -1)
                 queue.push(i);
         }
-
         // BFS traversal to ensure parents are processed before children
         while (!queue.empty())
         {
             i32 jointIdx = queue.front();
             queue.pop();
-
-            sortedJoints.push_back(skeleton.joints[jointIdx]);
-            i32 newIdx = sortedJoints.size() - 1;
-
+            sortedJoints.push_back(skeleton->joints[jointIdx]);
+            i32 newIdx = static_cast<int>(sortedJoints.size()) - 1;
             // Update joint indices in the new array
             if (sortedJoints[newIdx].parentJointId != -1)
             {
                 // Find new parent index
-                std::string parentName = skeleton.joints[sortedJoints[newIdx].parentJointId].name;
-                for (size_t j = 0; j < newIdx; ++j)
+                std::string parentName = skeleton->joints[sortedJoints[newIdx].parentJointId].name;
+                for (i32 j = 0; j < newIdx; ++j)
                 {
                     if (sortedJoints[j].name == parentName)
                     {
@@ -427,46 +337,42 @@ namespace ignite {
                     }
                 }
             }
-
             // Add children to queue
-            for (size_t i = 0; i < skeleton.joints.size(); ++i)
+            for (size_t i = 0; i < skeleton->joints.size(); ++i)
             {
-                if (skeleton.joints[i].parentJointId == jointIdx)
+                if (skeleton->joints[i].parentJointId == jointIdx)
                 {
                     queue.push(i);
                 }
             }
         }
-
         // Update name to joint name
-        skeleton.nameToJointMap.clear();
+        skeleton->nameToJointMap.clear();
         for (size_t i = 0; i < sortedJoints.size(); ++i)
         {
             sortedJoints[i].id = i;
-            skeleton.nameToJointMap[sortedJoints[i].name] = i;
+            skeleton->nameToJointMap[sortedJoints[i].name] = i;
         }
-
-        skeleton.joints = std::move(sortedJoints);
-
+        skeleton->joints = std::move(sortedJoints);
     }
 
     void MeshLoader::LoadMaterial(const aiScene *scene, aiMaterial *assimpMaterial, const std::string &filepath, Material &material)
     {
-        aiColor4D base_color(1.0f, 1.0f, 1.0f, 1.0f);
-        aiColor4D diffuse_color(1.0f, 1.0f, 1.0f, 1.0f);
-        aiColor4D emmisive_color(0.0f, 0.0f, 0.0f, 0.0f);
+        aiColor4D baseColor(1.0f, 1.0f, 1.0f, 1.0f);
+        aiColor4D diffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
+        aiColor4D emissiveColor(0.0f, 0.0f, 0.0f, 0.0f);
         f32 reflectivity = 0.0f;
 
-        assimpMaterial->Get(AI_MATKEY_BASE_COLOR, base_color);
-        assimpMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse_color);
-        assimpMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, emmisive_color);
+        assimpMaterial->Get(AI_MATKEY_BASE_COLOR, baseColor);
+        assimpMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
+        assimpMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, emissiveColor);
         assimpMaterial->Get(AI_MATKEY_METALLIC_FACTOR, material.data.metallic);
         assimpMaterial->Get(AI_MATKEY_ROUGHNESS_FACTOR, material.data.roughness);
         assimpMaterial->Get(AI_MATKEY_REFLECTIVITY, reflectivity);
-        material.data.baseColor = { base_color.r, base_color.g, base_color.b, 1.0f };
+        material.data.baseColor = { baseColor.r, baseColor.g, baseColor.b, 1.0f };
         
-        if (diffuse_color.r > 0.0f)
-            material.data.emissive = emmisive_color.r / diffuse_color.r;
+        if (diffuseColor.r > 0.0f)
+            material.data.emissive = emissiveColor.r / diffuseColor.r;
 
         // load textures
         LoadTextures(scene, assimpMaterial, &material, aiTextureType_DIFFUSE);

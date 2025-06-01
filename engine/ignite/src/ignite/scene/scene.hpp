@@ -10,13 +10,14 @@
 
 #include "ignite/asset/asset.hpp"
 
+#include <variant>
+
 namespace ignite
 {
     class Camera;
     class Physics2D;
     class Entity;
 
-    using EntityMap = std::unordered_map<UUID, entt::entity>;
     using EntityComponents = std::unordered_map<entt::entity, std::vector<IComponent *>>;
     using StringCounterMap = std::unordered_map<std::string, i32>;
 
@@ -32,7 +33,7 @@ namespace ignite
         void OnStop();
 
         void UpdateTransforms(float deltaTime);
-        void UpdateTransformRecursive(Entity parentEntity, const glm::mat4 &parentWorldTransform);
+        void UpdateTransformRecursive(Entity entity, const glm::mat4 &parentWorldTransform);
         
         void OnUpdateRuntimeSimulate(f32 deltaTime);
         void OnUpdateEdit(f32 deltaTime);
@@ -43,7 +44,9 @@ namespace ignite
         std::string name;
         entt::registry *registry = nullptr;
 
-        EntityMap entities;
+        std::unordered_map<UUID, entt::entity> entities; // uuid to entity
+        std::unordered_map<std::string, UUID> nameToUUID;
+        
         EntityComponents registeredComps;
         StringCounterMap entityNamesMapCounter;
         std::vector<std::string> entityNames;

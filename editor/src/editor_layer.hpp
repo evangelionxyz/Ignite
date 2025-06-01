@@ -83,8 +83,6 @@ namespace ignite
 
         void SettingsUI();
 
-        void TraverseNodes(Model *model, NodeInfo &node);
-
         Ref<ScenePanel> m_ScenePanel;
         Ref<ContentBrowserPanel> m_ContentBrowserPanel;
 
@@ -95,12 +93,6 @@ namespace ignite
         Ref<GraphicsPipeline> m_MeshPipeline;
 
         Ref<GraphicsPipeline> m_EnvPipeline;
-
-        std::vector<Ref<Model>> m_Models;
-
-        Model *m_SelectedModel = nullptr;
-        NodeInfo *m_SelectedNode = nullptr;
-        MaterialData *m_SelectedMaterial = nullptr;
 
         Ref<Environment> m_Environment;
         DebugRenderData m_DebugRenderData;

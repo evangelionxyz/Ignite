@@ -87,6 +87,8 @@ namespace ignite
         bool operator!=(const Entity &other) const { return !(*this == other); }
 
         UUID GetUUID() { return GetComponent<ID>().uuid; }
+        Transform &GetTransform() { return GetComponent<Transform>(); }
+        
         const std::string &GetName() { return GetComponent<ID>().name; }
 
     private:
