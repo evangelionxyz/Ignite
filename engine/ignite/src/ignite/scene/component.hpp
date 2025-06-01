@@ -156,7 +156,7 @@ namespace ignite
             dirty = true;
         }
 
-        glm::mat4 GetLocalMatrix()
+        glm::mat4 GetLocalMatrix() const
         {
             return glm::translate(glm::mat4(1.0f), localTranslation) * glm::mat4(localRotation) * glm::scale(glm::mat4(1.0f), localScale);
         }
@@ -180,7 +180,7 @@ namespace ignite
             dirty = true;
         }
 
-        glm::mat4 GetWorldMatrix()
+        glm::mat4 GetWorldMatrix() const
         {
             return glm::translate(glm::mat4(1.0f), translation) * glm::mat4(rotation) * glm::scale(glm::mat4(1.0f), scale);
         }

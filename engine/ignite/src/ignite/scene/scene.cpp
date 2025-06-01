@@ -81,9 +81,16 @@ namespace ignite
 
         glm::vec3 skew;
         glm::vec4 perspective;
-
+        
         glm::mat4 worldMatrix = parentWorldTransform * transform.GetLocalMatrix();
-
+        
+        glm::decompose(worldMatrix,
+            transform.scale,
+            transform.rotation,
+            transform.translation,
+            skew,
+            perspective);
+        
         // Special logic for MeshRenderer (e.g., skeletal animation)
         if (entity.HasComponent<MeshRenderer>())
         {
@@ -91,7 +98,7 @@ namespace ignite
             
             Entity rootNodeEntity = SceneManager::GetEntity(this, meshRenderer.root);
             SkinnedMesh &skinnedMesh = rootNodeEntity.GetComponent<SkinnedMesh>();
-            
+
             meshRenderer.meshBuffer.transformation = worldMatrix;
 
             glm::decompose(meshRenderer.meshBuffer.transformation, transform.scale, transform.rotation, transform.translation, skew, perspective);
@@ -105,18 +112,8 @@ namespace ignite
             glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(meshRenderer.meshBuffer.transformation)));
             meshRenderer.meshBuffer.normal = glm::mat4(normalMat3);
         }
-        else
-        {
-            // Standard transform decompose
-            if (!transform.isAnimated)
-            {
-                glm::decompose(worldMatrix, transform.scale, transform.rotation, transform.translation, skew, perspective);
-            }
-            else
-            {
-                worldMatrix = transform.GetWorldMatrix();
-            }
-        }
+
+        transform.dirty = false;
 
         // Recurse for children
         for (const UUID &childUUID : id.children)

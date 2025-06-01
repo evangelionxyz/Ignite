@@ -249,7 +249,7 @@ namespace ignite
         NewScene();
 
         TestLoader(m_ActiveScene, "resources/models/Rogue.glb");
-        // TestLoader(m_ActiveScene, "resources/models/Walking.fbx");
+        TestLoader(m_ActiveScene, "resources/models/Walking.fbx");
 
         m_CommandList->open();
 

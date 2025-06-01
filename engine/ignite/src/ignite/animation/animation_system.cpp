@@ -7,7 +7,7 @@
 
 namespace ignite {
 
-    void AnimationSystem::PlayAnimation(Ref<Model> &model, int animIndex)
+    void AnimationSystem::PlayAnimation(const Ref<Model> &model, int animIndex)
     {
         LOG_ASSERT(model , "[Animationl] model is null!");
         if (animIndex < model->animations.size())
@@ -17,7 +17,7 @@ namespace ignite {
         }
     }
 
-    void AnimationSystem::PlayAnimation(std::vector<Ref<SkeletalAnimation>> &animations, int animIndex /*= 0*/)
+    void AnimationSystem::PlayAnimation(const std::vector<Ref<SkeletalAnimation>> &animations, int animIndex /*= 0*/)
     {
         if (animIndex < animations.size())
         {
@@ -25,7 +25,7 @@ namespace ignite {
         }
     }
 
-    void AnimationSystem::UpdateAnimation(Ref<Model> &model, float timeInSeconds)
+    void AnimationSystem::UpdateAnimation(const Ref<Model> &model, float timeInSeconds)
     {
         if (UpdateSkeleton(model->skeleton, model->GetActiveAnimation(), timeInSeconds))
         {
@@ -33,7 +33,7 @@ namespace ignite {
         }
     }
 
-    void AnimationSystem::ApplySkeletonToEntities(Scene* scene, Ref<Skeleton> &skeleton)
+    void AnimationSystem::ApplySkeletonToEntities(Scene* scene, const Ref<Skeleton> &skeleton)
     {
         for (size_t i = 0; i < skeleton->joints.size(); i++)
         {
@@ -41,27 +41,24 @@ namespace ignite {
             if (it == skeleton->jointEntityMap.end())
                 continue;
 
-            UUID entityId = it->second;
-            Entity entity = SceneManager::GetEntity(scene, entityId);
+            Entity entity = SceneManager::GetEntity(scene, it->second);
 
             if (!entity.HasComponent<Transform>())
                 continue;
-
-            Transform& transform = entity.GetTransform();
-            const glm::mat4 &globalMatrix = skeleton->joints[i].globalTransform;
-
+            
             glm::vec3 skew;
             glm::vec4 perspective;
-            glm::decompose(globalMatrix,
-                transform.scale,
-                transform.rotation,
-                transform.translation,
+
+            Transform& transform = entity.GetTransform();
+            glm::decompose(skeleton->joints[i].localTransform,
+                transform.localScale,
+                transform.localRotation,
+                transform.localTranslation,
                 skew,
                 perspective);
 
             transform.isAnimated = true;
             transform.dirty = true;
-            
         }
     }
 
