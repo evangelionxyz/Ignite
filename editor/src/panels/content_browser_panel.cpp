@@ -48,8 +48,7 @@ namespace ignite {
             std::string filename = path.filename().string();
 
             ImGuiTreeNodeFlags flags = (m_SelectedFileTree == entry.path() ? ImGuiTreeNodeFlags_Selected : 0)
-                | ImGuiTreeNodeFlags_OpenOnArrow
-                | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
+                | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
 
             if (!entry.is_directory())
             {
