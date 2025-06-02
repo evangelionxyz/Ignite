@@ -15,6 +15,7 @@ namespace ignite
     class Camera;
     class Physics2D;
     class Entity;
+    class Environment;
 
     using EntityComponents = std::unordered_map<entt::entity, std::vector<IComponent *>>;
     using StringCounterMap = std::unordered_map<std::string, i32>;
@@ -24,6 +25,8 @@ namespace ignite
     public:
         Scene() = default;
         explicit Scene(const std::string &name);
+
+        void CreateEnvironment();
 
         ~Scene();
 
@@ -38,6 +41,9 @@ namespace ignite
 
         void OnRenderRuntimeSimulate(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer);
         void OnRenderRuntime(nvrhi::IFramebuffer *framebuffer);
+
+        template<typename T>
+        void OnComponentAdded(Entity entity, T &comp);
 
         std::string name;
         entt::registry *registry = nullptr;
@@ -63,6 +69,8 @@ namespace ignite
             AABB aabb;
             glm::mat4 transform;
         };
+
+        Ref<Environment> environment;
 
         float timeInSeconds = 0.0f;
     

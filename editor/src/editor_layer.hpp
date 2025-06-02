@@ -5,14 +5,9 @@
 #include "ignite/ignite.hpp"
 #include "ignite/graphics/graphics_pipeline.hpp"
 #include "ignite/graphics/environment.hpp"
-#include "ignite/graphics/lighting.hpp"
 #include "ignite/serializer/serializer.hpp"
 #include "ignite/project/project.hpp"
-
 #include "states.hpp"
-
-#include <mutex>
-#include <thread>
 #include <future>
 
 namespace ignite
@@ -25,10 +20,6 @@ namespace ignite
     class SkeletalAnimation;
     struct Skeleton;
 
-    struct DebugRenderData
-    {
-        int renderIndex = 0;
-    };
 
     class EditorLayer final : public Layer
     {
@@ -97,8 +88,6 @@ namespace ignite
         
         Ref<GraphicsPipeline> m_MeshPipeline, m_EnvPipeline;
 
-        Ref<Environment> m_Environment;
-        DebugRenderData m_DebugRenderData;
         EditorData m_Data;
 
         std::filesystem::path m_CurrentSceneFilePath;

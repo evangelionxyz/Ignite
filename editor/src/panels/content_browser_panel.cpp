@@ -9,6 +9,19 @@ namespace ignite {
     {
         m_TreeNodes.push_back(TreeNode(".", AssetHandle(0)));
 
+        TextureCreateInfo createInfo;
+        createInfo.format = nvrhi::Format::RGBA8_UNORM;
+        m_Icon = Texture::Create("resources/ui/ic_folder.png", createInfo);
+
+        nvrhi::IDevice *device = Application::GetRenderDevice();
+
+        nvrhi::CommandListHandle commandList = device->createCommandList();
+
+        commandList->open();
+        m_Icon->Write(commandList);
+        commandList->close();
+        
+        device->executeCommandList(commandList);
     }
 
     void ContentBrowserPanel::SetActiveProject(const Ref<Project> &project)
@@ -21,6 +34,7 @@ namespace ignite {
             m_BaseDirectory = m_ActiveProject->GetAssetDirectory();
             
             m_PathEntryList.push_back(m_BaseDirectory);
+            m_CurrentDirectory = m_ActiveProject->GetAssetDirectory();
             RefreshAssetTree();
         }
 
@@ -46,19 +60,14 @@ namespace ignite {
 
             if (ImGui::IsItemHovered())
             {
-                if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-                {
-                    m_SelectedFileTree = entry.path();
-
-                    if (entry.is_directory())
-                    {
-                        m_CurrentDirectory = entry.path();
-                    }
-                }
-
                 if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                 {
-
+                    if (entry.is_directory())
+                    {
+                        m_BackwardPathStack.push(m_CurrentDirectory);
+                        m_SelectedFileTree = entry.path();
+                        m_CurrentDirectory = entry.path();
+                    }
                 }
             }
 
@@ -77,16 +86,40 @@ namespace ignite {
         ImGuiWindow *window = ImGui::GetCurrentWindow();
         ImVec2 regionSize = ImGui::GetContentRegionAvail();
 
-        const ImVec2 navbarBtSize = ImVec2(40.0f, 30.0f);
+        constexpr ImVec2 navbarBtSize = ImVec2(40.0f, 30.0f);
         const ImVec2 navbarSize = ImVec2(regionSize.x, 45.0f);
         // Navigation bar
         ImGui::BeginChild("##NAV_BUTTON_BAR", navbarSize, ImGuiChildFlags_Borders);
 
-        ImGui::Button("<-", navbarBtSize);
+        if (ImGui::Button("<-", navbarBtSize))
+        {
+            if (!m_BackwardPathStack.empty())
+            {
+                m_ForwardPathStack.push(m_CurrentDirectory);
+                m_CurrentDirectory = m_BackwardPathStack.top();
+                m_BackwardPathStack.pop();
+            }
+        }
+        
         ImGui::SameLine();
-        ImGui::Button("->", navbarBtSize);
+        if (ImGui::Button("->", navbarBtSize))
+        {
+            if (!m_ForwardPathStack.empty())
+            {
+                m_BackwardPathStack.push(m_CurrentDirectory);
+                m_CurrentDirectory = m_ForwardPathStack.top();
+                m_ForwardPathStack.pop();
+            }
+        }
+        
         ImGui::SameLine();
-        ImGui::Button("R", navbarBtSize);
+        if (ImGui::Button("R", navbarBtSize))
+        {
+            RefreshAssetTree();
+        }
+
+        ImGui::SameLine();
+        ImGui::SliderInt("Thumbnail Size", &m_ThumbnailSize, 1, 100);
 
         ImGui::EndChild();
 
@@ -97,7 +130,6 @@ namespace ignite {
             RenderFileTree(m_BaseDirectory);
             ImGui::EndChild();
             ImGui::SameLine();
-
 
             // Files
             ImGui::BeginChild("##FILE_LISTS", { 0.0f, 0.0f });
@@ -117,7 +149,6 @@ namespace ignite {
                 {
                     node = &m_TreeNodes[node->children[path]];
                 }
-
             }
 
             if (node->children.empty())
@@ -125,11 +156,11 @@ namespace ignite {
                 ImGui::Text("This folder is empty");
             }
 
-            static float padding = 10.0f;
-            const float cellSize = m_ThumbnailSize + padding;
-            const float &panelWidth = regionSize.x;
+            static float padding = 12.0f;
+            const float cellSize = static_cast<float>(m_ThumbnailSize) + padding;
+            const float &childWindowWidth = ImGui::GetContentRegionAvail().x;
 
-            int columnCount = static_cast<int>(panelWidth / cellSize);
+            int columnCount = static_cast<int>(childWindowWidth / cellSize);
             columnCount = std::max(columnCount, 1);
 
             ImGui::Columns(columnCount, nullptr, false);
@@ -140,16 +171,29 @@ namespace ignite {
                 ImGui::PushID(filenameStr.c_str());
 
                 // float thumbnailHeight = m_ThumbnailSize * (thumbnail->GetHeight() / thumbnail->GetWidth());
-                float thumbnailHeight = m_ThumbnailSize * (320.0f / 540.0f);
-                float diff = static_cast<float>(m_ThumbnailSize - thumbnailHeight);
+                const float thumbnailHeight = static_cast<float>(m_ThumbnailSize) * (320.0f / 540.0f);
+                const float diff = static_cast<float>(m_ThumbnailSize) - thumbnailHeight;
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() + diff);
 
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-                ImGui::Button(filenameStr.c_str(), { (float)m_ThumbnailSize, (float)m_ThumbnailSize });
+
+                ImTextureID iconId = reinterpret_cast<ImTextureID>(m_Icon->GetHandle().Get());
+                ImGui::ImageButton(item.string().c_str(), iconId, { static_cast<float>(m_ThumbnailSize), static_cast<float>(m_ThumbnailSize) });
+
+                if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                {
+                    std::filesystem::path openPath = m_CurrentDirectory / item;
+                    if (std::filesystem::is_directory(openPath))
+                    {
+                        m_BackwardPathStack.push(m_CurrentDirectory);
+                        m_CurrentDirectory = openPath;
+                    }
+                }
+                
                 ImGui::PopStyleColor();
+                ImGui::TextWrapped(filenameStr.c_str());
 
                 ImGui::NextColumn();
-
                 ImGui::PopID();
             }
 

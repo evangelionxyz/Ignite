@@ -27,7 +27,9 @@ namespace ignite
             if constexpr (std::is_base_of<IComponent, T>::value)
             {
                 m_Scene->registeredComps[m_Handle].emplace_back(static_cast<IComponent*>(&comp));
+                m_Scene->OnComponentAdded<T>(*this, comp);
             }
+
             return comp;
         }
 
@@ -38,6 +40,7 @@ namespace ignite
             if constexpr (std::is_base_of<IComponent, T>::value)
             {
                 m_Scene->registeredComps[m_Handle].emplace_back(static_cast<IComponent*>(&comp));
+                m_Scene->OnComponentAdded<T>(*this, comp);
             }
             return comp;
         }

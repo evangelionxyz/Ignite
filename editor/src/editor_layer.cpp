@@ -5,11 +5,7 @@
 
 #include "ignite/core/platform_utils.hpp"
 #include "ignite/core/command.hpp"
-#include "ignite/scene/camera.hpp"
-#include "ignite/graphics/texture.hpp"
-#include "ignite/animation/animation_system.hpp"
 #include "ignite/graphics/renderer_2d.hpp"
-#include "ignite/graphics/mesh_factory.hpp"
 #include "ignite/imgui/gui_function.hpp"
 #include "ignite/graphics/mesh.hpp"
 #include "ignite/asset/asset.hpp"
@@ -26,135 +22,6 @@
 
 namespace ignite
 {
-    static void TestLoader(Ref<Scene> &scene, const std::filesystem::path &filepath)
-    {
-        LOG_ASSERT(std::filesystem::exists(filepath), "[Mesh Loader] File does not exists!");
-        
-        Assimp::Importer importer;
-        const aiScene *assimpScene = importer.ReadFile(filepath.generic_string(), ASSIMP_IMPORTER_FLAGS);
-
-        LOG_ASSERT(assimpScene == nullptr || assimpScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || assimpScene->mRootNode,
-            "[Model] Failed to load {}: {}",
-            filepath,
-            importer.GetErrorString());
-
-        if (!assimpScene)
-        {
-            return;
-        }
-
-        Entity rootNode;
-        Ref<Skeleton> skeleton = CreateRef<Skeleton>();
-        std::vector<Ref<SkeletalAnimation>> animations;
-        
-        if (assimpScene->HasAnimations())
-        {
-            MeshLoader::LoadAnimation(assimpScene, animations);
-
-            // Process Skeleton
-            MeshLoader::ExtractSkeleton(assimpScene, skeleton);
-            MeshLoader::SortJointsHierarchically(skeleton);
-        }
-
-        std::vector<Ref<Mesh>> meshes;
-        meshes.resize(assimpScene->mNumMeshes);
-        for (auto& mesh : meshes)
-        {
-            mesh = CreateRef<Mesh>();
-        }
-
-        std::vector<NodeInfo> nodes;
-
-        MeshLoader::ProcessNode(assimpScene, assimpScene->mRootNode, filepath.generic_string(), meshes, nodes, skeleton, -1);
-        MeshLoader::CalculateWorldTransforms(nodes, meshes);
-
-        // First pass: create all node entities
-        for (auto &node : nodes)
-        {
-            if (node.uuid == UUID(0)) // not yet created
-            {
-                Entity entity = SceneManager::CreateEntity(scene.get(), node.name, EntityType_Node);
-                node.uuid = entity.GetUUID();
-
-                Transform &tr = entity.GetComponent<Transform>();
-                
-                glm::vec3 skew;
-                glm::vec4 perspective;
-                glm::decompose(node.localTransform, tr.localScale, tr.localRotation, tr.localTranslation, skew, perspective);
-
-                tr.dirty = true;
-            }
-        }
-
-        // Second pass: establish hierarchy and add meshes
-        for (auto &node : nodes)
-        {
-            Entity nodeEntity = SceneManager::GetEntity(scene.get(), node.uuid);
-
-            if (node.parentID == -1)
-            {
-                // Attach the node to root node
-                rootNode = nodeEntity;
-
-                ID &id = rootNode.GetComponent<ID>();
-                id.name = filepath.stem().string();
-                
-                SkinnedMesh &skinnedMesh = rootNode.AddComponent<SkinnedMesh>();
-                skinnedMesh.skeleton = skeleton;
-                skinnedMesh.animations = animations;
-            }
-            else
-            {
-                // Attach to parent if not root
-                const auto &parentNode = nodes[node.parentID];
-                Entity parentEntity = SceneManager::GetEntity(scene.get(), parentNode.uuid);
-                SceneManager::AddChild(scene.get(), parentEntity, nodeEntity);
-            }
-
-            // Attach mesh entities to this node
-            for (i32 meshIdx : node.meshIndices)
-            {
-                const auto &mesh = meshes[meshIdx];
-
-                MeshRenderer &meshRenderer = nodeEntity.AddComponent<MeshRenderer>();
-                
-                meshRenderer.name = mesh->name;
-                meshRenderer.root = rootNode.GetUUID();
-
-                for (auto &vertex : mesh->vertices)
-                {
-                    entt::entity e = static_cast<entt::entity>(nodeEntity);
-                    vertex.entityID = entt::to_integral(e);
-                }
-
-                meshRenderer.mesh = CreateRef<EntityMesh>();
-
-                meshRenderer.mesh->vertices = mesh->vertices;
-                meshRenderer.mesh->indices = mesh->indices;
-                meshRenderer.mesh->indexBuffer = mesh->indexBuffer;
-                meshRenderer.mesh->vertexBuffer = mesh->vertexBuffer;
-                meshRenderer.mesh->aabb = mesh->aabb;
-
-                meshRenderer.material = mesh->material;
-            }
-
-            // Extract skeleton joints into entity
-            for (size_t i = 0; i < skeleton->joints.size(); ++i)
-            {
-                if (const std::string &name = skeleton->joints[i].name; scene->nameToUUID.contains(name))
-                {
-                    UUID uuid = scene->nameToUUID[name];
-                    skeleton->jointEntityMap[static_cast<i32>(i)] = uuid;
-                    
-                    Entity entity = SceneManager::GetEntity(scene.get(), uuid);
-                    entity.GetComponent<ID>().type = EntityType_Joint;
-                }
-            }
-        }
-
-        MeshLoader::ClearTextureCache();
-    }
-
     EditorLayer::EditorLayer(const std::string &name)
         : Layer(name)
     {
@@ -167,70 +34,9 @@ namespace ignite
         m_Device = Application::GetDeviceManager()->GetDevice();
         m_CommandList = m_Device->createCommandList();
 
-        {
-            // create debug render
-            nvrhi::BufferDesc dbDesc;
-            dbDesc.byteSize = sizeof(DebugRenderData);
-            dbDesc.isConstantBuffer = true;
-            dbDesc.initialState = nvrhi::ResourceStates::ConstantBuffer;
-            dbDesc.keepInitialState = true;
 
-            m_DebugRenderBuffer = m_Device->createBuffer(dbDesc);
-            LOG_ASSERT(m_DebugRenderBuffer, "Failed to create debug render constant buffer!");
-        }
-
-        // create mesh graphics pipeline
-        {
-            GraphicsPipelineParams params;
-            params.enableBlend = true;
-            params.depthWrite = true;
-            params.depthTest = true;
-            params.fillMode = nvrhi::RasterFillMode::Solid;
-            params.cullMode = nvrhi::RasterCullMode::Front;
-
-            auto attributes = VertexMesh::GetAttributes();
-            GraphicsPiplineCreateInfo pci;
-            pci.attributes = attributes.data();
-            pci.attributeCount = static_cast<uint32_t>(attributes.size());
-            pci.bindingLayoutDesc = VertexMesh::GetBindingLayoutDesc();
-
-            m_MeshPipeline = GraphicsPipeline::Create(params, &pci);
-            m_MeshPipeline->AddShader("default_mesh.vertex.hlsl", nvrhi::ShaderType::Vertex)
-                .AddShader("default_mesh.pixel.hlsl", nvrhi::ShaderType::Pixel)
-                .Build();
-        }
-
-        // create skybox graphics pipeline
-        {
-            GraphicsPipelineParams params;
-            params.enableBlend = true;
-            params.depthWrite = true;
-            params.depthTest = true;
-            params.cullMode = nvrhi::RasterCullMode::Front;
-            params.comparison = nvrhi::ComparisonFunc::Always;
-
-            auto attribute = Environment::GetAttribute();
-            GraphicsPiplineCreateInfo pci;
-            pci.attributes = &attribute;
-            pci.attributeCount = 1;
-            pci.bindingLayoutDesc = Environment::GetBindingLayoutDesc();
-
-            m_EnvPipeline = GraphicsPipeline::Create(params, &pci);
-            m_EnvPipeline->AddShader("skybox.vertex.hlsl", nvrhi::ShaderType::Vertex)
-                .AddShader("skybox.pixel.hlsl", nvrhi::ShaderType::Pixel)
-                .Build();
-
-            // create env
-            m_Environment = Environment::Create(m_Device);
-            m_Environment->LoadTexture(m_Device, "resources/hdr/klippad_sunrise_2_2k.hdr", m_EnvPipeline->GetBindingLayout());
-            
-            m_CommandList->open();
-            m_Environment->WriteBuffer(m_CommandList);
-            m_CommandList->close();
-            m_Device->executeCommandList(m_CommandList);
-
-            m_Environment->SetSunDirection(50.0f, -27.0f);
-        }
+        m_MeshPipeline = Renderer::GetPipeline(GPipelines::DEFAULT_3D_MESH);
+        m_EnvPipeline = Renderer::GetPipeline(GPipelines::DEFAULT_3D_ENV);
 
         // write buffer with command list
         Renderer2D::InitQuadData(m_CommandList);
@@ -251,59 +57,6 @@ namespace ignite
         //         OpenProject(projectFilepath);
         //     }
         // }
-
-        NewScene();
-
-        TestLoader(m_ActiveScene, "resources/models/Rogue.glb");
-        TestLoader(m_ActiveScene, "resources/models/Walking.fbx");
-
-        m_CommandList->open();
-
-        for (auto& ent : m_ActiveScene->entities | std::views::values)
-        {
-            Entity entity { ent, m_ActiveScene.get() };
-            Transform &tr = entity.GetTransform();
-
-            if (entity.HasComponent<MeshRenderer>())
-            {
-                MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
-
-                meshRenderer.mesh->CreateConstantBuffers(m_Device);
-
-                // m_CreateInfo.commandList->open();
-                m_CommandList->writeBuffer(meshRenderer.mesh->vertexBuffer, meshRenderer.mesh->vertices.data(), sizeof(VertexMesh) * meshRenderer.mesh->vertices.size());
-                m_CommandList->writeBuffer(meshRenderer.mesh->indexBuffer, meshRenderer.mesh->indices.data(), sizeof(uint32_t) * meshRenderer.mesh->indices.size());
-
-                // write textures
-                if (meshRenderer.material.ShouldWriteTexture())
-                {
-                    meshRenderer.material.WriteBuffer(m_CommandList);
-                }
-
-                auto desc = nvrhi::BindingSetDesc();
-
-                desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, m_Environment->GetCameraBuffer()));
-                desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, m_Environment->GetDirLightBuffer()));
-                desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, m_Environment->GetParamsBuffer()));
-                desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, meshRenderer.mesh->objectBuffer));
-                desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, meshRenderer.mesh->materialBuffer));
-                desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(5, m_DebugRenderBuffer));
-
-                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, meshRenderer.material.textures[aiTextureType_DIFFUSE].handle));
-                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(1, meshRenderer.material.textures[aiTextureType_SPECULAR].handle));
-                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, meshRenderer.material.textures[aiTextureType_EMISSIVE].handle));
-                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, meshRenderer.material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
-                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(4, meshRenderer.material.textures[aiTextureType_NORMALS].handle));
-                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, m_Environment->GetHDRTexture()));
-                desc.addItem(nvrhi::BindingSetItem::Sampler(0, meshRenderer.material.sampler));
-
-                meshRenderer.mesh->bindingSet = m_Device->createBindingSet(desc, m_MeshPipeline->GetBindingLayout());
-                LOG_ASSERT(meshRenderer.mesh->bindingSet, "Failed to create binding set");
-            }
-        }
-
-        m_CommandList->close();
-        m_Device->executeCommandList(m_CommandList);
     }
 
     void EditorLayer::OnDetach()
@@ -317,6 +70,9 @@ namespace ignite
         Layer::OnUpdate(deltaTime);
 
         AssetImporter::SyncMainThread(m_CommandList, m_Device);
+
+        if (!m_ActiveScene)
+            return;
 
         // multi select entity
         m_Data.multiSelect = Input::IsKeyPressed(Key::LeftShift);
@@ -439,23 +195,12 @@ namespace ignite
         Layer::OnRender(mainFramebuffer);
 
         // create render target framebuffer
-        const uint32_t &backBufferIndex = Application::GetDeviceManager()->GetCurrentBackBufferIndex();
-        static uint32_t backBufferCount = Application::GetDeviceManager()->GetBackBufferCount();
-        const nvrhi::Viewport &mainViewport = mainFramebuffer->getFramebufferInfo().getViewport();
-        uint32_t width = static_cast<uint32_t>(mainViewport.width());
-        uint32_t height = static_cast<uint32_t>(mainViewport.height());
-
-        // m_ScenePanel->GetRT()->CreateFramebuffers(backBufferCount, backBufferIndex);
         m_ScenePanel->GetRT()->CreateSingleFramebuffer();
 
         nvrhi::IFramebuffer *viewportFramebuffer = m_ScenePanel->GetRT()->GetCurrentFramebuffer();
-        nvrhi::Viewport viewport = viewportFramebuffer->getFramebufferInfo().getViewport();
-
-        // Copy from render target to staging texture
 
         // create pipelines
-        m_EnvPipeline->CreatePipeline(viewportFramebuffer);
-        m_MeshPipeline->CreatePipeline(viewportFramebuffer);
+        Renderer::CreatePipelines(viewportFramebuffer);
 
         // main scene rendering
         m_CommandList->open();
@@ -464,57 +209,18 @@ namespace ignite
         nvrhi::utils::ClearColorAttachment(m_CommandList, mainFramebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
 
         m_ScenePanel->GetRT()->ClearColorAttachmentFloat(m_CommandList, 0);
-        m_ScenePanel->GetRT()->ClearColorAttachmentUint(m_CommandList, 1, uint32_t(-1));
+        m_ScenePanel->GetRT()->ClearColorAttachmentUint(m_CommandList, 1, static_cast<uint32_t>(-1));
 
-        float farDepth = 1.0f; // LessOrEqual
+        f32 farDepth = 1.0f; // LessOrEqual
         m_CommandList->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), nvrhi::AllSubresources, true, farDepth, true, 0);
 
-        // render environment
-        m_Environment->Render(m_CommandList, viewportFramebuffer, m_EnvPipeline, m_ScenePanel->GetViewportCamera());
-
-        for (entt::entity e : m_ActiveScene->entities | std::views::values)
+        if (m_ActiveScene)
         {
-            Entity entity = { e, m_ActiveScene.get() };
-            Transform &tr = entity.GetComponent<Transform>();
-
-            if (!tr.visible)
-            {
-                continue;
-            }
-
-            if (entity.HasComponent<MeshRenderer>())
-            {
-                MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
-
-                // write material constant buffer
-                m_CommandList->writeBuffer(meshRenderer.mesh->materialBuffer, &meshRenderer.material.data, sizeof(meshRenderer.material.data));
-                m_CommandList->writeBuffer(meshRenderer.mesh->objectBuffer, &meshRenderer.meshBuffer, sizeof(meshRenderer.meshBuffer));
-
-                // render
-                auto meshGraphicsState = nvrhi::GraphicsState();
-                meshGraphicsState.pipeline = m_MeshPipeline->GetHandle();
-                meshGraphicsState.framebuffer = viewportFramebuffer;
-                meshGraphicsState.viewport = nvrhi::ViewportState().addViewportAndScissorRect(viewport);
-                meshGraphicsState.addVertexBuffer({ meshRenderer.mesh->vertexBuffer, 0, 0 });
-                meshGraphicsState.indexBuffer = { meshRenderer.mesh->indexBuffer, nvrhi::Format::R32_UINT };
-
-                if (meshRenderer.mesh->bindingSet != nullptr)
-                    meshGraphicsState.addBindingSet(meshRenderer.mesh->bindingSet);
-
-                m_CommandList->setGraphicsState(meshGraphicsState);
-
-                nvrhi::DrawArguments args;
-                args.setVertexCount(static_cast<uint32_t>(meshRenderer.mesh->indices.size()));
-                args.instanceCount = 1;
-
-                m_CommandList->drawIndexed(args);
-            }
+            m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer);
         }
 
-        m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer);
-
         // Create staging texture for readback
-        if (m_Data.isPickingEntity)
+        if (m_Data.isPickingEntity && m_ActiveScene)
         {
             nvrhi::TextureDesc stagingDesc = m_ScenePanel->GetRT()->GetColorAttachment(1)->getDesc();
             stagingDesc.initialState = nvrhi::ResourceStates::CopyDest;
@@ -526,7 +232,7 @@ namespace ignite
         m_CommandList->close();
         m_Device->executeCommandList(m_CommandList);
 
-        if (m_Data.isPickingEntity)
+        if (m_Data.isPickingEntity && m_ActiveScene)
         {
             // Map and read the pixel data
             size_t rowPitch = 0;
@@ -548,46 +254,7 @@ namespace ignite
                     uint32_t eId = entt::to_integral(e);
                     if (eId == m_Data.hoveredEntity)
                     {
-                        Entity selectedEntity{ e, m_ActiveScene.get() };
-
-                        if (selectedEntity.HasComponent<MeshRenderer>())
-                        {
-                            MeshRenderer &mr = selectedEntity.GetComponent<MeshRenderer>();
-                            Entity rootNode = SceneManager::GetEntity(m_ActiveScene.get(), mr.root);
-
-                            bool shouldSelectRoot = false;
-                            if (m_ScenePanel->GetSelectedEntity().IsValid())
-                            {
-                                Entity currentSelectedEntity = m_ScenePanel->GetSelectedEntity();
-                                if (currentSelectedEntity.HasComponent<MeshRenderer>())
-                                {
-                                    MeshRenderer &cmr = currentSelectedEntity.GetComponent<MeshRenderer>();
-                                    if (cmr.root != mr.root)
-                                        shouldSelectRoot = true;
-                                }
-                                else if (currentSelectedEntity.HasComponent<SkinnedMesh>())
-                                {
-                                    if (currentSelectedEntity != rootNode)
-                                        shouldSelectRoot = true;
-                                }
-                            }
-
-                            // select root node for the first click
-                            if (!m_ScenePanel->GetSelectedEntity().IsValid() && m_ScenePanel->GetSelectedEntity() != rootNode || shouldSelectRoot)
-                            {
-                                m_ScenePanel->SetSelectedEntity(rootNode);
-                            }
-                            else
-                            {
-                                m_ScenePanel->SetSelectedEntity(selectedEntity);
-                            }
-                        }
-                        else
-                        {
-                            m_ScenePanel->SetSelectedEntity(selectedEntity);
-                        }
-
-
+                        m_ScenePanel->SetSelectedEntity(Entity{ e, m_ActiveScene.get() });
                         found = true;
                         break;
                     }
@@ -693,22 +360,21 @@ namespace ignite
         {
         }
 
-
         if (ImGui::BeginPopup("MenuBar_File"))
         {
-            if (ImGui::MenuItem("New Scene"))
+            if (ImGui::MenuItem("New Scene", nullptr, false, m_ActiveProject != nullptr))
             {
                 NewScene();
             }
-            else if (ImGui::MenuItem("Open Scene"))
+            else if (ImGui::MenuItem("Open Scene",nullptr, false, m_ActiveProject != nullptr))
             {
                 OpenScene();
             }
-            if (ImGui::MenuItem("Save Scene"))
+            if (ImGui::MenuItem("Save Scene",nullptr, false, m_ActiveProject != nullptr))
             {
                 SaveScene();
             }
-            else if (ImGui::MenuItem("Save Scene As"))
+            else if (ImGui::MenuItem("Save Scene As",nullptr, false, m_ActiveProject != nullptr))
             {
                 SaveSceneAs();
             }
@@ -720,7 +386,7 @@ namespace ignite
                 m_Data.popupNewProjectModal = true;
             }
 
-            else if (ImGui::MenuItem("Save Project"))
+            else if (ImGui::MenuItem("Save Project",nullptr, false, m_ActiveProject != nullptr))
             {
                 SaveProject();
             }
@@ -988,8 +654,11 @@ namespace ignite
             auto scenePath = Project::GetInstance()->GetAssetFilepath(metadata.filepath);
             m_CurrentSceneFilePath = scenePath;
         }
-
-
+        else
+        {
+            // Create default scene
+            NewScene();
+        }
         return true;
     }
 
@@ -1034,129 +703,56 @@ namespace ignite
          ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick;
 
         // Camera
-        if (ImGui::TreeNodeEx("Camera", treeFlags))
-        {
-            m_ScenePanel->CameraSettingsUI();
+         if (ImGui::TreeNodeEx("Camera", treeFlags))
+         {
+             m_ScenePanel->CameraSettingsUI();
 
-            static const char *debugRenderView[] = { "None", "Normals", "Roughness", "Metallic", "Reflection" };
-            const char *currentDebugRenderView = debugRenderView[m_DebugRenderData.renderIndex];
-
-            if (ImGui::BeginCombo("Debug View", currentDebugRenderView))
-            {
-                for (size_t i = 0; i < std::size(debugRenderView); ++i)
-                {
-                    bool isSelected = strcmp(currentDebugRenderView, debugRenderView[i]) == 0;
-                    if (ImGui::Selectable(debugRenderView[i], isSelected))
-                    {
-                        currentDebugRenderView = debugRenderView[i];
-                        m_DebugRenderData.renderIndex = i;
-
-                        m_CommandList->open();
-                        m_CommandList->writeBuffer(m_DebugRenderBuffer, &m_DebugRenderData, sizeof(DebugRenderData));
-                        m_CommandList->close();
-                        m_Device->executeCommandList(m_CommandList);
-                    }
-
-                    if (isSelected)
-                    {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndCombo();
-            }
-
-            static const char *renderFillMode[] = { "Solid", "Wireframe" };
-            const char *currentRenderFillMode = renderFillMode[static_cast<int>(m_Data.rasterFillMode)];
-
-            if (ImGui::BeginCombo("Fill Mode", currentRenderFillMode))
-            {
-                for (size_t i = 0; i < std::size(renderFillMode); ++i)
-                {
-                    bool isSelected = strcmp(currentRenderFillMode, renderFillMode[i]) == 0;
-                    
-                    if (ImGui::Selectable(renderFillMode[i], isSelected))
-                    {
-                        m_Data.rasterFillMode = static_cast<nvrhi::RasterFillMode>(i);
-                        m_MeshPipeline->GetParams().fillMode = m_Data.rasterFillMode;
-                        m_MeshPipeline->ResetHandle();
-                    }
-                    
-                    if (isSelected)
-                    {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndCombo();
-            }
-
-            static const char *rasterCullMode[] = { "Back", "Front", "None" };
-            const char *currentRasterCullMode = rasterCullMode[(int)m_Data.rasterCullMode];
-
-            if (ImGui::BeginCombo("Cull Mode", currentRasterCullMode))
-            {
-                for (size_t i = 0; i < std::size(rasterCullMode); ++i)
-                {
-                    bool isSelected = strcmp(currentRasterCullMode, rasterCullMode[i]) == 0;
-
-                    if (ImGui::Selectable(rasterCullMode[i], isSelected))
-                    {
-                        m_Data.rasterCullMode = static_cast<nvrhi::RasterCullMode>(i);
-                        m_MeshPipeline->GetParams().cullMode = m_Data.rasterCullMode;
-
-                        m_MeshPipeline->ResetHandle();
-                    }
-
-                    if (isSelected)
-                    {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndCombo();
-            }
-
-            ImGui::TreePop();
-        }
+             ImGui::TreePop();
+         }
 
         ImGui::Separator();
 
-        // Environment
-        if (ImGui::TreeNodeEx("Environment", treeFlags))
+        if (m_ActiveScene)
         {
-            static glm::vec2 sunAngles = { 50, -27.0f }; // pitch (elevation), yaw (azimuth)
-
-            if (ImGui::Button("Load HDR Texture"))
+            // Environment
+            if (ImGui::TreeNodeEx("Environment", treeFlags))
             {
-                std::string filepath = FileDialogs::OpenFile("HDR Files (*.hdr)\0*.hdr\0");
-                if (!filepath.empty())
+                static glm::vec2 sunAngles = { 50, -27.0f }; // pitch (elevation), yaw (azimuth)
+
+                if (ImGui::Button("Load HDR Texture"))
                 {
-                    EnvironmentImporter::UpdateTexture(&m_Environment, m_Device, filepath, m_EnvPipeline);
+                    std::string filepath = FileDialogs::OpenFile("HDR Files (*.hdr)\0*.hdr\0");
+                    if (!filepath.empty())
+                    {
+                        EnvironmentImporter::UpdateTexture(&m_ActiveScene->environment, m_Device, filepath, m_EnvPipeline);
+                    }
                 }
-            }
 
-            ImGui::Separator();
+                ImGui::Separator();
             
-            ImGui::Text("Sun Angles");
+                ImGui::Text("Sun Angles");
 
-            if (ImGui::SliderFloat("Elevation", &sunAngles.x, 0.0f, 180.0f))
-                m_Environment->SetSunDirection(sunAngles.x, sunAngles.y);
-            if (ImGui::SliderFloat("Azimuth", &sunAngles.y, -180.0f, 180.0f))
-                m_Environment->SetSunDirection(sunAngles.x, sunAngles.y);
+                if (ImGui::SliderFloat("Elevation", &sunAngles.x, 0.0f, 180.0f))
+                    m_ActiveScene->environment->SetSunDirection(sunAngles.x, sunAngles.y);
+                if (ImGui::SliderFloat("Azimuth", &sunAngles.y, -180.0f, 180.0f))
+                    m_ActiveScene->environment->SetSunDirection(sunAngles.x, sunAngles.y);
 
-            ImGui::Separator();
-            ImGui::ColorEdit4("Color", &m_Environment->dirLight.color.x);
-            ImGui::SliderFloat("Intensity", &m_Environment->dirLight.intensity, 0.01f, 1.0f);
+                ImGui::Separator();
+                ImGui::ColorEdit4("Color", &m_ActiveScene->environment->dirLight.color.x);
+                ImGui::SliderFloat("Intensity", &m_ActiveScene->environment->dirLight.intensity, 0.01f, 1.0f);
 
-            float angularSize = glm::degrees(m_Environment->dirLight.angularSize);
-            if (ImGui::SliderFloat("Angular Size", &angularSize, 0.1f, 90.0f))
-            {
-                m_Environment->dirLight.angularSize = glm::radians(angularSize);
-            }
+                float angularSize = glm::degrees(m_ActiveScene->environment->dirLight.angularSize);
+                if (ImGui::SliderFloat("Angular Size", &angularSize, 0.1f, 90.0f))
+                {
+                    m_ActiveScene->environment->dirLight.angularSize = glm::radians(angularSize);
+                }
 
-            ImGui::DragFloat("Ambient", &m_Environment->dirLight.ambientIntensity, 0.005f, 0.01f, 100.0f);
-            ImGui::DragFloat("Exposure", &m_Environment->params.exposure, 0.005f, 0.1f, 10.0f);
-            ImGui::DragFloat("Gamma", &m_Environment->params.gamma, 0.005f, 0.1f, 10.0f);
+                ImGui::DragFloat("Ambient", &m_ActiveScene->environment->dirLight.ambientIntensity, 0.005f, 0.01f, 100.0f);
+                ImGui::DragFloat("Exposure", &m_ActiveScene->environment->params.exposure, 0.005f, 0.1f, 10.0f);
+                ImGui::DragFloat("Gamma", &m_ActiveScene->environment->params.gamma, 0.005f, 0.1f, 10.0f);
         
-            ImGui::TreePop();
+                ImGui::TreePop();
+            }
         }
 
         ImGui::End();

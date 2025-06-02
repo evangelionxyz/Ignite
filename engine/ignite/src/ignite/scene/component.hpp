@@ -217,13 +217,25 @@ namespace ignite
     public:
         std::string name;
         Ref<EntityMesh> mesh;
-        UUID root = UUID(0); // SkinnedMesh / StaticMesh to get the component data
 
         ObjectBuffer meshBuffer;
         Material material;
 
         nvrhi::RasterCullMode cullMode = nvrhi::RasterCullMode::Front;
         nvrhi::RasterFillMode fillMode = nvrhi::RasterFillMode::Solid;
+
+        MeshRenderer() = default;
+        MeshRenderer(const MeshRenderer &other)
+        {
+            name = other.name;
+            mesh = CreateRef<EntityMesh>(*other.mesh.get());
+
+            material = other.material;
+            cullMode = other.cullMode;
+            fillMode = other.fillMode;
+
+            meshBuffer = other.meshBuffer;
+        }
 
         static CompType StaticType() { return CompType_MeshRenderer; }
         virtual CompType GetType() override { return StaticType(); }

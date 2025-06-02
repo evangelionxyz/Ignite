@@ -543,13 +543,13 @@ namespace ignite {
         // create per mesh constant buffers
         constantBufferDesc.setDebugName("Mesh constant buffer");
         constantBufferDesc.setByteSize(sizeof(ObjectBuffer));
-        objectBuffer = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(objectBuffer, "[Model] Failed to create object constant buffer");
+        objectBufferHandle = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(objectBufferHandle, "[Model] Failed to create object constant buffer");
 
         constantBufferDesc.setDebugName("Material constant buffer");
         constantBufferDesc.setByteSize(sizeof(MaterialData));
-        materialBuffer = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(materialBuffer, "[Model] Failed to create material constant buffer");
+        materialBufferHandle = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(materialBufferHandle, "[Model] Failed to create material constant buffer");
     }
 
     // Entity Mesh class

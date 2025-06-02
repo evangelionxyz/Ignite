@@ -8,6 +8,8 @@
 #include <stack>
 #include <map>
 
+#include "ignite/graphics/texture.hpp"
+
 namespace ignite {
 
     class Project;
@@ -56,5 +58,7 @@ namespace ignite {
         std::stack<std::filesystem::path> m_BackwardPathStack;
         std::stack<std::filesystem::path> m_ForwardPathStack;
         std::vector<std::filesystem::path> m_PathEntryList;
+
+        Ref<Texture> m_Icon;
     };
 }

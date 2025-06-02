@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ignite/animation/skeletal_animation.hpp"
 #include "ignite/core/uuid.hpp"
 #include "ignite/math/math.hpp"
 
@@ -320,5 +321,17 @@ namespace ignite {
 
     private:
         Ref<Project> m_Project;
+    };
+
+    class AnimationSerializer
+    {
+    public:
+        AnimationSerializer(const Ref<SkeletalAnimation> &animation);
+
+        bool Serialize(const std::filesystem::path &filepath);
+        static Ref<SkeletalAnimation> Deserialize(const std::filesystem::path &filepath);
+
+    private:
+        Ref<SkeletalAnimation> m_Animation;
     };
 }

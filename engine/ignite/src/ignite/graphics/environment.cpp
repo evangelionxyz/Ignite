@@ -143,7 +143,6 @@ namespace ignite {
         m_IsUpdatingTexture = true;
 
         TextureCreateInfo textureCI;
-        textureCI.device = device;
         textureCI.dimension = nvrhi::TextureDimension::Texture2D;
         textureCI.format = nvrhi::Format::RGBA32_FLOAT;
         textureCI.flip = true; // usually HDR textures are flipped

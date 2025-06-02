@@ -15,12 +15,12 @@ namespace ignite
         s_Instance = nullptr;
     }
 
-    std::filesystem::path Project::GetAssetFilepath(const std::filesystem::path &filepath)
+    std::filesystem::path Project::GetAssetFilepath(const std::filesystem::path &filepath) const
     {
         return m_Info.filepath.parent_path() / m_Info.assetFilepath / filepath;
     }
 
-    std::filesystem::path Project::GetRelativePath(const std::filesystem::path &filepath)
+    std::filesystem::path Project::GetRelativePath(const std::filesystem::path &filepath) const
     {
         return std::filesystem::relative(filepath, m_Info.filepath.parent_path());
     }
@@ -41,6 +41,12 @@ namespace ignite
 
         if (project)
             s_Instance = project.get();
+
+        // generate things
+        
+        std::filesystem::path assetDirectory = project->GetAssetDirectory();
+        if (!std::filesystem::exists(assetDirectory))
+            std::filesystem::create_directories(assetDirectory);
 
         return project;
     }

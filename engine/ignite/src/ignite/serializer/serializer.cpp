@@ -440,4 +440,85 @@ namespace ignite {
         return project;
     }
 
+
+    AnimationSerializer::AnimationSerializer(const Ref<SkeletalAnimation> &animation)
+        : m_Animation(animation)
+    {
+    }
+
+    bool AnimationSerializer::Serialize(const std::filesystem::path &filepath)
+    {
+        if (!m_Animation)
+            return false;
+
+        Serializer sr(filepath);
+
+        sr.BeginMap(); // START
+
+        sr.BeginMap("Animation");
+        sr.AddKeyValue("Name", m_Animation->name);
+        sr.AddKeyValue("Duration", m_Animation->duration);
+        sr.AddKeyValue("TicksPerSeconds", m_Animation->ticksPerSeconds);
+
+        sr.BeginSequence("Channels");
+
+        for (auto &[name, channel] : m_Animation->channels)
+        {
+            sr.BeginMap();
+
+            sr.AddKeyValue("Name", name);
+
+            // Translation
+            sr.BeginSequence("TranslationKeys");
+            for (auto &f : channel.translationKeys.frames)
+            {
+                sr.BeginMap();
+                sr.AddKeyValue("Timestamp", f.Timestamp);
+                sr.AddKeyValue("Value", f.Value);
+                sr.EndMap();
+            }
+            sr.EndSequence();
+
+            // Rotation
+            sr.BeginSequence("RotationKeys");
+            for (auto &f : channel.rotationKeys.frames)
+            {
+                sr.BeginMap();
+                sr.AddKeyValue("Timestamp", f.Timestamp);
+                sr.AddKeyValue("Value", f.Value);
+                sr.EndMap();
+            }
+            sr.EndSequence();
+
+            // Scale
+            sr.BeginSequence("ScaleKeys");
+            for (auto &f : channel.scaleKeys.frames)
+            {
+                sr.BeginMap();
+                sr.AddKeyValue("Timestamp", f.Timestamp);
+                sr.AddKeyValue("Value", f.Value);
+                sr.EndMap();
+            }
+            sr.EndSequence();
+
+            sr.EndMap();
+        }
+
+        sr.EndSequence();
+
+        sr.EndMap();
+
+        sr.EndMap(); // END
+
+        sr.Serialize(filepath);
+
+        return true;
+    }
+
+    Ref<SkeletalAnimation> AnimationSerializer::Deserialize(const std::filesystem::path &filepath)
+    {
+        Ref<SkeletalAnimation> animation;
+
+        return animation;
+    }
 }

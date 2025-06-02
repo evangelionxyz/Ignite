@@ -111,13 +111,33 @@ namespace ignite {
         nvrhi::BufferHandle indexBuffer;
         nvrhi::BindingSetHandle bindingSet;
 
-        nvrhi::BufferHandle objectBuffer;
-        nvrhi::BufferHandle materialBuffer;
+        nvrhi::BufferHandle objectBufferHandle;
+        nvrhi::BufferHandle materialBufferHandle;
 
         std::vector<BoneInfo> boneInfo; // Bone weights and indices
         std::unordered_map<std::string, uint32_t> boneMapping; // Maps bone namse to indices
 
         AABB aabb;
+
+        EntityMesh() = default;
+        EntityMesh(const EntityMesh &other)
+        {
+            vertices = other.vertices;
+            indices = other.indices;
+
+            vertexShader = other.vertexShader;
+            pixelShader = other.pixelShader;
+
+            vertexBuffer = other.vertexBuffer;
+            indexBuffer = other.indexBuffer;
+            bindingSet = other.bindingSet;
+
+            boneInfo = other.boneInfo;
+            boneMapping = other.boneMapping;
+            aabb = other.aabb;
+
+            CreateBuffers();
+        }
 
         void CreateConstantBuffers(nvrhi::IDevice *device);
         void CreateBuffers();

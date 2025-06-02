@@ -93,7 +93,6 @@ namespace ignite
                 .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(2)) // environment
                 .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(3)) // model
                 .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(4)) // material
-                .addItem(nvrhi::BindingLayoutItem::ConstantBuffer(5)) // debug
 
                 .addItem(nvrhi::BindingLayoutItem::Texture_SRV(0)) // diffuse
                 .addItem(nvrhi::BindingLayoutItem::Texture_SRV(1)) // specular

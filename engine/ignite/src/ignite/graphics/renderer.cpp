@@ -3,6 +3,8 @@
 #include "texture.hpp"
 #include "shader.hpp"
 
+#include "environment.hpp"
+
 #include "ignite/core/device/device_manager.hpp"
 
 namespace ignite
@@ -25,7 +27,6 @@ namespace ignite
 
         {
             TextureCreateInfo textureCI;
-            textureCI.device = device;
             textureCI.format = nvrhi::Format::RGBA8_UNORM;
             textureCI.dimension = nvrhi::TextureDimension::Texture2D;
             textureCI.samplerMode = nvrhi::SamplerAddressMode::ClampToBorder;
@@ -65,6 +66,8 @@ namespace ignite
         
         device->executeCommandList(commandList);
 
+        InitPipelines();
+
         Renderer2D::Init();
     }
 
@@ -89,6 +92,11 @@ namespace ignite
         if (s_instance->m_Shaders.contains(shaderName))
             return &s_instance->m_Shaders[shaderName];
         return nullptr;
+    }
+
+    Ref<GraphicsPipeline> Renderer::GetPipeline(GPipelines gpipeline)
+    {
+        return s_instance->m_Pipelines[gpipeline];
     }
 
     void Renderer::LoadDefaultShaders(nvrhi::IDevice *device)
@@ -123,6 +131,51 @@ namespace ignite
         }
     }
 
+    void Renderer::InitPipelines()
+    {
+        // environment
+        {
+            GraphicsPipelineParams params;
+            params.enableBlend = true;
+            params.depthWrite = true;
+            params.depthTest = true;
+            params.cullMode = nvrhi::RasterCullMode::Front;
+            params.comparison = nvrhi::ComparisonFunc::Always;
+
+            auto attribute = Environment::GetAttribute();
+            GraphicsPiplineCreateInfo pci;
+            pci.attributes = &attribute;
+            pci.attributeCount = 1;
+            pci.bindingLayoutDesc = Environment::GetBindingLayoutDesc();
+
+            m_Pipelines[GPipelines::DEFAULT_3D_ENV] = GraphicsPipeline::Create(params, &pci);
+            m_Pipelines[GPipelines::DEFAULT_3D_ENV]->AddShader("skybox.vertex.hlsl", nvrhi::ShaderType::Vertex)
+                .AddShader("skybox.pixel.hlsl", nvrhi::ShaderType::Pixel)
+                .Build();
+        }
+
+        // Mesh pipelines
+        {
+            GraphicsPipelineParams params;
+            params.enableBlend = true;
+            params.depthWrite = true;
+            params.depthTest = true;
+            params.fillMode = nvrhi::RasterFillMode::Solid;
+            params.cullMode = nvrhi::RasterCullMode::Front;
+
+            auto attributes = VertexMesh::GetAttributes();
+            GraphicsPiplineCreateInfo pci;
+            pci.attributes = attributes.data();
+            pci.attributeCount = static_cast<uint32_t>(attributes.size());
+            pci.bindingLayoutDesc = VertexMesh::GetBindingLayoutDesc();
+
+            m_Pipelines[GPipelines::DEFAULT_3D_MESH] = GraphicsPipeline::Create(params, &pci);
+            m_Pipelines[GPipelines::DEFAULT_3D_MESH]->AddShader("default_mesh.vertex.hlsl", nvrhi::ShaderType::Vertex)
+                .AddShader("default_mesh.pixel.hlsl", nvrhi::ShaderType::Pixel)
+                .Build();
+        }
+    }
+
     Ref<Texture> Renderer::GetWhiteTexture()
     {
         return s_instance->m_WhiteTexture;
@@ -131,6 +184,14 @@ namespace ignite
     Ref<Texture> Renderer::GetBlackTexture()
     {
         return s_instance->m_BlackTexture;
+    }
+
+    void Renderer::CreatePipelines(nvrhi::IFramebuffer *framebuffer)
+    {
+        for (auto &[gp, pipeline] : s_instance->m_Pipelines)
+        {
+            pipeline->CreatePipeline(framebuffer);
+        }
     }
 
 }

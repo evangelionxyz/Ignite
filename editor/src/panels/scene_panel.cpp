@@ -73,8 +73,12 @@ namespace ignite
 
         ImGui::ShowDemoWindow();
 
-        RenderHierarchy();
-        RenderInspector();
+        if (m_Scene)
+        {
+            RenderHierarchy();
+            RenderInspector();
+        }
+        
         RenderViewport();
     }
 
@@ -86,7 +90,7 @@ namespace ignite
     void ScenePanel::RenderHierarchy()
     {
         ImGui::Begin("Hierarchy");
-
+      
         static ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar;
         ImGui::BeginChild("scene_hierarchy", { ImGui::GetContentRegionAvail().x, 20.0f }, 0, windowFlags);
         ImGui::Button(m_Scene->name.c_str(), ImGui::GetContentRegionAvail());
@@ -179,9 +183,11 @@ namespace ignite
 
     void ScenePanel::RenderEntityNode(Entity entity, UUID uuid, i32 index)
     {
-        ID &idComp = entity.GetComponent<ID>();
+        if (!entity.IsValid())
+            return;
 
-        if (!entity.IsValid() || (idComp.parent && index == 0))
+        ID &idComp = entity.GetComponent<ID>();
+        if (idComp.parent && index == 0)
             return;
 
         ImGuiTreeNodeFlags flags = (m_SelectedEntity == entity ? ImGuiTreeNodeFlags_Selected : 0) | (!idComp.HasChild() ? ImGuiTreeNodeFlags_Leaf : 0)
@@ -353,7 +359,6 @@ namespace ignite
                             if (!filepath.empty())
                             {
                                 TextureCreateInfo texCI;
-                                texCI.device = Application::GetInstance()->GetDeviceManager()->GetDevice();
                                 texCI.flip = false;
                                 texCI.format = nvrhi::Format::RGBA8_UNORM;
                                 texCI.dimension = nvrhi::TextureDimension::Texture2D;
@@ -496,43 +501,188 @@ namespace ignite
                 }
                 case CompType_SkinnedMesh:
                 {
-                    RenderComponent<SkinnedMesh>("Skinned Mesh", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
+                    RenderComponent<SkinnedMesh>("Skinned Mesh", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene, this]()
                     {
                         SkinnedMesh *c = comp->As<SkinnedMesh>();
 
-                        ImGui::SeparatorText("Animations");
-                        if (ImGui::Button("Play"))
+                        if (ImGui::Button("Load"))
                         {
-                            const Ref<SkeletalAnimation> &anim = c->animations[c->activeAnimIndex];
-                            anim->isPlaying = true;
-                        }
-
-                        ImGui::SameLine();
-
-                        if (ImGui::Button("Stop"))
-                        {
-                            const Ref<SkeletalAnimation> &anim = c->animations[c->activeAnimIndex];
-                            anim->isPlaying = false;
-                        }
-
-                        if (ImGui::TreeNode("Animations"))
-                        {
-                            for (size_t animIdx = 0; animIdx < c->animations.size(); ++animIdx)
+                            std::filesystem::path filepath = FileDialogs::OpenFile("GLB/GLTF (*.glb;*.gltf)\0*.glb;*.gltf\0FBX (*.fbx)\0*.fbx");
+                            if (!filepath.empty())
                             {
-                                const Ref<SkeletalAnimation> &anim = c->animations[animIdx];
-                                if (ImGui::TreeNodeEx(anim->name.c_str(), ImGuiTreeNodeFlags_Leaf, "%s", anim->name.c_str()))
+                                LOG_ASSERT(std::filesystem::exists(filepath), "[Mesh Loader] File does not exists!");
+
+                                Assimp::Importer importer;
+                                const aiScene *assimpScene = importer.ReadFile(filepath.generic_string(), ASSIMP_IMPORTER_FLAGS);
+
+                                LOG_ASSERT(assimpScene == nullptr || assimpScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || assimpScene->mRootNode,
+                                    "[Model] Failed to load {}: {}",
+                                    filepath,
+                                    importer.GetErrorString());
+
+                                if (!assimpScene)
                                 {
-                                    if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                                    return Entity{};
+                                }
+
+                                c->skeleton = CreateRef<Skeleton>();
+
+                                if (assimpScene->HasAnimations())
+                                {
+                                    MeshLoader::LoadAnimation(assimpScene, c->animations);
+
+                                    // Process Skeleton
+                                    MeshLoader::ExtractSkeleton(assimpScene, c->skeleton);
+                                    MeshLoader::SortJointsHierarchically(c->skeleton);
+                                }
+
+                                std::vector<Ref<Mesh>> meshes;
+                                meshes.resize(assimpScene->mNumMeshes);
+                                for (auto &mesh : meshes)
+                                {
+                                    mesh = CreateRef<Mesh>();
+                                }
+
+                                std::vector<NodeInfo> nodes;
+
+                                MeshLoader::ProcessNode(assimpScene, assimpScene->mRootNode, filepath.generic_string(), meshes, nodes, c->skeleton, -1);
+                                MeshLoader::CalculateWorldTransforms(nodes, meshes);
+
+                                // First pass: create all node entities
+                                for (auto &node : nodes)
+                                {
+                                    if (node.uuid == UUID(0) || node.parentID != -1) // not yet created
                                     {
-                                        c->activeAnimIndex = animIdx;
+                                        Entity entity = SceneManager::CreateEntity(scene, node.name, EntityType_Node);
+                                        node.uuid = entity.GetUUID();
+
+                                        Transform &tr = entity.GetComponent<Transform>();
+
+                                        glm::vec3 skew;
+                                        glm::vec4 perspective;
+                                        glm::decompose(node.localTransform, tr.localScale, tr.localRotation, tr.localTranslation, skew, perspective);
+
+                                        tr.dirty = true;
                                     }
-                                    ImGui::TreePop();
+                                }
+
+                                // Second pass: establish hierarchy and add meshes
+                                for (auto &node : nodes)
+                                {
+                                    Entity nodeEntity = SceneManager::GetEntity(scene, node.uuid);
+
+                                    if (node.parentID == -1)
+                                    {
+                                        // Attach the node to root node
+                                        ID &id = m_SelectedEntity.GetComponent<ID>();
+                                        id.name = filepath.stem().string();
+
+                                        SceneManager::AddChild(scene, m_SelectedEntity, nodeEntity);
+                                    }
+                                    else
+                                    {
+                                        // Attach to parent if not root
+                                        const auto &parentNode = nodes[node.parentID];
+                                        Entity parentEntity = SceneManager::GetEntity(scene, parentNode.uuid);
+                                        SceneManager::AddChild(scene, parentEntity, nodeEntity);
+                                    }
+
+                                    // Attach mesh entities to this node
+                                    for (i32 meshIdx : node.meshIndices)
+                                    {
+                                        const auto &mesh = meshes[meshIdx];
+
+                                        MeshRenderer &meshRenderer = nodeEntity.AddComponent<MeshRenderer>();
+
+                                        meshRenderer.name = mesh->name;
+                                        // meshRenderer.root = m_SelectedEntity.GetUUID();
+
+                                        for (auto &vertex : mesh->vertices)
+                                        {
+                                            entt::entity e = static_cast<entt::entity>(nodeEntity);
+                                            vertex.entityID = entt::to_integral(e);
+                                        }
+
+                                        meshRenderer.mesh = CreateRef<EntityMesh>();
+
+                                        meshRenderer.mesh->vertices = mesh->vertices;
+                                        meshRenderer.mesh->indices = mesh->indices;
+                                        meshRenderer.mesh->indexBuffer = mesh->indexBuffer;
+                                        meshRenderer.mesh->vertexBuffer = mesh->vertexBuffer;
+                                        meshRenderer.mesh->aabb = mesh->aabb;
+
+                                        meshRenderer.material = mesh->material;
+
+                                        SceneManager::WriteMeshBuffer(scene, meshRenderer);
+                                    }
+
+                                    // Extract skeleton joints into entity
+                                    for (size_t i = 0; i < c->skeleton->joints.size(); ++i)
+                                    {
+                                        if (const std::string &name = c->skeleton->joints[i].name; scene->nameToUUID.contains(name))
+                                        {
+                                            UUID uuid = scene->nameToUUID[name];
+                                            c->skeleton->jointEntityMap[static_cast<i32>(i)] = uuid;
+
+                                            Entity entity = SceneManager::GetEntity(scene, uuid);
+                                            entity.GetComponent<ID>().type = EntityType_Joint;
+                                        }
+                                    }
+                                }
+
+                                MeshLoader::ClearTextureCache();
+                            }
+                        }
+
+                        if (!c->animations.empty())
+                        {
+
+                            ImGui::SeparatorText("Animations");
+                            if (ImGui::Button("Save Animations"))
+                            {
+                                std::filesystem::path directory = FileDialogs::SelectFolder();
+                                if (!directory.empty())
+                                {
+                                    for (auto &anim : c->animations)
+                                    {
+                                        std::filesystem::path filepath = directory / std::format("anim_{0}.anim", anim->name);
+                                        AnimationSerializer sr(anim);
+                                        sr.Serialize(filepath);
+                                    }
                                 }
                             }
-                            ImGui::TreePop();
+
+                            if (ImGui::Button("Play"))
+                            {
+                                const Ref<SkeletalAnimation> &anim = c->animations[c->activeAnimIndex];
+                                anim->isPlaying = true;
+                            }
+
+                            ImGui::SameLine();
+
+                            if (ImGui::Button("Stop"))
+                            {
+                                const Ref<SkeletalAnimation> &anim = c->animations[c->activeAnimIndex];
+                                anim->isPlaying = false;
+                            }
+
+                            if (ImGui::TreeNode("Animations"))
+                            {
+                                for (size_t animIdx = 0; animIdx < c->animations.size(); ++animIdx)
+                                {
+                                    const Ref<SkeletalAnimation> &anim = c->animations[animIdx];
+                                    if (ImGui::TreeNodeEx(anim->name.c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", anim->name.c_str()))
+                                    {
+                                        if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                                        {
+                                            c->activeAnimIndex = animIdx;
+                                        }
+                                        ImGui::TreePop();
+                                    }
+                                }
+                                ImGui::TreePop();
+                            }
                         }
-                        
-                        
                     });
                     break;
                 }

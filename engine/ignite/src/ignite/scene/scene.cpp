@@ -6,11 +6,15 @@
 
 #include "ignite/graphics/mesh.hpp"
 #include "camera.hpp"
+#include "ignite/graphics/renderer.hpp"
 #include "ignite/graphics/renderer_2d.hpp"
+#include "ignite/graphics/environment.hpp"
 #include "ignite/physics/2d/physics_2d.hpp"
 #include "ignite/math/math.hpp"
-#include "entity.hpp"
 #include "scene_manager.hpp"
+#include "entity.hpp"
+
+#include "ignite/core/application.hpp"
 
 #include "ignite/animation/animation_system.hpp"
 
@@ -21,6 +25,27 @@ namespace ignite
     {
         registry = new entt::registry();
         physics2D = CreateScope<Physics2D>(this);
+
+        CreateEnvironment();
+    }
+
+    void Scene::CreateEnvironment()
+    {
+        // create env
+        auto pipeline = Renderer::GetPipeline(GPipelines::DEFAULT_3D_ENV);
+        nvrhi::IDevice *device = Application::GetRenderDevice();
+
+        
+        environment = Environment::Create(device);
+        environment->LoadTexture(device, "resources/hdr/klippad_sunrise_2_2k.hdr", pipeline->GetBindingLayout());
+
+        nvrhi::CommandListHandle commandList = device->createCommandList();
+        commandList->open();
+        environment->WriteBuffer(commandList);
+        commandList->close();
+        device->executeCommandList(commandList);
+
+        environment->SetSunDirection(50.0f, -27.0f);
     }
 
     Scene::~Scene()
@@ -95,27 +120,38 @@ namespace ignite
         if (entity.HasComponent<MeshRenderer>())
         {
             MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
-            
-            Entity rootNodeEntity = SceneManager::GetEntity(this, meshRenderer.root);
-            SkinnedMesh &skinnedMesh = rootNodeEntity.GetComponent<SkinnedMesh>();
 
             meshRenderer.meshBuffer.transformation = worldMatrix;
-
             glm::decompose(meshRenderer.meshBuffer.transformation, transform.scale, transform.rotation, transform.translation, skew, perspective);
-
-            const size_t numBones = std::min(skinnedMesh.boneTransforms.size(), static_cast<size_t>(MAX_BONES));
-            for (size_t i = 0; i < numBones; ++i)
-            {
-                meshRenderer.meshBuffer.boneTransforms[i] = skinnedMesh.boneTransforms[i];
-            }
-
-            for (size_t i = numBones; i < MAX_BONES; ++i)
-            {
-                meshRenderer.meshBuffer.boneTransforms[i] = glm::mat4(1.0f);
-            }
 
             glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(meshRenderer.meshBuffer.transformation)));
             meshRenderer.meshBuffer.normal = glm::mat4(normalMat3);
+            
+#if 0
+            if (meshRenderer.root != UUID(0))
+            {
+                Entity rootNodeEntity = SceneManager::GetEntity(this, meshRenderer.root);
+                SkinnedMesh &skinnedMesh = rootNodeEntity.GetComponent<SkinnedMesh>();
+                
+                const size_t numBones = std::min(skinnedMesh.boneTransforms.size(), static_cast<size_t>(MAX_BONES));
+                for (size_t i = 0; i < numBones; ++i)
+                {
+                    meshRenderer.meshBuffer.boneTransforms[i] = skinnedMesh.boneTransforms[i];
+                }
+                
+                for (size_t i = numBones; i < MAX_BONES; ++i)
+                {
+                    meshRenderer.meshBuffer.boneTransforms[i] = glm::mat4(1.0f);
+                }
+            }
+            else
+#endif
+            {
+                for (size_t i = 0; i < MAX_BONES; ++i)
+                {
+                    meshRenderer.meshBuffer.boneTransforms[i] = glm::mat4(1.0f);
+                }
+            }
         }
 
         transform.dirty = false;
@@ -156,6 +192,11 @@ namespace ignite
 
     void Scene::OnRenderRuntimeSimulate(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer)
     {
+        // First pass:
+        const auto &meshPipeline = Renderer::GetPipeline(GPipelines::DEFAULT_3D_MESH);
+        environment->Render(commandList, framebuffer, Renderer::GetPipeline(GPipelines::DEFAULT_3D_ENV), camera);
+
+        // Second pass:
         Renderer2D::Begin(camera, commandList, framebuffer);
 
         for (entt::entity e: entities | std::views::values)
@@ -166,6 +207,34 @@ namespace ignite
             if (!tr.visible)
                 continue;
 
+            if (entity.HasComponent<MeshRenderer>())
+            {
+                MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
+
+                // write material constant buffer
+                commandList->writeBuffer(meshRenderer.mesh->materialBufferHandle, &meshRenderer.material.data, sizeof(meshRenderer.material.data));
+                commandList->writeBuffer(meshRenderer.mesh->objectBufferHandle, &meshRenderer.meshBuffer, sizeof(meshRenderer.meshBuffer));
+
+                // render
+                auto meshGraphicsState = nvrhi::GraphicsState();
+                meshGraphicsState.pipeline = meshPipeline->GetHandle();
+                meshGraphicsState.framebuffer = framebuffer;
+                meshGraphicsState.viewport = nvrhi::ViewportState().addViewportAndScissorRect(framebuffer->getFramebufferInfo().getViewport());
+                meshGraphicsState.addVertexBuffer({ meshRenderer.mesh->vertexBuffer, 0, 0 });
+                meshGraphicsState.indexBuffer = { meshRenderer.mesh->indexBuffer, nvrhi::Format::R32_UINT };
+
+                if (meshRenderer.mesh->bindingSet != nullptr)
+                    meshGraphicsState.addBindingSet(meshRenderer.mesh->bindingSet);
+
+                commandList->setGraphicsState(meshGraphicsState);
+
+                nvrhi::DrawArguments args;
+                args.setVertexCount(static_cast<uint32_t>(meshRenderer.mesh->indices.size()));
+                args.instanceCount = 1;
+
+                commandList->drawIndexed(args);
+            }
+
             if (entity.HasComponent<Sprite2D>())
             {
                 auto &sprite = entity.GetComponent<Sprite2D>();
@@ -175,6 +244,46 @@ namespace ignite
 
         Renderer2D::Flush();
         Renderer2D::End();
+    }
+
+    template<typename T>
+    void Scene::OnComponentAdded(Entity entity, T &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<ID>(Entity entity, ID &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<Transform>(Entity entity, Transform &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<Sprite2D>(Entity entity, Sprite2D &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<SkinnedMesh>(Entity entity, SkinnedMesh &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<MeshRenderer>(Entity entity, MeshRenderer &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<Rigidbody2D>(Entity entity, Rigidbody2D &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<BoxCollider2D>(Entity entity, BoxCollider2D &comp)
+    {
     }
 }
 

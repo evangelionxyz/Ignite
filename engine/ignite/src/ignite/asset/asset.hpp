@@ -19,6 +19,8 @@ namespace ignite {
         Model,
         Project,
         Environment,
+        SkeletalAnimation,
+        Anim2D,
         Scene
     };
 
@@ -32,15 +34,18 @@ namespace ignite {
             case ignite::AssetType::Project: return "Project";
             case ignite::AssetType::Environment: return "Environment";
             case ignite::AssetType::Scene: return "Scene";
+            case ignite::AssetType::SkeletalAnimation: return "SkeletalAnimation";
+            case ignite::AssetType::Anim2D: return "Anim2D";
             case ignite::AssetType::Invalid:
-            default:
-                return "Invalid";
+            default: return "Invalid";
         }
     }
 
     static std::map<std::string, AssetType> s_AssetExtensionMap =
     {
         { ".ixproj", AssetType::Project },
+        { ".anim2d", AssetType::Anim2D },
+        { ".anim", AssetType::SkeletalAnimation},
         { ".ixs", AssetType::Scene },
         { ".jpg", AssetType::Texture },
         { ".hdr", AssetType::Texture },
@@ -55,20 +60,15 @@ namespace ignite {
 
     static AssetType AssetTypeFromString(const std::string &typeStr)
     {
-        if (typeStr == "Scene")
-            return AssetType::Scene;
-        else if (typeStr == "Texture")
-            return AssetType::Texture;
-        else if (typeStr == "Audio")
-            return AssetType::Audio;
-        else if (typeStr == "Project")
-            return AssetType::Project;
-        else if (typeStr == "Model")
-            return AssetType::Model;
-        else if (typeStr == "Environment")
-            return AssetType::Environment;
-        else
-            return AssetType::Invalid;
+        if (typeStr == "Scene") return AssetType::Scene;
+        if (typeStr == "Texture") return AssetType::Texture;
+        if (typeStr == "Audio") return AssetType::Audio;
+        if (typeStr == "Project") return AssetType::Project;
+        if (typeStr == "Model") return AssetType::Model;
+        if (typeStr == "Environment") return AssetType::Environment;
+        if (typeStr == "SkeletalAnimation") return AssetType::SkeletalAnimation;
+        if (typeStr == "Anim2D")  return AssetType::Anim2D;
+        return AssetType::Invalid;
     }
 
     static AssetType GetAssetTypeFromExtension(const std::string &ext)

@@ -2,7 +2,11 @@
 #include "scene.hpp"
 #include "entity.hpp"
 #include "entity_command_manager.hpp"
+#include "ignite/core/application.hpp"
 #include "ignite/core/uuid.hpp"
+
+#include "ignite/graphics/environment.hpp"
+#include "ignite/graphics/renderer.hpp"
 #include "ignite/math/math.hpp"
 
 #include <string>
@@ -148,6 +152,47 @@ namespace ignite
         return entity;
     }
 
+    void SceneManager::WriteMeshBuffer(Scene *scene, MeshRenderer &meshRenderer)
+    {
+        nvrhi::IDevice *device = Application::GetRenderDevice();
+        nvrhi::CommandListHandle commandList = device->createCommandList();
+
+        commandList->open();
+
+        meshRenderer.mesh->CreateConstantBuffers(device);
+
+        // m_CreateInfo.commandList->open();
+        commandList->writeBuffer(meshRenderer.mesh->vertexBuffer, meshRenderer.mesh->vertices.data(), sizeof(VertexMesh) * meshRenderer.mesh->vertices.size());
+        commandList->writeBuffer(meshRenderer.mesh->indexBuffer, meshRenderer.mesh->indices.data(), sizeof(uint32_t) * meshRenderer.mesh->indices.size());
+
+        // write textures
+        if (meshRenderer.material.ShouldWriteTexture())
+        {
+            meshRenderer.material.WriteBuffer(commandList);
+        }
+
+        auto desc = nvrhi::BindingSetDesc();
+        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, scene->environment->GetCameraBuffer()));
+        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, scene->environment->GetDirLightBuffer()));
+        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, scene->environment->GetParamsBuffer()));
+        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, meshRenderer.mesh->objectBufferHandle));
+        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, meshRenderer.mesh->materialBufferHandle));
+
+        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, meshRenderer.material.textures[aiTextureType_DIFFUSE].handle));
+        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(1, meshRenderer.material.textures[aiTextureType_SPECULAR].handle));
+        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, meshRenderer.material.textures[aiTextureType_EMISSIVE].handle));
+        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, meshRenderer.material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
+        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(4, meshRenderer.material.textures[aiTextureType_NORMALS].handle));
+        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, scene->environment->GetHDRTexture()));
+        desc.addItem(nvrhi::BindingSetItem::Sampler(0, meshRenderer.material.sampler));
+
+        meshRenderer.mesh->bindingSet = device->createBindingSet(desc, Renderer::GetPipeline(GPipelines::DEFAULT_3D_MESH)->GetBindingLayout());
+        LOG_ASSERT(meshRenderer.mesh->bindingSet, "Failed to create binding set");
+
+        commandList->close();
+        device->executeCommandList(commandList);
+    }
+
     void SceneManager::RenameEntity(Scene *scene, Entity entity, const std::string &newName)
     {
         scene->SetDirtyFlag(true);
@@ -234,6 +279,18 @@ namespace ignite
 
         // copy current entity's components to new entity
         SceneManager::CopyComponentIfExists(AllComponents{}, newEntity, entity);
+
+        if (newEntity.HasComponent<MeshRenderer>())
+        {
+            MeshRenderer &mr = newEntity.GetComponent<MeshRenderer>();
+
+            for (auto &vertex : mr.mesh->vertices)
+            {
+                vertex.entityID = static_cast<u32>(newEntity);
+            }
+
+            SceneManager::WriteMeshBuffer(scene, mr);
+        }
 
         // get new entity's ID Component
         ID &newEntityIDComp = newEntity.GetComponent<ID>();

@@ -38,18 +38,12 @@ struct Material
     float emissive;
 };
 
-struct Debug
-{
-    int renderIndex;
-};
-
 // push constant buffers
 cbuffer CameraBuffer : register(b0) { Camera camera; }
 cbuffer DirLightBuffer : register(b1) { DirLight dirLight; }
 cbuffer EnvironmentBuffer : register(b2) { Environment env; }
 cbuffer ObjectBuffer : register(b3) { Object object; }
 cbuffer MaterialBuffer : register(b4) { Material material; }
-cbuffer DebugBuffer : register(b5) { Debug debug; }
 
 struct PSInput
 {
@@ -154,33 +148,9 @@ PSOutput main(PSInput input)
     lighting += emissive;
     
     PSOutput result;
+    lighting = FilmicTonemap(lighting, env.exposure, env.gamma);
+    result.color = float4(lighting, 1.0);
     result.entityID = uint4(input.entityID, input.entityID, input.entityID, input.entityID);
-    
-
-    switch (debug.renderIndex)
-    {
-        case 0:
-        default:
-            // ===== TONE MAPPING & OUTPUT =====
-            lighting = FilmicTonemap(lighting, env.exposure, env.gamma);
-            result.color = float4(lighting, 1.0);
-            break;
-        case 1:
-            result.color = float4((normal * 0.5 + 0.5) * normalColTex, 1.0);
-            break;
-        case 2:
-            // Debug view for roughness
-            result.color = float4(filteredRoughness, filteredRoughness, filteredRoughness, 1.0);
-            break;
-        case 3:
-            // Debug view for metallic
-            result.color = float4(finalMetallic, finalMetallic, finalMetallic, 1.0);
-            break;
-        case 4:
-            // Debug reflection only
-            result.color = float4(reflectedSpecular, 1.0);
-            break;
-    }
     
     return result;
 }

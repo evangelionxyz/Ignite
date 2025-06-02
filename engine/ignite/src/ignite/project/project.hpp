@@ -27,8 +27,8 @@ namespace ignite
 
         ~Project();
 
-        std::filesystem::path GetAssetFilepath(const std::filesystem::path &filepath);
-        std::filesystem::path GetRelativePath(const std::filesystem::path &filepath);
+        std::filesystem::path GetAssetFilepath(const std::filesystem::path &filepath) const;
+        std::filesystem::path GetRelativePath(const std::filesystem::path &filepath) const;
         
         void SetActiveScene(const Ref<Scene> &scene);
 
@@ -43,7 +43,7 @@ namespace ignite
 
         const Ref<Scene> &GetActiveScene() { return m_ActiveScene; }
 
-        const std::filesystem::path GetAssetDirectory()
+        const std::filesystem::path GetAssetDirectory() const
         {
             return m_Info.filepath.parent_path() / m_Info.assetFilepath;
         }
