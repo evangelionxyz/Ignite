@@ -851,7 +851,27 @@ namespace ignite
         const ImTextureID imguiTex = reinterpret_cast<ImTextureID>(m_RenderTarget->GetColorAttachment(0).Get());
         ImGui::Image(imguiTex, window->Size);
 
-        static glm::mat4 gridMatrix(1.0f);
+        if (ImGui::BeginDragDropTarget())
+        {
+            if (const ImGuiPayload *payload = ImGui::GetDragDropPayload())
+            {
+                if (payload->DataSize == sizeof(AssetHandle))
+                {
+                    AssetHandle *handle = static_cast<AssetHandle *>(payload->Data);
+                    if (handle && *handle != AssetHandle(0))
+                    {
+                        AssetMetaData metadata = Project::GetInstance()->GetAssetManager().GetMetaData(*handle);
+                        if (metadata.type == AssetType::Scene)
+                        {
+                            std::filesystem::path filepath = Project::GetInstance()->GetAssetFilepath(metadata.filepath);
+                            m_Editor->OpenScene(filepath);
+                        }
+                    }
+                }
+            }
+
+            ImGui::EndDragDropTarget();
+        }
 
         GizmoInfo gizmoInfo;
         gizmoInfo.cameraView = m_ViewportCamera->viewMatrix;

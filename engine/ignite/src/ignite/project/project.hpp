@@ -26,9 +26,10 @@ namespace ignite
         Project(const ProjectInfo &info);
 
         ~Project();
-
+        
+        std::filesystem::path GetAssetRelativeFilepath(const std::filesystem::path &filepath) const;
         std::filesystem::path GetAssetFilepath(const std::filesystem::path &filepath) const;
-        std::filesystem::path GetRelativePath(const std::filesystem::path &filepath) const;
+        std::filesystem::path GetRelativeFilepath(const std::filesystem::path &filepath) const;
         
         void SetActiveScene(const Ref<Scene> &scene);
 

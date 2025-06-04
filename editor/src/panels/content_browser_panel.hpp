@@ -15,6 +15,21 @@ namespace ignite {
     class Project;
     class EditorLayer;
 
+    struct FileTreeNode
+    {
+        AssetHandle handle = AssetHandle(0);
+        std::filesystem::path path;
+        // path, index
+        std::map<std::filesystem::path, uint32_t> children;
+        uint32_t parent = static_cast<uint32_t>(-1);
+        bool isDeleted = false;
+
+        FileTreeNode(const std::filesystem::path &path, AssetHandle handle)
+            : path(path), handle(handle)
+        {
+        }
+    };
+
     class ContentBrowserPanel : public IPanel
     {
     public:
@@ -22,23 +37,9 @@ namespace ignite {
 
         void SetActiveProject(const Ref<Project> &project);
 
-        void RenderFileTree(const std::filesystem::path &directory);
+        void RenderFileTree(FileTreeNode *node);
 
         virtual void OnGuiRender() override;
-
-        struct TreeNode
-        {
-            AssetHandle handle = AssetHandle(0);
-
-            std::filesystem::path path;
-            std::map<std::filesystem::path, uint32_t> children;
-
-            uint32_t parent = static_cast<uint32_t>(-1);
-            TreeNode(const std::filesystem::path &path, AssetHandle handle)
-                : path(path), handle(handle)
-            {
-            }
-        };
 
     private:
         void RefreshEntryPathList();
@@ -46,9 +47,19 @@ namespace ignite {
         void RefreshAssetTree();
         void LoadAssetTree(const std::filesystem::path &directory);
 
+        void PruneMissingNodes(uint32_t nodeIndex, const std::filesystem::path &basePath);
+        void PruneMissingNodesAlt(uint32_t nodeIndex, const std::filesystem::path &basePath);
+        void CollectNodesToDelete(uint32_t nodeIndex, const std::filesystem::path &basePath, std::vector<uint32_t> &nodesToDelete);
+        void CollectNodeAndDescendants(uint32_t nodeIndex, std::vector<uint32_t> &nodesToDelete);
+        void MarkNodeDeletedRecursive(uint32_t nodeIndex);
+        void DeleteSingleNode(uint32_t nodeIndex);
+        void UpdateIndicesAfterDeletion(uint32_t deletedIndex);
+        void CompactTree();
+        std::filesystem::path GetFullPath(uint32_t nodeIndex) const;
+
         Ref<Project> m_ActiveProject;
 
-        std::vector<TreeNode> m_TreeNodes;
+        std::vector<FileTreeNode> m_TreeNodes;
         int m_ThumbnailSize = 64;
 
         std::filesystem::path m_BaseDirectory;

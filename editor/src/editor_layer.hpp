@@ -20,7 +20,6 @@ namespace ignite
     class SkeletalAnimation;
     struct Skeleton;
 
-
     class EditorLayer final : public Layer
     {
     private:
@@ -98,5 +97,7 @@ namespace ignite
         nvrhi::StagingTextureHandle m_EntityIDStagingTexture;
         
         nvrhi::IDevice *m_Device = nullptr;
+
+        friend class ScenePanel;
     };
 }

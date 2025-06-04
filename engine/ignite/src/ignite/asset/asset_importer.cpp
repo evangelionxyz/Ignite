@@ -21,8 +21,14 @@ namespace ignite {
 
     Ref<Asset> AssetImporter::Import(AssetHandle handle, const AssetMetaData &metadata)
     {
-        if (s_ImportFuntions.contains(metadata.type))
-            return s_ImportFuntions.at(metadata.type)(handle, metadata);
+        Project *activeProject = Project::GetInstance();
+
+        // should be always importing with full filepath
+        AssetMetaData metadataCopy = metadata;
+        metadataCopy.filepath = activeProject->GetAssetFilepath(metadata.filepath);
+
+        if (s_ImportFuntions.contains(metadataCopy.type))
+            return s_ImportFuntions.at(metadataCopy.type)(handle, metadataCopy);
 
         return nullptr;
     }
@@ -127,17 +133,9 @@ namespace ignite {
 
     Ref<Scene> SceneImporter::Import(AssetHandle handle, const AssetMetaData &metadata)
     {
-        Project *activeProject = Project::GetInstance();
-
-        std::filesystem::path filepath = activeProject->GetAssetFilepath(metadata.filepath);
-        
-        Ref<Scene> scene = SceneSerializer::Deserialize(filepath);
-
+        Ref<Scene> scene = SceneSerializer::Deserialize(metadata.filepath);
         if (scene)
-        {
             scene->handle = handle;
-        }
-
         return scene;
     }
 

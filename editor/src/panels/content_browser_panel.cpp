@@ -2,12 +2,14 @@
 #include "ignite/project/project.hpp"
 #include "editor_layer.hpp"
 
+#include <algorithm>
+
 namespace ignite {
 
     ContentBrowserPanel::ContentBrowserPanel(const char *windowTitle)
         : IPanel(windowTitle)
     {
-        m_TreeNodes.push_back(TreeNode(".", AssetHandle(0)));
+        m_TreeNodes.emplace_back(".", AssetHandle(0));
 
         TextureCreateInfo createInfo;
         createInfo.format = nvrhi::Format::RGBA8_UNORM;
@@ -30,7 +32,6 @@ namespace ignite {
 
         if (m_ActiveProject)
         {
-            auto &info = m_ActiveProject->GetInfo();
             m_BaseDirectory = m_ActiveProject->GetAssetDirectory();
             
             m_PathEntryList.push_back(m_BaseDirectory);
@@ -40,41 +41,46 @@ namespace ignite {
 
     }
 
-    void ContentBrowserPanel::RenderFileTree(const std::filesystem::path &directory)
+    void ContentBrowserPanel::RenderFileTree(FileTreeNode *node)
     {
-        for (const auto &entry : std::filesystem::directory_iterator(directory))
+        if (node->path.empty())
+            return;
+
+        const std::filesystem::path &filepath = Project::GetInstance()->GetAssetFilepath(node->path);
+        const std::string filename = filepath.filename().string();
+        const bool isDirectory = std::filesystem::is_directory(filepath);
+
+        ImGuiTreeNodeFlags flags = (m_SelectedFileTree == filepath ? ImGuiTreeNodeFlags_Selected : 0)
+            | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
+
+        if (!isDirectory)
         {
-            const std::filesystem::path &path = entry.path();
-            std::string filename = path.filename().string();
+            flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+        }
 
-            ImGuiTreeNodeFlags flags = (m_SelectedFileTree == entry.path() ? ImGuiTreeNodeFlags_Selected : 0)
-                | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
+        const bool opened = ImGui::TreeNodeEx(filename.c_str(), flags, "%s", filename.c_str());
 
-            if (!entry.is_directory())
+        if (ImGui::IsItemHovered())
+        {
+            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
-                flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-            }
-
-            bool opened = ImGui::TreeNodeEx(filename.c_str(), flags, filename.c_str());
-
-            if (ImGui::IsItemHovered())
-            {
-                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                if (isDirectory)
                 {
-                    if (entry.is_directory())
-                    {
-                        m_BackwardPathStack.push(m_CurrentDirectory);
-                        m_SelectedFileTree = entry.path();
-                        m_CurrentDirectory = entry.path();
-                    }
+                    m_BackwardPathStack.push(m_CurrentDirectory);
+                    m_SelectedFileTree = filepath;
+                    m_CurrentDirectory = filepath;
                 }
             }
+        }
 
-            if (opened && entry.is_directory())
+        if (opened && isDirectory)
+        {
+            for (auto& nodeIndex : node->children | std::views::values)
             {
-                RenderFileTree(path);
-                ImGui::TreePop();
+                RenderFileTree(&m_TreeNodes[nodeIndex]);
             }
+            
+            ImGui::TreePop();
         }
     }
 
@@ -82,9 +88,7 @@ namespace ignite {
     {
         ImGui::Begin("Content Browser");
 
-        ImGuiWindow *window = ImGui::GetCurrentWindow();
         ImVec2 regionSize = ImGui::GetContentRegionAvail();
-
         constexpr ImVec2 navbarBtSize = ImVec2(40.0f, 30.0f);
         const ImVec2 navbarSize = ImVec2(regionSize.x, 45.0f);
         // Navigation bar
@@ -114,7 +118,9 @@ namespace ignite {
         ImGui::SameLine();
         if (ImGui::Button("R", navbarBtSize))
         {
+            PruneMissingNodes(0, Project::GetInstance()->GetAssetDirectory());
             RefreshAssetTree();
+            CompactTree();
         }
 
         ImGui::SameLine();
@@ -126,7 +132,11 @@ namespace ignite {
         {
             // Left side directory tree
             ImGui::BeginChild("left_item_browser", { 300.0f, 0.0f }, ImGuiChildFlags_ResizeX);
-            RenderFileTree(m_BaseDirectory);
+            for (auto it = m_TreeNodes.begin() + 1; it != m_TreeNodes.end(); ++it)
+            {
+                if (it->parent == 0)
+                    RenderFileTree(&(*it));
+            }
             ImGui::EndChild();
             ImGui::SameLine();
 
@@ -134,9 +144,10 @@ namespace ignite {
             ImGui::BeginChild("##FILE_LISTS", { 0.0f, 0.0f });
 
             // Insert path nodes
-            TreeNode *node = m_TreeNodes.data();
+            FileTreeNode *node = m_TreeNodes.data();
             auto f = Project::GetActiveAssetDirectory();
             const auto &relativePath = std::filesystem::relative(m_CurrentDirectory, f);
+
             for (const auto &path : relativePath)
             {
                 if (node->path == relativePath)
@@ -164,7 +175,7 @@ namespace ignite {
 
             ImGui::Columns(columnCount, nullptr, false);
 
-            for (auto &[item, nodeIndex] : node->children)
+            for (const auto& [item, index] : node->children)
             {
                 std::string filenameStr = item.generic_string();
                 ImGui::PushID(filenameStr.c_str());
@@ -188,9 +199,28 @@ namespace ignite {
                         m_CurrentDirectory = openPath;
                     }
                 }
+
+                if (ImGui::BeginDragDropSource())
+                {
+                    if (!std::filesystem::is_directory(item))
+                    {
+                        std::string fileExtension = item.extension().string();
+                        if (fileExtension == ".ixasset")
+                        {
+                            std::filesystem::path filepath = m_ActiveProject->GetAssetRelativeFilepath(m_BaseDirectory / node->path / item);
+                            AssetHandle handle = m_ActiveProject->GetAssetManager().GetAssetHandle(filepath);
+                            if (handle != AssetHandle(0))
+                            {
+                                ImGui::SetDragDropPayload("content_browser_item", &handle, sizeof(AssetHandle));
+                            }
+                        }
+                    }
+
+                    ImGui::EndDragDropSource();
+                }
                 
                 ImGui::PopStyleColor();
-                ImGui::TextWrapped(filenameStr.c_str());
+                ImGui::TextWrapped("%s", filenameStr.c_str());
 
                 ImGui::NextColumn();
                 ImGui::PopID();
@@ -211,7 +241,7 @@ namespace ignite {
         const auto &relativePath = std::filesystem::relative(m_CurrentDirectory, Project::GetActiveAssetDirectory());
         auto currentDir = Project::GetActiveAssetDirectory();
 
-        for (auto p : relativePath)
+        for (const auto &p : relativePath)
         {
             const std::string &pString = p.string();
             if (pString != ".")
@@ -231,14 +261,13 @@ namespace ignite {
     void ContentBrowserPanel::LoadAssetTree(const std::filesystem::path &directory)
     {
         const std::filesystem::path assetPath = Project::GetActiveAssetDirectory();
-        const AssetRegistry &assetRegistry = Project::GetInstance()->GetAssetManager().GetAssetAssetRegistry();
 
         for (const auto &entry : std::filesystem::directory_iterator(directory))
         {
-            const std::filesystem::path &currentRelativePath = std::filesystem::relative(entry.path(), assetPath);
-
+            const std::filesystem::path &relativePath = std::filesystem::relative(entry.path(), assetPath);
             uint32_t currentNodeIndex = 0;
-            for (const std::filesystem::path &path : currentRelativePath)
+            
+            for (const std::filesystem::path &path : relativePath)
             {
                 const auto it = m_TreeNodes[currentNodeIndex].children.find(path.generic_string());
                 if (it != m_TreeNodes[currentNodeIndex].children.end())
@@ -250,11 +279,11 @@ namespace ignite {
                     AssetHandle assetHandle = AssetHandle(0);
                     if (!std::filesystem::is_directory(path) && path.has_extension())
                     {
-                        std::string relativeAssetPathStr = currentRelativePath.generic_string();
+                        std::string relativeAssetPathStr = relativePath.generic_string();
                         assetHandle = Project::GetInstance()->GetAssetManager().ImportAsset(relativeAssetPathStr);
                     }
 
-                    TreeNode newNode(path, assetHandle);
+                    FileTreeNode newNode(path, assetHandle);
                     newNode.parent = currentNodeIndex;
 
                     m_TreeNodes.push_back(newNode);
@@ -262,7 +291,7 @@ namespace ignite {
                     currentNodeIndex = static_cast<int>(m_TreeNodes.size()) - 1;
                 }
             }
-
+            
             if (entry.is_directory())
             {
                 LoadAssetTree(entry.path());
@@ -270,4 +299,223 @@ namespace ignite {
         }
     }
 
+    void ContentBrowserPanel::PruneMissingNodes(uint32_t nodeIndex, const std::filesystem::path& basePath)
+    {
+        if (nodeIndex >= m_TreeNodes.size() || m_TreeNodes[nodeIndex].isDeleted)
+            return;
+
+        FileTreeNode &node = m_TreeNodes[nodeIndex];
+        std::vector<std::string> toRemove;
+
+        for (auto it = node.children.begin(); it != node.children.end(); )
+        {
+            auto &[childName, childIndex] = *it;
+
+            if (childIndex >= m_TreeNodes.size() || m_TreeNodes[childIndex].isDeleted)
+            {
+                it = node.children.erase(it);
+                continue;
+            }
+
+            std::filesystem::path fullPath = basePath / GetFullPath(childIndex);
+
+            if (!std::filesystem::exists(fullPath))
+            {
+                toRemove.push_back((childName.string()));
+            }
+            else if (std::filesystem::is_directory(fullPath))
+            {
+                PruneMissingNodes(childIndex, fullPath);
+            }
+            ++it;
+        }
+
+        for (const auto& name : toRemove)
+        {
+            if (auto it = node.children.find(name); it != node.children.end())
+            {
+                const uint32_t childIndex = it->second;
+                MarkNodeDeletedRecursive(childIndex);
+                node.children.erase(it);
+            }
+        }
+    }
+
+    void ContentBrowserPanel::PruneMissingNodesAlt(uint32_t nodeIndex, const std::filesystem::path &basePath)
+    {
+        std::vector<uint32_t> nodesToDelete;
+        CollectNodesToDelete(nodeIndex, basePath, nodesToDelete);
+
+        // sort in descending order to delete from highes index first
+        std::ranges::sort(nodesToDelete.rbegin(), nodesToDelete.rend());
+        for (uint32_t nodeToDelete : nodesToDelete)
+        {
+            DeleteSingleNode(nodeToDelete);
+        }
+    }
+
+    void ContentBrowserPanel::CollectNodesToDelete(uint32_t nodeIndex, const std::filesystem::path &basePath, std::vector<uint32_t> &nodesToDelete)
+    {
+        FileTreeNode &node = m_TreeNodes[nodeIndex];
+
+        for (auto& childIndex : node.children | std::views::values)
+        {
+            std::filesystem::path fullPath = basePath / GetFullPath(childIndex);
+            if (!std::filesystem::exists(fullPath))
+            {
+                CollectNodeAndDescendants(childIndex, nodesToDelete);
+            }
+            else if (std::filesystem::is_directory(fullPath))
+            {
+                CollectNodesToDelete(childIndex, fullPath, nodesToDelete);
+            }
+        }
+    }
+
+    void ContentBrowserPanel::CollectNodeAndDescendants(uint32_t nodeIndex, std::vector<uint32_t> &nodesToDelete)
+    {
+        FileTreeNode &node = m_TreeNodes[nodeIndex];
+
+        for (auto& childIndex : node.children | std::views::values)
+        {
+            CollectNodeAndDescendants(childIndex, nodesToDelete);
+        }
+
+        nodesToDelete.push_back(nodeIndex);
+    }
+
+    void ContentBrowserPanel::MarkNodeDeletedRecursive(uint32_t nodeIndex)
+    {
+        if (nodeIndex >= m_TreeNodes.size() || m_TreeNodes[nodeIndex].isDeleted)
+            return;
+
+        FileTreeNode &node = m_TreeNodes[nodeIndex];
+        node.isDeleted = true;
+
+        for (auto& childIndex : node.children | std::views::values)
+        {
+            MarkNodeDeletedRecursive(childIndex);
+        }
+
+        node.children.clear();
+    }
+
+    void ContentBrowserPanel::DeleteSingleNode(uint32_t nodeIndex)
+    {
+        // Remove this node from its parent's children map
+        if (nodeIndex < m_TreeNodes.size())
+        {
+            FileTreeNode &nodeToDelete = m_TreeNodes[nodeIndex];
+            if (nodeToDelete.parent != static_cast<uint32_t>(-1) && nodeToDelete.parent < m_TreeNodes.size())
+            {
+                FileTreeNode &parent = m_TreeNodes[nodeToDelete.parent];
+                for (auto it = parent.children.begin(); it != parent.children.end(); ++it)
+                {
+                    if (it->second == nodeIndex)
+                    {
+                        parent.children.erase(it);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Erase the node
+        m_TreeNodes.erase(m_TreeNodes.begin() + nodeIndex);
+
+        // Update all indices greater than nodeIndex
+        UpdateIndicesAfterDeletion(nodeIndex);
+    }
+
+    void ContentBrowserPanel::UpdateIndicesAfterDeletion(uint32_t deletedIndex)
+    {
+        for (auto &node : m_TreeNodes)
+        {
+            // Update parent index
+            if (node.parent > deletedIndex)
+            {
+                node.parent--;
+            }
+
+            // Update children indices
+            for (auto& childIndex : node.children | std::views::values)
+            {
+                if (childIndex > deletedIndex)
+                {
+                    childIndex--;
+                }
+            }
+        }
+    }
+
+    void ContentBrowserPanel::CompactTree()
+    {
+        std::vector<FileTreeNode> newNodes;
+        std::unordered_map<uint32_t, uint32_t> indexMapping;
+
+        // First pass: copy non-deleted nodes and create index mapping
+        for (uint32_t i = 0; i < m_TreeNodes.size(); ++i)
+        {
+            if (!m_TreeNodes[i].isDeleted)
+            {
+                indexMapping[i] = static_cast<uint32_t>(newNodes.size());
+                newNodes.push_back(m_TreeNodes[i]);
+            }
+        }
+
+        // Second pass: update all indices
+        for (auto &node : newNodes)
+        {
+            // Update parent index
+            if (node.parent != 0)
+            {
+                auto it = indexMapping.find(node.parent);
+                node.parent = (it != indexMapping.end()) ? it->second : 0;
+            }
+
+            // Update children indices
+            for (auto& childIndex : node.children | std::views::values)
+            {
+                auto it = indexMapping.find(childIndex);
+                if (it != indexMapping.end())
+                {
+                    childIndex = it->second;
+                }
+            }
+
+            // Remove children that were deleted
+            for (auto it = node.children.begin(); it != node.children.end();)
+            {
+                if (!indexMapping.contains(it->second))
+                {
+                    //it = node.children.erase(it);
+                    ++it;
+                    
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+        }
+
+        m_TreeNodes = std::move(newNodes);
+    }
+
+    std::filesystem::path ContentBrowserPanel::GetFullPath(uint32_t nodeIndex) const
+    {
+        std::filesystem::path result;
+        while (nodeIndex != 0)
+        {
+            const FileTreeNode &node = m_TreeNodes[nodeIndex];
+
+            if (node.path.has_extension())
+                return node.path;
+
+            result = node.path / result;
+            nodeIndex = node.parent;
+        }
+
+        return result;
+    }
 }

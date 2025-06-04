@@ -368,14 +368,15 @@ namespace ignite {
             {
                 assetSr.BeginMap(); // Begin Metadata
 
-                metadata.filepath = m_Project->GetAssetFilepath(metadata.filepath);
+                metadata.filepath = m_Project->GetAssetRelativeFilepath(metadata.filepath);
 
-                assetSr.AddKeyValue("Handle", (uint64_t)handle);
+                assetSr.AddKeyValue("Handle", static_cast<uint64_t>(handle));
                 assetSr.AddKeyValue("Type", AssetTypeToString(metadata.type));
                 assetSr.AddKeyValue("Filepath", metadata.filepath.generic_string());
 
                 assetSr.EndMap();
             }
+
             assetSr.EndSequence(); // Asset sequence
 
             assetSr.EndMap(); // End
@@ -412,10 +413,10 @@ namespace ignite {
         // import registry
         if (!info.assetRegistryFilename.empty())
         {
+            // project filepath / asset filename (.ixreg)
             std::filesystem::path assetRegFilepath = filepath.parent_path() / info.assetRegistryFilename;
             YAML::Node assetRegFileNode = Serializer::Deserialize(assetRegFilepath);
             YAML::Node assetRegNode = assetRegFileNode["AssetRegistry"];
-
 
             for (YAML::Node assetNode : assetRegNode["Assets"])
             {

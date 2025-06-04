@@ -11,6 +11,8 @@
 #include "ignite/asset/asset.hpp"
 #include "ignite/asset/asset_importer.hpp"
 
+#include <inttypes.h>
+
 #include <glm/glm.hpp>
 #include <nvrhi/utils.h>
 
@@ -47,16 +49,16 @@ namespace ignite
 
         m_ContentBrowserPanel = CreateRef<ContentBrowserPanel>("Content Browser");
 
-        // const auto &cmdArgs = Application::GetInstance()->GetCreateInfo().cmdLineArgs;
-        // for (int i = 0; i < cmdArgs.count; ++i)
-        // {
-        //     std::string args = cmdArgs[i];
-        //     if (args.find("-project=") != std::string::npos)
-        //     {
-        //         std::string projectFilepath = args.substr(9, args.size() - 9);
-        //         OpenProject(projectFilepath);
-        //     }
-        // }
+        const auto &cmdArgs = Application::GetInstance()->GetCreateInfo().cmdLineArgs;
+        for (int i = 0; i < cmdArgs.count; ++i)
+        {
+            std::string args = cmdArgs[i];
+            if (args.find("-project=") != std::string::npos)
+            {
+                std::string projectFilepath = args.substr(9, args.size() - 9);
+                OpenProject(projectFilepath);
+            }
+        }
     }
 
     void EditorLayer::OnDetach()
@@ -515,9 +517,9 @@ namespace ignite
                 {
                     ImGui::Text("Registered assets:");
 
-                    for (auto &[handle, metadata] : assetRegistry)
+                    for (const auto [handle, metadata] : assetRegistry)
                     {
-                        ImGui::Text("Handle: %ull", static_cast<uint64_t>(handle));
+                        ImGui::Text("Handle: %" PRIu64, static_cast<uint64_t>(handle));
                         ImGui::Text("Type: %s", AssetTypeToString(metadata.type).c_str());
                         ImGui::Text("Filepath: %s", metadata.filepath.generic_string().c_str());
                     }
@@ -565,7 +567,7 @@ namespace ignite
 
     void EditorLayer::SaveSceneAs()
     {
-        std::string filepath = FileDialogs::SaveFile("Ignite Scene (*ixs)\0*.ixs\0");
+        std::string filepath = FileDialogs::SaveFile("Ignite Scene (*.ixasset)\0*.ixasset\0");
         if (!filepath.empty())
         {
             m_CurrentSceneFilePath = filepath;
@@ -575,7 +577,7 @@ namespace ignite
 
     void EditorLayer::OpenScene()
     {
-        std::string filepath = FileDialogs::OpenFile("Ignite Scene (*igs)\0*.ixs\0");
+        std::string filepath = FileDialogs::OpenFile("Ignite Scene (*.ixasset)\0*.ixasset\0");
         if (!filepath.empty())
         {
             m_CurrentSceneFilePath = filepath;
@@ -588,8 +590,7 @@ namespace ignite
         if (m_Data.sceneState == State::ScenePlay)
             OnSceneStop();
 
-        Ref<Scene> openScene = SceneSerializer::Deserialize(filepath);
-        if (openScene)
+        if (Ref<Scene> openScene = SceneSerializer::Deserialize(filepath))
         {
             m_EditorScene = SceneManager::Copy(openScene);
             m_EditorScene->SetDirtyFlag(false);

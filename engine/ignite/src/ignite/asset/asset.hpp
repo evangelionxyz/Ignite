@@ -44,9 +44,9 @@ namespace ignite {
     static std::map<std::string, AssetType> s_AssetExtensionMap =
     {
         { ".ixproj", AssetType::Project },
-        { ".anim2d", AssetType::Anim2D },
-        { ".anim", AssetType::SkeletalAnimation},
-        { ".ixs", AssetType::Scene },
+        { ".ixasset", AssetType::Anim2D },
+        { ".ixasset", AssetType::SkeletalAnimation},
+        { ".ixasset", AssetType::Scene },
         { ".jpg", AssetType::Texture },
         { ".hdr", AssetType::Texture },
         { ".png", AssetType::Texture },

@@ -16,12 +16,12 @@ namespace ignite {
         AssetHandle ImportAsset(const std::filesystem::path &filepath);
         void InsertMetaData(AssetHandle handle, const AssetMetaData &metadata);
         void RemoveAsset(AssetHandle handle);
-
         Ref<Asset> GetAsset(AssetHandle handle);
-
         AssetType GetAssetType(AssetHandle handle);
-
+        const AssetMetaData &GetMetaData(const std::filesystem::path &filepath, AssetHandle &outHandle);
         const AssetMetaData &GetMetaData(AssetHandle handle) const;
+        AssetHandle GetAssetHandle(const std::filesystem::path &filepath);
+        
         const std::filesystem::path &GetFilepath(AssetHandle handle);
         bool IsAssetHandleValid(AssetHandle handle);
     

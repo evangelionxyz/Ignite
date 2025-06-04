@@ -15,12 +15,18 @@ namespace ignite
         s_Instance = nullptr;
     }
 
+    std::filesystem::path Project::GetAssetRelativeFilepath(const std::filesystem::path &filepath) const
+    {
+        auto basePath = m_Info.filepath.parent_path() / m_Info.assetFilepath;
+        return std::filesystem::relative(filepath, basePath);
+    }
+
     std::filesystem::path Project::GetAssetFilepath(const std::filesystem::path &filepath) const
     {
         return m_Info.filepath.parent_path() / m_Info.assetFilepath / filepath;
     }
 
-    std::filesystem::path Project::GetRelativePath(const std::filesystem::path &filepath) const
+    std::filesystem::path Project::GetRelativeFilepath(const std::filesystem::path &filepath) const
     {
         return std::filesystem::relative(filepath, m_Info.filepath.parent_path());
     }
