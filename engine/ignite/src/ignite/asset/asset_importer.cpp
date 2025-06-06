@@ -6,6 +6,8 @@
 #include "ignite/graphics/graphics_pipeline.hpp"
 #include "ignite/graphics/environment.hpp"
 
+#include "ignite/core/application.hpp"
+
 namespace ignite {
 
     static std::unordered_map<AssetType, std::function<Ref<Asset>(UUID, const AssetMetaData &)>> s_ImportFuntions =
@@ -74,7 +76,7 @@ namespace ignite {
         Ref<Model> model = Model::Create(filepath, createInfo);
 
         model->SetEnvironment(env);
-        model->CreateBindingSet(pipeline->GetBindingLayout());
+        model->CreateBindingSet();
 
         outModels->push_back(model);
 
@@ -87,19 +89,21 @@ namespace ignite {
         *outModels = Model::Create(filepath, createInfo);
 
         (*outModels)->SetEnvironment(env);
-        (*outModels)->CreateBindingSet(pipeline->GetBindingLayout());
+        (*outModels)->CreateBindingSet();
 
         return *outModels;
     }
 
-    void EnvironmentImporter::Import(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline)
+    void EnvironmentImporter::Import(Ref<Environment> *outEnvironment, const std::string &filepath)
     {
-        m_Future = std::async(std::launch::async, ImportAsync, outEnvironment, device, filepath, pipeline);
+        m_Future = std::async(std::launch::async, ImportAsync, outEnvironment, filepath);
     }
 
-    void EnvironmentImporter::UpdateTexture(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline)
+    void EnvironmentImporter::UpdateTexture(Ref<Environment> *outEnvironment, const std::string &filepath)
     {
-        m_Future = std::async(std::launch::async, LoadTextureAsync, outEnvironment, device, filepath, pipeline);
+        nvrhi::IDevice *device = Application::GetRenderDevice();
+
+        m_Future = std::async(std::launch::async, LoadTextureAsync, outEnvironment, filepath);
     }
 
     void EnvironmentImporter::SyncMainThread(nvrhi::ICommandList *commandList, nvrhi::IDevice *device)
@@ -117,16 +121,17 @@ namespace ignite {
         }
     }
 
-    Ref<Environment> EnvironmentImporter::ImportAsync(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline)
+    Ref<Environment> EnvironmentImporter::ImportAsync(Ref<Environment> *outEnvironment, const std::string &filepath)
     {
-        (*outEnvironment) = Environment::Create(device);
-        (*outEnvironment)->LoadTexture(device, filepath, pipeline->GetBindingLayout());
+        (*outEnvironment) = Environment::Create();
+        (*outEnvironment)->LoadTexture(filepath);
         return *outEnvironment;
     }
 
-    Ref<Environment> EnvironmentImporter::LoadTextureAsync(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline)
+    Ref<Environment> EnvironmentImporter::LoadTextureAsync(Ref<Environment> *outEnvironment, const std::string &filepath)
     {
-        (*outEnvironment)->LoadTexture(device, filepath, pipeline->GetBindingLayout());
+        nvrhi::IDevice *device = Application::GetRenderDevice();
+        (*outEnvironment)->LoadTexture(filepath);
         return *outEnvironment;
     }
     std::future<Ref<Environment>> EnvironmentImporter::m_Future;

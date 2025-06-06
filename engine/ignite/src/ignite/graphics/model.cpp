@@ -55,10 +55,8 @@ namespace ignite {
         m_Environment = env.get();
     }
 
-    void Model::CreateBindingSet(const nvrhi::BindingLayoutHandle& bindingLayout)
+    void Model::CreateBindingSet()
     {
-        m_BindingLayout = bindingLayout;
-
         for (const auto &mesh : meshes)
         {
             auto desc = nvrhi::BindingSetDesc();
@@ -87,7 +85,7 @@ namespace ignite {
 
             desc.addItem(nvrhi::BindingSetItem::Sampler(0, mesh->material.sampler));
 
-            mesh->bindingSet = m_CreateInfo.device->createBindingSet(desc, bindingLayout);
+            mesh->bindingSet = m_CreateInfo.device->createBindingSet(desc, Renderer::GetBindingLayout(GBindingLayout::MESH));
             LOG_ASSERT(mesh->bindingSet, "Failed to create binding set");
         }
     }
@@ -117,8 +115,7 @@ namespace ignite {
     {
         if (m_Environment && m_Environment->IsUpdatingTexture())
         {
-            if (m_BindingLayout)
-                CreateBindingSet(m_BindingLayout);
+            CreateBindingSet();
         }
     }
 

@@ -2,11 +2,14 @@
 #include "scene.hpp"
 #include "entity.hpp"
 #include "entity_command_manager.hpp"
+
 #include "ignite/core/application.hpp"
 #include "ignite/core/uuid.hpp"
 
+#include "ignite/graphics/scene_renderer.hpp"
 #include "ignite/graphics/environment.hpp"
 #include "ignite/graphics/renderer.hpp"
+
 #include "ignite/math/math.hpp"
 
 #include <string>
@@ -172,10 +175,10 @@ namespace ignite
         }
 
         auto desc = nvrhi::BindingSetDesc();
-        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, scene->environment->GetCameraBuffer()));
+        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, scene->sceneRenderer->GetEnvironment()->GetCameraBuffer()));
         desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, meshRenderer.mesh->objectBufferHandle));
-        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, scene->environment->GetDirLightBuffer()));
-        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, scene->environment->GetParamsBuffer()));
+        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, scene->sceneRenderer->GetEnvironment()->GetDirLightBuffer()));
+        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, scene->sceneRenderer->GetEnvironment()->GetParamsBuffer()));
         desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, meshRenderer.mesh->materialBufferHandle));
 
         desc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, meshRenderer.material.textures[aiTextureType_DIFFUSE].handle));
@@ -183,10 +186,10 @@ namespace ignite
         desc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, meshRenderer.material.textures[aiTextureType_EMISSIVE].handle));
         desc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, meshRenderer.material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
         desc.addItem(nvrhi::BindingSetItem::Texture_SRV(4, meshRenderer.material.textures[aiTextureType_NORMALS].handle));
-        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, scene->environment->GetHDRTexture()));
+        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, scene->sceneRenderer->GetEnvironment()->GetHDRTexture()));
         desc.addItem(nvrhi::BindingSetItem::Sampler(0, meshRenderer.material.sampler));
 
-        meshRenderer.mesh->bindingSet = device->createBindingSet(desc, Renderer::GetPipeline(GPipelines::DEFAULT_3D_MESH)->GetBindingLayout());
+        meshRenderer.mesh->bindingSet = device->createBindingSet(desc, Renderer::GetBindingLayout(GBindingLayout::MESH));
         LOG_ASSERT(meshRenderer.mesh->bindingSet, "Failed to create binding set");
 
         commandList->close();
@@ -200,7 +203,7 @@ namespace ignite
         if (newName.empty())
             return;
 
-        // check registed names
+        // check registered names
         bool foundSameName = false;
         for (auto &n : scene->entityNames)
         {

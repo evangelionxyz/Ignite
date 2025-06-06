@@ -21,6 +21,7 @@
 
 namespace ignite
 {
+
     UUID ScenePanel::m_TrackingSelectedEntity = UUID(0);
 
     ScenePanel::ScenePanel(const char *windowTitle, EditorLayer *editor)
@@ -56,9 +57,9 @@ namespace ignite
         createInfo.device = device;
         createInfo.attachments = 
         {
-            FramebufferAttachments{ nvrhi::Format::D32S8, nvrhi::ResourceStates::DepthWrite },
-            FramebufferAttachments{ nvrhi::Format::SRGBA8_UNORM, nvrhi::ResourceStates::RenderTarget },
-            FramebufferAttachments{ nvrhi::Format::R32_UINT, nvrhi::ResourceStates::RenderTarget },
+            FramebufferAttachments{ nvrhi::Format::D32S8, nvrhi::ResourceStates::DepthRead }, // Depth
+            FramebufferAttachments{ nvrhi::Format::SRGBA8_UNORM, nvrhi::ResourceStates::RenderTarget }, // Main Color
+            FramebufferAttachments{ nvrhi::Format::R32_UINT, nvrhi::ResourceStates::RenderTarget }, // Mouse picking
         };
 
         m_RenderTarget = CreateRef<RenderTarget>(createInfo);
@@ -80,6 +81,7 @@ namespace ignite
         }
         
         RenderViewport();
+        DebugRender();
     }
 
     void ScenePanel::OnUpdate(f32 deltaTime)
@@ -928,6 +930,16 @@ namespace ignite
 
             ImGui::PopID();
         }
+        ImGui::End();
+    }
+
+    void ScenePanel::DebugRender()
+    {
+        ImGui::Begin("Debug Render");
+
+        ImTextureID depthImage = reinterpret_cast<ImTextureID>(m_RenderTarget->GetDepthAttachment().Get());
+        ImGui::Image(depthImage, {512, 256});
+
         ImGui::End();
     }
 

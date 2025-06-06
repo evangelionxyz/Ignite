@@ -3,7 +3,11 @@
 #include "ignite/scene/camera.hpp"
 #include "vertex_data.hpp"
 
+#include "ignite/core/application.hpp"
+
 #include "graphics_pipeline.hpp"
+
+#include "renderer.hpp"
 
 #include <stb_image.h>
 
@@ -43,8 +47,10 @@ namespace ignite {
         glm::vec3( 1.0f, -1.0f,  1.0f), // bottom right front
     };
 
-    Environment::Environment(nvrhi::IDevice *device)
+    Environment::Environment()
     {
+        nvrhi::IDevice *device = Application::GetRenderDevice();
+
         // create vertex buffer
         nvrhi::BufferDesc vbDesc;
         vbDesc.byteSize = sizeof(vertices);
@@ -138,8 +144,10 @@ namespace ignite {
         commandList->drawIndexed(args);
     }
 
-    void Environment::LoadTexture(nvrhi::IDevice *device, const std::string &filepath, nvrhi::BindingLayoutHandle bindingLayout)
+    void Environment::LoadTexture(const std::string &filepath)
     {
+        nvrhi::IDevice *device = Application::GetRenderDevice();
+
         m_IsUpdatingTexture = true;
 
         TextureCreateInfo textureCI;
@@ -156,7 +164,7 @@ namespace ignite {
         bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, m_HDRTexture->GetHandle()));
         bsDesc.addItem(nvrhi::BindingSetItem::Sampler(0, m_HDRTexture->GetSampler()));
 
-        m_BindingSet = device->createBindingSet(bsDesc, bindingLayout);
+        m_BindingSet = device->createBindingSet(bsDesc, Renderer::GetBindingLayout(GBindingLayout::ENVIRONMENT));
         LOG_ASSERT(m_BindingSet, "Failed to create binding set");
     }
 
@@ -204,9 +212,9 @@ namespace ignite {
         dirLight.direction = glm::vec4(glm::normalize(dir), 0.0f);
     }
 
-    Ref<Environment> Environment::Create(nvrhi::IDevice *device)
+    Ref<Environment> Environment::Create()
     {
-        return CreateRef<Environment>(device);
+        return CreateRef<Environment>();
     }
 
     nvrhi::VertexAttributeDesc Environment::GetAttribute()

@@ -21,6 +21,11 @@ namespace ignite
         nvrhi::ShaderHandle handle;
     };
 
+    enum class GBindingLayout
+    {
+        MESH, QUAD2D, LINE, ENVIRONMENT
+    };
+
     class ShaderLibrary
     {
     public:
@@ -39,15 +44,6 @@ namespace ignite
         ShaderMake::Options m_ShaderMakeOptions;
     };
 
-    enum class GPipelines
-    {
-        RENDERER_2D_QUAD,
-        RENDERER_2D_LINE,
-        DEFAULT_3D_ENV,
-        DEFAULT_3D_MESH,
-        DEFAULT_OUTLINE
-    };
-
     class Renderer
     {
     public:
@@ -58,18 +54,16 @@ namespace ignite
         
         static Ref<Texture> GetWhiteTexture();
         static Ref<Texture> GetBlackTexture();
-        static void CreatePipelines(nvrhi::IFramebuffer *framebuffer);
         static nvrhi::GraphicsAPI GetGraphicsAPI();
+        static nvrhi::BindingLayoutHandle GetBindingLayout(GBindingLayout type);
 
         static ShaderLibrary &GetShaderLibrary();
-        static Ref<GraphicsPipeline> GetPipeline(GPipelines gpipeline);
         
     private:
-        void InitPipelines();
-
         nvrhi::GraphicsAPI m_GraphicsAPI;
         ShaderLibrary m_ShaderLibrary;
-        std::unordered_map<GPipelines, Ref<GraphicsPipeline>> m_Pipelines;
+
+        std::unordered_map<GBindingLayout, nvrhi::BindingLayoutHandle> m_BindingLayouts;
 
         Ref<Texture> m_WhiteTexture;
         Ref<Texture> m_BlackTexture;

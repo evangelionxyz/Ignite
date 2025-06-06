@@ -4,6 +4,7 @@
 #include "ignite/core/layer.hpp"
 #include "ignite/ignite.hpp"
 #include "ignite/graphics/graphics_pipeline.hpp"
+#include "ignite/graphics/scene_renderer.hpp"
 #include "ignite/graphics/environment.hpp"
 #include "ignite/serializer/serializer.hpp"
 #include "ignite/project/project.hpp"
@@ -81,13 +82,11 @@ namespace ignite
 
         Ref<ScenePanel> m_ScenePanel;
         Ref<ContentBrowserPanel> m_ContentBrowserPanel;
+        SceneRenderer m_SceneRenderer;
 
         Ref<Scene> m_ActiveScene;
         Ref<Scene> m_EditorScene;
         Ref<Project> m_ActiveProject;
-        
-        Ref<GraphicsPipeline> m_MeshPipeline, m_EnvPipeline;
-
         EditorData m_Data;
 
         std::filesystem::path m_CurrentSceneFilePath;

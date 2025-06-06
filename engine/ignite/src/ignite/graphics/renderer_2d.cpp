@@ -45,26 +45,6 @@ namespace ignite
     {
         nvrhi::IDevice* device = Application::GetRenderDevice();
 
-        GraphicsPipelineParams params;
-        params.enableBlend = true;
-        params.depthWrite = true;
-        params.depthTest = true;
-        params.fillMode = nvrhi::RasterFillMode::Solid;
-        params.cullMode = nvrhi::RasterCullMode::Front;
-
-        auto attributes = Vertex2DQuad::GetAttributes();
-        GraphicsPiplineCreateInfo pci;
-        pci.attributes = attributes.data();
-        pci.attributeCount = static_cast<uint32_t>(attributes.size());
-        pci.bindingLayoutDesc = Vertex2DQuad::GetBindingLayoutDesc();
-
-        s_r2d->quadBatch.pipeline = GraphicsPipeline::Create(params, &pci);
-
-        auto shaderContext = Renderer::GetShaderLibrary().Get("batch_2d_quad");
-        s_r2d->quadBatch.pipeline->AddShader(shaderContext[nvrhi::ShaderType::Vertex].handle, nvrhi::ShaderType::Vertex)
-            .AddShader(shaderContext[nvrhi::ShaderType::Pixel].handle, nvrhi::ShaderType::Pixel)
-            .Build();
-
         size_t vertAllocSize = s_r2d->quadBatch.maxVertices * sizeof(Vertex2DQuad);
         s_r2d->quadBatch.vertexBufferBase = new Vertex2DQuad[vertAllocSize];
 
@@ -93,11 +73,6 @@ namespace ignite
         s_r2d->quadBatch.textureSlots.resize(s_r2d->quadBatch.maxTextureCount);
         s_r2d->quadBatch.textureSlots[0] = Renderer::GetWhiteTexture();
 
-        // create binding set
-        nvrhi::BindingSetDesc bindingSetDesc;
-        // add constant buffer
-        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, s_r2d->constantBuffer));
-
         // then add textures
         const auto samplerDesc = nvrhi::SamplerDesc()
             .setAllAddressModes(nvrhi::SamplerAddressMode::ClampToEdge)
@@ -105,14 +80,17 @@ namespace ignite
 
         s_r2d->quadBatch.sampler = device->createSampler(samplerDesc);
 
+        // create binding set
+        nvrhi::BindingSetDesc bindingSetDesc;
+        // add constant buffer
+        bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, s_r2d->constantBuffer));
         bindingSetDesc.addItem(nvrhi::BindingSetItem::Sampler(0, s_r2d->quadBatch.sampler));
-
         for (u32 i = 0; i < u32(s_r2d->quadBatch.maxTextureCount); ++i)
-        {
             bindingSetDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(i, Renderer::GetWhiteTexture()->GetHandle(), nvrhi::Format::UNKNOWN, nvrhi::AllSubresources, nvrhi::TextureDimension::Texture2D));
-        }
 
-        s_r2d->quadBatch.bindingSet = device->createBindingSet(bindingSetDesc, s_r2d->quadBatch.pipeline->GetBindingLayout());
+        s_r2d->quadBatch.bindingLayout = Renderer::GetBindingLayout(GBindingLayout::QUAD2D);
+        s_r2d->quadBatch.bindingSet = device->createBindingSet(bindingSetDesc, s_r2d->quadBatch.bindingLayout);
+
         LOG_ASSERT(s_r2d->quadBatch.bindingSet, "[Renderer 2D] Failed to create binding");
 
         // write index buffer
@@ -149,28 +127,6 @@ namespace ignite
     {
         nvrhi::IDevice* device = Application::GetRenderDevice();
 
-        GraphicsPipelineParams params;
-        params.enableBlend = false;
-        params.depthWrite = true;
-        params.depthTest = true;
-        params.fillMode = nvrhi::RasterFillMode::Wireframe;
-        params.cullMode = nvrhi::RasterCullMode::None;
-        params.primitiveType = nvrhi::PrimitiveType::LineList;
-
-        auto attributes = Vertex2DLine::GetAttributes();
-        GraphicsPiplineCreateInfo pci;
-        pci.attributes = attributes.data();
-        pci.attributeCount = static_cast<uint32_t>(attributes.size());
-        pci.bindingLayoutDesc = Vertex2DLine::GetBindingLayoutDesc();
-
-        s_r2d->lineBatch.pipeline = GraphicsPipeline::Create(params, &pci);
-
-        auto shaderContext = Renderer::GetShaderLibrary().Get("batch_2d_line");
-        
-        s_r2d->lineBatch.pipeline->AddShader(shaderContext[nvrhi::ShaderType::Vertex].handle, nvrhi::ShaderType::Vertex)
-            .AddShader(shaderContext[nvrhi::ShaderType::Pixel].handle, nvrhi::ShaderType::Pixel)
-            .Build();
-
         size_t vertAllocSize = s_r2d->lineBatch.maxVertices * sizeof(Vertex2DLine);
         s_r2d->lineBatch.vertexBufferBase = new Vertex2DLine[vertAllocSize];
 
@@ -190,15 +146,13 @@ namespace ignite
         // add constant buffer
         bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, s_r2d->constantBuffer));
 
-        s_r2d->lineBatch.bindingSet = device->createBindingSet(bindingSetDesc, s_r2d->lineBatch.pipeline->GetBindingLayout());
+        s_r2d->lineBatch.bindingLayout = Renderer::GetBindingLayout(GBindingLayout::LINE);
+        s_r2d->lineBatch.bindingSet = device->createBindingSet(bindingSetDesc, s_r2d->lineBatch.bindingLayout);
         LOG_ASSERT(s_r2d->lineBatch.bindingSet, "[Renderer 2D] Failed to create binding");
     }
 
     void Renderer2D::Begin(Camera *camera, nvrhi::ICommandList* commandList, nvrhi::IFramebuffer* framebuffer)
     {
-        // create with the same framebuffer to render
-        CreateGraphicsPipeline(framebuffer);
-
         // Quad data
         s_r2d->quadBatch.indexCount = 0;
         s_r2d->quadBatch.count = 0;
@@ -216,7 +170,7 @@ namespace ignite
         renderFramebuffer = framebuffer;
     }
 
-    void Renderer2D::Flush()
+    void Renderer2D::Flush(nvrhi::GraphicsPipelineHandle quadPipeline, nvrhi::GraphicsPipelineHandle linePipeline)
     {
         nvrhi::Viewport viewport = renderFramebuffer->getFramebufferInfo().getViewport();
 
@@ -226,7 +180,7 @@ namespace ignite
             renderCommandList->writeBuffer(s_r2d->quadBatch.vertexBuffer, s_r2d->quadBatch.vertexBufferBase, bufferSize);
 
             const auto graphicsState = nvrhi::GraphicsState()
-                .setPipeline(s_r2d->quadBatch.pipeline->GetHandle())
+                .setPipeline(quadPipeline)
                 .setFramebuffer(renderFramebuffer)
                 .addBindingSet(s_r2d->quadBatch.bindingSet)
                 .setViewport(nvrhi::ViewportState().addViewportAndScissorRect(viewport))
@@ -247,7 +201,7 @@ namespace ignite
             renderCommandList->writeBuffer(s_r2d->lineBatch.vertexBuffer, s_r2d->lineBatch.vertexBufferBase, bufferSize);
 
             const auto graphicsState = nvrhi::GraphicsState()
-                .setPipeline(s_r2d->lineBatch.pipeline->GetHandle())
+                .setPipeline(linePipeline)
                 .setFramebuffer(renderFramebuffer)
                 .addBindingSet(s_r2d->lineBatch.bindingSet)
                 .setViewport(nvrhi::ViewportState().addViewportAndScissorRect(viewport))
@@ -266,16 +220,10 @@ namespace ignite
     {
     }
     
-    void Renderer2D::CreateGraphicsPipeline(nvrhi::IFramebuffer *framebuffer)
-    {
-        s_r2d->quadBatch.pipeline->CreatePipeline(framebuffer);
-        s_r2d->lineBatch.pipeline->CreatePipeline(framebuffer);
-    }
-
     void Renderer2D::DrawBox(const glm::mat4& transform, const glm::vec4& color, uint32_t entityID)
     {
-        if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
-            Renderer2D::Flush();
+        /*if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
+            Renderer2D::Flush();*/
 
         static glm::vec4 cubeVertices[8] = {
             {-0.5f, -0.5f, -0.5f, 1.0f}, // 0
@@ -312,8 +260,8 @@ namespace ignite
 
     void Renderer2D::DrawRect(const glm::mat4& transform, const glm::vec4& color, uint32_t entityID)
     {
-        if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
-            Renderer2D::Flush();
+        /*if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
+            Renderer2D::Flush();*/
 
         static constexpr int indices[8][2] = {
             {0, 1},
@@ -340,8 +288,8 @@ namespace ignite
 
     void Renderer2D::DrawLine(const std::vector<glm::vec3>& positions, const glm::vec4& color, uint32_t entityID)
     {
-        if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
-            Renderer2D::Flush();
+        /*if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
+            Renderer2D::Flush();*/
 
         for (auto& pos : positions)
         {
@@ -358,8 +306,8 @@ namespace ignite
 
     void Renderer2D::DrawLine(const glm::vec3& pos0, const glm::vec3& pos1, const glm::vec4& color, uint32_t entityID)
     {
-        if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
-            Renderer2D::Flush();
+        /*if (s_r2d->lineBatch.count >= s_r2d->lineBatch.maxCount)
+            Renderer2D::Flush();*/
 
         s_r2d->lineBatch.vertexBufferPtr->position = pos0;
         s_r2d->lineBatch.vertexBufferPtr->color = color;
@@ -391,8 +339,8 @@ namespace ignite
     
     void Renderer2D::DrawQuad(const glm::mat4 &transform, const glm::vec4 &color, Ref<Texture> texture, const glm::vec2 &tilingFactor, uint32_t entityID)
     {
-        if (s_r2d->quadBatch.count >= s_r2d->quadBatch.maxCount)
-            Renderer2D::Flush();
+        /*if (s_r2d->quadBatch.count >= s_r2d->quadBatch.maxCount)
+            Renderer2D::Flush();*/
 
         static constexpr u32 quadVertexCount = 4;
         static constexpr glm::vec2 textureCoords[] = {
@@ -441,7 +389,7 @@ namespace ignite
         {
             if (s_r2d->quadBatch.textureSlotIndex >= s_r2d->quadBatch.maxTextureCount)
             {
-                Flush();
+                // Flush();
                 return s_r2d->quadBatch.maxTextureCount;
             }
             
@@ -476,6 +424,6 @@ namespace ignite
             bindingSetDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(i, tex->GetHandle()));
         }
 
-        s_r2d->quadBatch.bindingSet = device->createBindingSet(bindingSetDesc, s_r2d->quadBatch.pipeline->GetBindingLayout());
+        s_r2d->quadBatch.bindingSet = device->createBindingSet(bindingSetDesc, s_r2d->quadBatch.bindingLayout);
     }
 }

@@ -11,7 +11,6 @@ namespace ignite {
 
     struct GraphicsPiplineCreateInfo
     {
-        nvrhi::BindingLayoutDesc bindingLayoutDesc;
         nvrhi::VertexAttributeDesc *attributes;
         uint32_t attributeCount = 0;
     };
@@ -23,6 +22,9 @@ namespace ignite {
         nvrhi::PrimitiveType primitiveType = nvrhi::PrimitiveType::TriangleList;
         nvrhi::RasterFillMode fillMode = nvrhi::RasterFillMode::Solid;
 
+        nvrhi::StencilOp depthStencil;
+        nvrhi::ComparisonFunc frontFaceStencilFunc = nvrhi::ComparisonFunc::Always;
+
         bool enableBlend = true;
         bool depthWrite = false;
         bool depthTest = false;
@@ -32,7 +34,7 @@ namespace ignite {
     {
     public:
         GraphicsPipeline() = default;
-        GraphicsPipeline(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo);
+        GraphicsPipeline(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo, nvrhi::BindingLayoutHandle bindingLayout);
 
         GraphicsPipeline& AddShader(const std::string& filepath, nvrhi::ShaderType type, bool recompile = false);
         GraphicsPipeline& AddShader(nvrhi::ShaderHandle& handle, nvrhi::ShaderType type);
@@ -54,7 +56,7 @@ namespace ignite {
             return nullptr;
         }
 
-        static Ref<GraphicsPipeline> Create(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo);
+        static Ref<GraphicsPipeline> Create(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo, nvrhi::BindingLayoutHandle bindingLayout);
 
         GraphicsPipelineParams &GetParams() { return m_Params; }
 
@@ -66,6 +68,7 @@ namespace ignite {
 
         nvrhi::InputLayoutHandle m_InputLayout;
         nvrhi::BindingLayoutHandle m_BindingLayout;
+
         GraphicsPipelineParams m_Params;
         GraphicsPiplineCreateInfo *m_CreateInfo;
 

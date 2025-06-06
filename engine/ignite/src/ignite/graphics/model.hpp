@@ -24,7 +24,7 @@ namespace ignite {
         Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo);
 
         void SetEnvironment(const Ref<Environment> &env);
-        void CreateBindingSet(const nvrhi::BindingLayoutHandle& bindingLayout);
+        void CreateBindingSet();
         void WriteBuffer(nvrhi::ICommandList *commandList);
 
         void OnUpdate(f32 deltaTime);
@@ -49,14 +49,9 @@ namespace ignite {
 
     private:
         ModelCreateInfo m_CreateInfo;
-
         Environment *m_Environment = nullptr;
-        nvrhi::BindingLayoutHandle m_BindingLayout;
-        
         std::filesystem::path m_Filepath;
-
         Assimp::Importer m_Importer;
-
         bool m_BufferWritten = false;
     };
 }

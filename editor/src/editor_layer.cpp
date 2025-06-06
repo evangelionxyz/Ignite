@@ -36,8 +36,7 @@ namespace ignite
         m_Device = Application::GetDeviceManager()->GetDevice();
         m_CommandList = m_Device->createCommandList();
 
-        m_MeshPipeline = Renderer::GetPipeline(GPipelines::DEFAULT_3D_MESH);
-        m_EnvPipeline = Renderer::GetPipeline(GPipelines::DEFAULT_3D_ENV);
+        m_SceneRenderer.Init();
 
         // write buffer with command list
         Renderer2D::InitQuadData(m_CommandList);
@@ -200,9 +199,6 @@ namespace ignite
 
         nvrhi::IFramebuffer *viewportFramebuffer = m_ScenePanel->GetRT()->GetCurrentFramebuffer();
 
-        // create pipelines
-        Renderer::CreatePipelines(viewportFramebuffer);
-
         // main scene rendering
         m_CommandList->open();
 
@@ -217,7 +213,8 @@ namespace ignite
 
         if (m_ActiveScene)
         {
-            m_ActiveScene->OnRenderRuntimeSimulate(m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer);
+            m_SceneRenderer.CreatePipelines(viewportFramebuffer);
+            m_SceneRenderer.Render(m_ActiveScene.get(), m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer);
         }
 
         // Create staging texture for readback
@@ -725,7 +722,7 @@ namespace ignite
                     std::string filepath = FileDialogs::OpenFile("HDR Files (*.hdr)\0*.hdr\0");
                     if (!filepath.empty())
                     {
-                        EnvironmentImporter::UpdateTexture(&m_ActiveScene->environment, m_Device, filepath, m_EnvPipeline);
+                        EnvironmentImporter::UpdateTexture(&m_SceneRenderer.GetEnvironment(), filepath);
                     }
                 }
 
@@ -734,23 +731,23 @@ namespace ignite
                 ImGui::Text("Sun Angles");
 
                 if (ImGui::SliderFloat("Elevation", &sunAngles.x, 0.0f, 180.0f))
-                    m_ActiveScene->environment->SetSunDirection(sunAngles.x, sunAngles.y);
+                    m_SceneRenderer.GetEnvironment()->SetSunDirection(sunAngles.x, sunAngles.y);
                 if (ImGui::SliderFloat("Azimuth", &sunAngles.y, -180.0f, 180.0f))
-                    m_ActiveScene->environment->SetSunDirection(sunAngles.x, sunAngles.y);
+                    m_SceneRenderer.GetEnvironment()->SetSunDirection(sunAngles.x, sunAngles.y);
 
                 ImGui::Separator();
-                ImGui::ColorEdit4("Color", &m_ActiveScene->environment->dirLight.color.x);
-                ImGui::SliderFloat("Intensity", &m_ActiveScene->environment->dirLight.intensity, 0.01f, 1.0f);
+                ImGui::ColorEdit4("Color", &m_SceneRenderer.GetEnvironment()->dirLight.color.x);
+                ImGui::SliderFloat("Intensity", &m_SceneRenderer.GetEnvironment()->dirLight.intensity, 0.01f, 1.0f);
 
-                float angularSize = glm::degrees(m_ActiveScene->environment->dirLight.angularSize);
+                float angularSize = glm::degrees(m_SceneRenderer.GetEnvironment()->dirLight.angularSize);
                 if (ImGui::SliderFloat("Angular Size", &angularSize, 0.1f, 90.0f))
                 {
-                    m_ActiveScene->environment->dirLight.angularSize = glm::radians(angularSize);
+                    m_SceneRenderer.GetEnvironment()->dirLight.angularSize = glm::radians(angularSize);
                 }
 
-                ImGui::DragFloat("Ambient", &m_ActiveScene->environment->dirLight.ambientIntensity, 0.005f, 0.01f, 100.0f);
-                ImGui::DragFloat("Exposure", &m_ActiveScene->environment->params.exposure, 0.005f, 0.1f, 10.0f);
-                ImGui::DragFloat("Gamma", &m_ActiveScene->environment->params.gamma, 0.005f, 0.1f, 10.0f);
+                ImGui::DragFloat("Ambient", &m_SceneRenderer.GetEnvironment()->dirLight.ambientIntensity, 0.005f, 0.01f, 100.0f);
+                ImGui::DragFloat("Exposure", &m_SceneRenderer.GetEnvironment()->params.exposure, 0.005f, 0.1f, 10.0f);
+                ImGui::DragFloat("Gamma", &m_SceneRenderer.GetEnvironment()->params.gamma, 0.005f, 0.1f, 10.0f);
         
                 ImGui::TreePop();
             }

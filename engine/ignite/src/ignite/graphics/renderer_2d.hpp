@@ -30,10 +30,10 @@ namespace ignite
         VertexType*vertexBufferPtr = nullptr;
         nvrhi::BufferHandle vertexBuffer = nullptr;
         nvrhi::BufferHandle indexBuffer = nullptr;
+        nvrhi::BindingLayoutHandle bindingLayout = nullptr;
         nvrhi::SamplerHandle sampler = nullptr;
         nvrhi::BindingSetHandle bindingSet = nullptr;
         std::vector<Ref<Texture>> textureSlots;
-        Ref<GraphicsPipeline> pipeline;
         u8 textureSlotIndex = 1; // 0 for white texture
         u32 indexCount = 0;
         u32 count = 0;
@@ -65,10 +65,8 @@ namespace ignite
         static void Shutdown();
 
         static void Begin(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer* framebuffer);
-        static void Flush();
+        static void Flush(nvrhi::GraphicsPipelineHandle quadPipeline, nvrhi::GraphicsPipelineHandle linePipeline);
         static void End();
-
-        static void CreateGraphicsPipeline(nvrhi::IFramebuffer *framebuffer);
 
         static void DrawBox(const glm::mat4& transform, const glm::vec4& color = glm::vec4(1.0f), uint32_t entityID = 0);
         static void DrawRect(const glm::mat4& transform, const glm::vec4& color = glm::vec4(1.0f), uint32_t entityID = 0);

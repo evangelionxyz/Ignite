@@ -7,8 +7,8 @@
 
 namespace ignite {
 
-    GraphicsPipeline::GraphicsPipeline(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo)
-        : m_Params(params), m_CreateInfo(std::move(createInfo))
+    GraphicsPipeline::GraphicsPipeline(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo, nvrhi::BindingLayoutHandle bindingLayout)
+        : m_Params(params), m_CreateInfo(std::move(createInfo)), m_BindingLayout(bindingLayout)
     {
     }
 
@@ -44,6 +44,12 @@ namespace ignite {
             depthStencilState.depthTestEnable = m_Params.depthTest;
             depthStencilState.depthFunc = m_Params.comparison; // use 1.0 for far depth
 
+            depthStencilState.stencilEnable = true;
+            depthStencilState.frontFaceStencil.passOp = nvrhi::StencilOp::Replace;
+            depthStencilState.frontFaceStencil.stencilFunc = nvrhi::ComparisonFunc::Always;
+            depthStencilState.stencilWriteMask = 0xFF;
+            depthStencilState.stencilRefValue = 1;
+
             nvrhi::RasterState rasterState;
             rasterState.cullMode = m_Params.cullMode;
             rasterState.fillMode = m_Params.fillMode;
@@ -69,7 +75,8 @@ namespace ignite {
             pipelineDesc.setRenderState(renderState);
             pipelineDesc.primType = m_Params.primitiveType;
 
-            pipelineDesc.addBindingLayout(m_BindingLayout);
+            if (m_BindingLayout)
+                pipelineDesc.addBindingLayout(m_BindingLayout);
 
             // create with the same framebuffer to be render
             nvrhi::IDevice* device = Application::GetRenderDevice();
@@ -105,14 +112,11 @@ namespace ignite {
 
         m_InputLayout = device->createInputLayout(m_CreateInfo->attributes, m_CreateInfo->attributeCount, nullptr);
         LOG_ASSERT(m_InputLayout, "[Graphics Pipeline] Failed to create input layout");
-
-        m_BindingLayout = device->createBindingLayout(m_CreateInfo->bindingLayoutDesc);
-        LOG_ASSERT(m_BindingLayout, "[Graphics Pipeline] Failed to create binding layout");
     }
 
-    Ref<GraphicsPipeline> GraphicsPipeline::Create(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo)
+    Ref<GraphicsPipeline> GraphicsPipeline::Create(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo, nvrhi::BindingLayoutHandle bindingLayout)
     {
-        return CreateRef<GraphicsPipeline>(params, createInfo);
+        return CreateRef<GraphicsPipeline>(params, createInfo, bindingLayout);
     }
 
 }

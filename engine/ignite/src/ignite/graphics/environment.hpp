@@ -23,17 +23,16 @@ namespace ignite {
     class Environment
     {
     public:
-        Environment() = default;
-        Environment(nvrhi::IDevice *device);
+        Environment();
 
         void Render(nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline, Camera *camera);
-        void LoadTexture(nvrhi::IDevice *device, const std::string &filepath, nvrhi::BindingLayoutHandle bindingLayout);
+        void LoadTexture(const std::string &filepath);
         void WriteBuffer(nvrhi::ICommandList *commandList);
         void SetSunDirection(float pitch, float yaw);
 
         bool IsUpdatingTexture() const { return m_IsUpdatingTexture; }
 
-        static Ref<Environment> Create(nvrhi::IDevice *device);
+        static Ref<Environment> Create();
 
         static nvrhi::VertexAttributeDesc GetAttribute();
         static nvrhi::BindingLayoutDesc GetBindingLayoutDesc();

@@ -73,6 +73,9 @@ namespace ignite
         void RenderComponent(const std::string &name, Entity entity, UIFunction uiFunction, bool allowedToRemove = true);
 
     private:
+
+        void DebugRender();
+
         struct Data
         {
             bool settingsWindow = true;

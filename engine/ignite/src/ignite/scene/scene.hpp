@@ -16,6 +16,7 @@ namespace ignite
     class Physics2D;
     class Entity;
     class Environment;
+    class SceneRenderer;
 
     using EntityComponents = std::unordered_map<entt::entity, std::vector<IComponent *>>;
     using StringCounterMap = std::unordered_map<std::string, i32>;
@@ -25,8 +26,6 @@ namespace ignite
     public:
         Scene() = default;
         explicit Scene(const std::string &name);
-
-        void CreateEnvironment();
 
         ~Scene();
 
@@ -39,11 +38,10 @@ namespace ignite
         void OnUpdateRuntimeSimulate(f32 deltaTime);
         void OnUpdateEdit(f32 deltaTime);
 
-        void OnRenderRuntimeSimulate(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer);
-        void OnRenderRuntime(nvrhi::IFramebuffer *framebuffer);
-
         template<typename T>
         void OnComponentAdded(Entity entity, T &comp);
+
+        SceneRenderer *sceneRenderer = nullptr;
 
         std::string name;
         entt::registry *registry = nullptr;
@@ -70,13 +68,9 @@ namespace ignite
             glm::mat4 transform;
         };
 
-        Ref<Environment> environment;
-
         float timeInSeconds = 0.0f;
     
     private:
         bool m_Playing = false;
-
-        friend class SceneRenderer;
     };
 }

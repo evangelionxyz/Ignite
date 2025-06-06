@@ -38,13 +38,13 @@ namespace ignite {
     class EnvironmentImporter : public AssetImporter
     {
     public:
-        static void Import(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline);
-        static void UpdateTexture(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline);
+        static void Import(Ref<Environment> *outEnvironment, const std::string &filepath);
+        static void UpdateTexture(Ref<Environment> *outEnvironment, const std::string &filepath);
         static void SyncMainThread(nvrhi::ICommandList *commandList, nvrhi::IDevice *device);
 
     private:
-        static Ref<Environment> ImportAsync(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline);
-        static Ref<Environment> LoadTextureAsync(Ref<Environment> *outEnvironment, nvrhi::IDevice *device, const std::string &filepath, const Ref<GraphicsPipeline> &pipeline);
+        static Ref<Environment> ImportAsync(Ref<Environment> *outEnvironment, const std::string &filepath);
+        static Ref<Environment> LoadTextureAsync(Ref<Environment> *outEnvironment, const std::string &filepath);
         static std::future<Ref<Environment>> m_Future;
     };
 

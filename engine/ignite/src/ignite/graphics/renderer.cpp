@@ -129,7 +129,11 @@ namespace ignite
             m_ShaderLibrary.Compile();
         }
 
-        InitPipelines();
+        // Create binding layouts
+        m_BindingLayouts[GBindingLayout::MESH] = device->createBindingLayout(VertexMesh::GetBindingLayoutDesc());
+        m_BindingLayouts[GBindingLayout::QUAD2D] = device->createBindingLayout(Vertex2DQuad::GetBindingLayoutDesc());
+        m_BindingLayouts[GBindingLayout::LINE] = device->createBindingLayout(Vertex2DLine::GetBindingLayoutDesc());
+        m_BindingLayouts[GBindingLayout::ENVIRONMENT] = device->createBindingLayout(Environment::GetBindingLayoutDesc());
 
         Renderer2D::Init();
     }
@@ -145,59 +149,17 @@ namespace ignite
         return s_instance->m_GraphicsAPI;
     }
 
-    ShaderLibrary& Renderer::GetShaderLibrary()
+    nvrhi::BindingLayoutHandle Renderer::GetBindingLayout(GBindingLayout type)
+    {
+        if (s_instance->m_BindingLayouts.contains(type))
+            return s_instance->m_BindingLayouts[type];
+
+        return nullptr;
+    }
+
+    ShaderLibrary &Renderer::GetShaderLibrary()
     {
         return s_instance->m_ShaderLibrary;
-    }
-
-    Ref<GraphicsPipeline> Renderer::GetPipeline(GPipelines gpipeline)
-    {
-        return s_instance->m_Pipelines[gpipeline];
-    }
-
-    void Renderer::InitPipelines()
-    {
-        // environment
-        {
-            GraphicsPipelineParams params;
-            params.enableBlend = true;
-            params.depthWrite = true;
-            params.depthTest = true;
-            params.cullMode = nvrhi::RasterCullMode::Front;
-            params.comparison = nvrhi::ComparisonFunc::Always;
-
-            auto attribute = Environment::GetAttribute();
-            GraphicsPiplineCreateInfo pci;
-            pci.attributes = &attribute;
-            pci.attributeCount = 1;
-            pci.bindingLayoutDesc = Environment::GetBindingLayoutDesc();
-
-            m_Pipelines[GPipelines::DEFAULT_3D_ENV] = GraphicsPipeline::Create(params, &pci);
-            m_Pipelines[GPipelines::DEFAULT_3D_ENV]->AddShader("skybox.vertex.hlsl", nvrhi::ShaderType::Vertex)
-                .AddShader("skybox.pixel.hlsl", nvrhi::ShaderType::Pixel)
-                .Build();
-        }
-
-        // Mesh pipelines
-        {
-            GraphicsPipelineParams params;
-            params.enableBlend = true;
-            params.depthWrite = true;
-            params.depthTest = true;
-            params.fillMode = nvrhi::RasterFillMode::Solid;
-            params.cullMode = nvrhi::RasterCullMode::Front;
-
-            auto attributes = VertexMesh::GetAttributes();
-            GraphicsPiplineCreateInfo pci;
-            pci.attributes = attributes.data();
-            pci.attributeCount = static_cast<uint32_t>(attributes.size());
-            pci.bindingLayoutDesc = VertexMesh::GetBindingLayoutDesc();
-
-            m_Pipelines[GPipelines::DEFAULT_3D_MESH] = GraphicsPipeline::Create(params, &pci);
-            m_Pipelines[GPipelines::DEFAULT_3D_MESH]->AddShader("default_mesh.vertex.hlsl", nvrhi::ShaderType::Vertex)
-                .AddShader("default_mesh.pixel.hlsl", nvrhi::ShaderType::Pixel)
-                .Build();
-        }
     }
 
     Ref<Texture> Renderer::GetWhiteTexture()
@@ -209,13 +171,4 @@ namespace ignite
     {
         return s_instance->m_BlackTexture;
     }
-
-    void Renderer::CreatePipelines(nvrhi::IFramebuffer *framebuffer)
-    {
-        for (auto &[gp, pipeline] : s_instance->m_Pipelines)
-        {
-            pipeline->CreatePipeline(framebuffer);
-        }
-    }
-
 }

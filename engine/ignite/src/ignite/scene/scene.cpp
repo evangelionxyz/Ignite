@@ -14,6 +14,7 @@
 #include "scene_manager.hpp"
 #include "entity.hpp"
 
+
 #include "ignite/core/application.hpp"
 
 #include "ignite/animation/animation_system.hpp"
@@ -25,26 +26,6 @@ namespace ignite
     {
         registry = new entt::registry();
         physics2D = CreateScope<Physics2D>(this);
-
-        CreateEnvironment();
-    }
-
-    void Scene::CreateEnvironment()
-    {
-        // create env
-        auto pipeline = Renderer::GetPipeline(GPipelines::DEFAULT_3D_ENV);
-        nvrhi::IDevice *device = Application::GetRenderDevice();
-        
-        environment = Environment::Create(device);
-        environment->LoadTexture(device, "resources/hdr/klippad_sunrise_2_2k.hdr", pipeline->GetBindingLayout());
-
-        nvrhi::CommandListHandle commandList = device->createCommandList();
-        commandList->open();
-        environment->WriteBuffer(commandList);
-        commandList->close();
-        device->executeCommandList(commandList);
-
-        environment->SetSunDirection(50.0f, -27.0f);
     }
 
     Scene::~Scene()
@@ -176,70 +157,9 @@ namespace ignite
         physics2D->Simulate(deltaTime);
     }
 
-    void Scene::OnRenderRuntime(nvrhi::IFramebuffer *framebuffer)
-    {
-        // TODO: render with camera component
-    }
-
     Ref<Scene> Scene::Create(const std::string &name)
     {
         return CreateRef<Scene>(name);
-    }
-
-    void Scene::OnRenderRuntimeSimulate(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer)
-    {
-        // First pass:
-        const auto &meshPipeline = Renderer::GetPipeline(GPipelines::DEFAULT_3D_MESH);
-        environment->Render(commandList, framebuffer, Renderer::GetPipeline(GPipelines::DEFAULT_3D_ENV), camera);
-
-        // Second pass:
-        Renderer2D::Begin(camera, commandList, framebuffer);
-
-        for (entt::entity e: entities | std::views::values)
-        {
-            Entity entity = { e, this };
-            auto &tr = entity.GetTransform();
-            
-            if (!tr.visible)
-                continue;
-
-            if (entity.HasComponent<MeshRenderer>())
-            {
-                MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
-
-                // write material constant buffer
-                commandList->writeBuffer(meshRenderer.mesh->materialBufferHandle, &meshRenderer.material.data, sizeof(meshRenderer.material.data));
-                commandList->writeBuffer(meshRenderer.mesh->objectBufferHandle, &meshRenderer.meshBuffer, sizeof(meshRenderer.meshBuffer));
-
-                // render
-                auto meshGraphicsState = nvrhi::GraphicsState();
-                meshGraphicsState.pipeline = meshPipeline->GetHandle();
-                meshGraphicsState.framebuffer = framebuffer;
-                meshGraphicsState.viewport = nvrhi::ViewportState().addViewportAndScissorRect(framebuffer->getFramebufferInfo().getViewport());
-                meshGraphicsState.addVertexBuffer({ meshRenderer.mesh->vertexBuffer, 0, 0 });
-                meshGraphicsState.indexBuffer = { meshRenderer.mesh->indexBuffer, nvrhi::Format::R32_UINT };
-
-                if (meshRenderer.mesh->bindingSet != nullptr)
-                    meshGraphicsState.addBindingSet(meshRenderer.mesh->bindingSet);
-
-                commandList->setGraphicsState(meshGraphicsState);
-
-                nvrhi::DrawArguments args;
-                args.setVertexCount(static_cast<uint32_t>(meshRenderer.mesh->indices.size()));
-                args.instanceCount = 1;
-
-                commandList->drawIndexed(args);
-            }
-
-            if (entity.HasComponent<Sprite2D>())
-            {
-                auto &sprite = entity.GetComponent<Sprite2D>();
-                Renderer2D::DrawQuad(tr.GetWorldMatrix(), sprite.color, sprite.texture, sprite.tilingFactor, static_cast<u32>(e));
-            }
-        }
-
-        Renderer2D::Flush();
-        Renderer2D::End();
     }
 
     template<typename T>
