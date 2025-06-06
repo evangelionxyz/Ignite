@@ -47,10 +47,10 @@ namespace ignite
     {
     public:
         Shader() = default;
-        Shader(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile = false);
+        Shader(const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile = false);
 
         static ShaderMake::ShaderBlob CompileOrGetShader(const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile);
-        static Ref<Shader> Create(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile = false);
+        static Ref<Shader> Create(const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile = false);
         nvrhi::ShaderHandle GetHandle() { return m_Handle; }
 
         static void SPIRVReflect(ShaderMake::ShaderType type, const ShaderMake::ShaderBlob &blob);

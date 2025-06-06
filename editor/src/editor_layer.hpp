@@ -60,6 +60,7 @@ namespace ignite
         EditorData GetState() const { return m_Data; }
 
     private:
+
         void NewScene();
         void SaveScene();
         void SaveSceneAs();
@@ -95,7 +96,7 @@ namespace ignite
         
         nvrhi::CommandListHandle m_CommandList;
         nvrhi::StagingTextureHandle m_EntityIDStagingTexture;
-        
+            
         nvrhi::IDevice *m_Device = nullptr;
 
         friend class ScenePanel;

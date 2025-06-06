@@ -89,9 +89,9 @@ namespace ignite
             return nvrhi::BindingLayoutDesc()
                 .setVisibility(nvrhi::ShaderType::All)
                 .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0)) // camera
-                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1)) // directional light
-                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(2)) // environment
-                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(3)) // model
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1)) // model
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(2)) // directional light
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(3)) // environment
                 .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(4)) // material
 
                 .addItem(nvrhi::BindingLayoutItem::Texture_SRV(0)) // diffuse
@@ -207,4 +207,31 @@ namespace ignite
             return bindingDesc;
         }
     };
+
+    struct VertexOutline
+    {
+        glm::vec3 position;
+
+        static std::array<nvrhi::VertexAttributeDesc, 1> GetAttributes()
+        {
+            return
+            {
+                nvrhi::VertexAttributeDesc()
+                    .setName("POSITION")
+                    .setBufferIndex(0)
+                    .setFormat(nvrhi::Format::RGB32_FLOAT)
+                    .setOffset(offsetof(VertexOutline, position))
+                    .setElementStride(sizeof(VertexOutline))
+            };
+        }
+
+        static nvrhi::BindingLayoutDesc GetBindingLayoutDesc()
+        {
+            nvrhi::BindingLayoutDesc desc;
+            desc.setVisibility(nvrhi::ShaderType::All);
+            desc.addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0));
+            return desc;
+        }
+    };
+
 }

@@ -76,5 +76,7 @@ namespace ignite
     
     private:
         bool m_Playing = false;
+
+        friend class SceneRenderer;
     };
 }

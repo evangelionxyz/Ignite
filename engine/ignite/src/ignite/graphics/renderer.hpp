@@ -44,7 +44,8 @@ namespace ignite
         RENDERER_2D_QUAD,
         RENDERER_2D_LINE,
         DEFAULT_3D_ENV,
-        DEFAULT_3D_MESH
+        DEFAULT_3D_MESH,
+        DEFAULT_OUTLINE
     };
 
     class Renderer

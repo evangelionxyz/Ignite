@@ -173,9 +173,9 @@ namespace ignite
 
         auto desc = nvrhi::BindingSetDesc();
         desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, scene->environment->GetCameraBuffer()));
-        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, scene->environment->GetDirLightBuffer()));
-        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, scene->environment->GetParamsBuffer()));
-        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, meshRenderer.mesh->objectBufferHandle));
+        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, meshRenderer.mesh->objectBufferHandle));
+        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, scene->environment->GetDirLightBuffer()));
+        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, scene->environment->GetParamsBuffer()));
         desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, meshRenderer.mesh->materialBufferHandle));
 
         desc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, meshRenderer.material.textures[aiTextureType_DIFFUSE].handle));

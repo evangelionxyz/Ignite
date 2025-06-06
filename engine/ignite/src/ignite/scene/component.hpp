@@ -217,6 +217,7 @@ namespace ignite
     public:
         std::string name;
         Ref<EntityMesh> mesh;
+        UUID root = UUID(0);
 
         ObjectBuffer meshBuffer;
         Material material;

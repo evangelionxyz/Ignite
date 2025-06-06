@@ -505,7 +505,7 @@ namespace ignite
                     {
                         SkinnedMesh *c = comp->As<SkinnedMesh>();
 
-                        if (ImGui::Button("Load"))
+                        if (ImGui::Button("Load", {50.0f, 30.0f}))
                         {
                             std::filesystem::path filepath = FileDialogs::OpenFile("GLB/GLTF (*.glb;*.gltf)\0*.glb;*.gltf\0FBX (*.fbx)\0*.fbx");
                             if (!filepath.empty())
@@ -595,7 +595,7 @@ namespace ignite
                                         MeshRenderer &meshRenderer = nodeEntity.AddComponent<MeshRenderer>();
 
                                         meshRenderer.name = mesh->name;
-                                        // meshRenderer.root = m_SelectedEntity.GetUUID();
+                                        meshRenderer.root = m_SelectedEntity.GetUUID();
 
                                         for (auto &vertex : mesh->vertices)
                                         {

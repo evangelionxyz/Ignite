@@ -36,7 +36,6 @@ namespace ignite
         m_Device = Application::GetDeviceManager()->GetDevice();
         m_CommandList = m_Device->createCommandList();
 
-
         m_MeshPipeline = Renderer::GetPipeline(GPipelines::DEFAULT_3D_MESH);
         m_EnvPipeline = Renderer::GetPipeline(GPipelines::DEFAULT_3D_ENV);
 

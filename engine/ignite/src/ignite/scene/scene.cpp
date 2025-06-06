@@ -34,7 +34,6 @@ namespace ignite
         // create env
         auto pipeline = Renderer::GetPipeline(GPipelines::DEFAULT_3D_ENV);
         nvrhi::IDevice *device = Application::GetRenderDevice();
-
         
         environment = Environment::Create(device);
         environment->LoadTexture(device, "resources/hdr/klippad_sunrise_2_2k.hdr", pipeline->GetBindingLayout());
@@ -126,8 +125,6 @@ namespace ignite
 
             glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(meshRenderer.meshBuffer.transformation)));
             meshRenderer.meshBuffer.normal = glm::mat4(normalMat3);
-            
-#if 0
             if (meshRenderer.root != UUID(0))
             {
                 Entity rootNodeEntity = SceneManager::GetEntity(this, meshRenderer.root);
@@ -145,7 +142,6 @@ namespace ignite
                 }
             }
             else
-#endif
             {
                 for (size_t i = 0; i < MAX_BONES; ++i)
                 {

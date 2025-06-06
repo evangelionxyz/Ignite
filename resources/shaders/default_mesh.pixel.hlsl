@@ -40,9 +40,9 @@ struct Material
 
 // push constant buffers
 cbuffer CameraBuffer : register(b0) { Camera camera; }
-cbuffer DirLightBuffer : register(b1) { DirLight dirLight; }
-cbuffer EnvironmentBuffer : register(b2) { Environment env; }
-cbuffer ObjectBuffer : register(b3) { Object object; }
+cbuffer ObjectBuffer : register(b1) { Object object; }
+cbuffer DirLightBuffer : register(b2) { DirLight dirLight; }
+cbuffer EnvironmentBuffer : register(b3) { Environment env; }
 cbuffer MaterialBuffer : register(b4) { Material material; }
 
 struct PSInput

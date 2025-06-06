@@ -57,8 +57,9 @@ namespace ignite
     }
 
 
-    Shader::Shader(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile)
+    Shader::Shader(const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile)
     {
+        nvrhi::IDevice *device = Application::GetRenderDevice();
         CreateShaderCachedDirectoryIfNeeded();
 
         ShaderMake::ShaderBlob blob = CompileOrGetShader(filepath, type, recompile);
@@ -176,9 +177,9 @@ namespace ignite
         }
     }
 
-    Ref<Shader> Shader::Create(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile)
+    Ref<Shader> Shader::Create(const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile)
     {
-        Ref<Shader> returnShader = CreateRef<Shader>(device, filepath, type, recompile);
+        Ref<Shader> returnShader = CreateRef<Shader>(filepath, type, recompile);
         if (returnShader->GetHandle() == nullptr)
             return nullptr;
 

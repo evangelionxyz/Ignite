@@ -6,6 +6,8 @@
 
 namespace ignite {
 
+    static AssetMetaData s_NullMetaData;
+
     AssetHandle AssetManager::ImportAsset(const std::filesystem::path &filepath)
     {
         bool foundInAssetRegistry = false;
@@ -121,13 +123,11 @@ namespace ignite {
                 return metadata;
             }
         }
-        return AssetMetaData{};
+        return s_NullMetaData;
     }
 
     const AssetMetaData &AssetManager::GetMetaData(AssetHandle handle) const
     {
-        static AssetMetaData s_NullMetaData;
-        
         if (m_AssetRegistry.contains(handle))
         {
             return m_AssetRegistry.at(handle);

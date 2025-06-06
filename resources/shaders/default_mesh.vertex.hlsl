@@ -17,7 +17,7 @@ struct Object
 };
 
 cbuffer CameraBuffer : register(b0) { Camera camera; }
-cbuffer ObjectBuffer : register(b3) { Object object; }
+cbuffer ObjectBuffer : register(b1) { Object object; }
 
 struct VSInput
 {

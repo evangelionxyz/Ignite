@@ -64,9 +64,9 @@ namespace ignite {
             auto desc = nvrhi::BindingSetDesc();
 
             desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, m_CreateInfo.cameraBuffer));
-            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, m_CreateInfo.lightBuffer));
-            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, m_CreateInfo.envBuffer));
-            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, mesh->objectBuffer));
+            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, mesh->objectBuffer));
+            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, m_CreateInfo.lightBuffer));
+            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, m_CreateInfo.envBuffer));
             desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, mesh->materialBuffer));
             desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(5, m_CreateInfo.debugBuffer));
 
