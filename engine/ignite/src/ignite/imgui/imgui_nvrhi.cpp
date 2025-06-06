@@ -50,7 +50,7 @@ namespace ignite
         m_Device = device;
         commandList = device->createCommandList();
 
-        VPShader *imguiShader = Renderer::GetDefaultShader("imgui");
+        auto shaderContext = Renderer::GetShaderLibrary().Get("imgui");
 
         nvrhi::VertexAttributeDesc vertexAttribLayout[] =
         {
@@ -59,7 +59,7 @@ namespace ignite
             {"COLOR", nvrhi::Format::RGBA8_UNORM, 1, 0, offsetof(ImDrawVert, col), sizeof(ImDrawVert), false}
         };
 
-        attributeLayout = device->createInputLayout(vertexAttribLayout, std::size(vertexAttribLayout), imguiShader->vertex);
+        attributeLayout = device->createInputLayout(vertexAttribLayout, std::size(vertexAttribLayout), shaderContext[nvrhi::ShaderType::Vertex].handle);
 
         // Create PSO (Pipeline State Object)
         nvrhi::BlendState blendState;
@@ -98,8 +98,8 @@ namespace ignite
         bindingLayout = device->createBindingLayout(layoutDesc);
         graphicsPipelineDesc.primType = nvrhi::PrimitiveType::TriangleList;
         graphicsPipelineDesc.inputLayout = attributeLayout;
-        graphicsPipelineDesc.VS = imguiShader->vertex;
-        graphicsPipelineDesc.PS = imguiShader->pixel;
+        graphicsPipelineDesc.VS = shaderContext[nvrhi::ShaderType::Vertex].handle;
+        graphicsPipelineDesc.PS = shaderContext[nvrhi::ShaderType::Pixel].handle;
         graphicsPipelineDesc.renderState = renderState;
         graphicsPipelineDesc.bindingLayouts = { bindingLayout };
 

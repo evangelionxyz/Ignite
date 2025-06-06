@@ -30,20 +30,22 @@ namespace ignite {
         }
     };
 
+    struct FileThumbnail
+    {
+        Ref<Texture> thumbnail;
+        uint64_t timestamp = 0;
+    };
+
     class ContentBrowserPanel : public IPanel
     {
     public:
         explicit ContentBrowserPanel(const char *windowTitle);
-
         void SetActiveProject(const Ref<Project> &project);
-
-        void RenderFileTree(FileTreeNode *node);
-
         virtual void OnGuiRender() override;
 
     private:
+        void RenderFileTree(FileTreeNode *node);
         void RefreshEntryPathList();
-
         void RefreshAssetTree();
         void LoadAssetTree(const std::filesystem::path &directory);
 

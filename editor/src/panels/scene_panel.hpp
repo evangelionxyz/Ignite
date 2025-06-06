@@ -108,5 +108,6 @@ namespace ignite
             glm::vec2 mousePos = glm::vec2(0.0f);
         } m_ViewportData;
 
+        
     };
 }

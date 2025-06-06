@@ -79,7 +79,6 @@ namespace ignite {
             if (m_Environment && m_Environment->GetHDRTexture())
             {
                 desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, m_Environment->GetHDRTexture()));
-
             }
             else
             {

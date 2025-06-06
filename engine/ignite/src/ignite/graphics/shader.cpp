@@ -89,8 +89,8 @@ namespace ignite
             ShaderMake::ShaderContextDesc shaderDesc = ShaderMake::ShaderContextDesc();
 
             // filepath from filepathCopy
-            std::shared_ptr<ShaderMake::ShaderContext> shaderContext = std::make_shared<ShaderMake::ShaderContext>(filepathCopy.generic_string(), type, shaderDesc, recompile);
-            ShaderMake::CompileStatus status = Renderer::GetShaderContext()->CompileShader({ shaderContext });
+            Ref<ShaderMake::ShaderContext> shaderContext = CreateRef<ShaderMake::ShaderContext>(filepathCopy.generic_string(), type, shaderDesc, recompile);
+            ShaderMake::CompileStatus status = Renderer::GetShaderLibrary().GetContext()->CompileShader({ shaderContext });
 
             bool success = status == ShaderMake::CompileStatus::Success;
             LOG_ASSERT(success, "[Shader] failed to get or compile shader");

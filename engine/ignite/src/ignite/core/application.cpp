@@ -102,7 +102,7 @@ namespace ignite
             m_Window->PollEvents();
 
             const f64 currTime = glfwGetTime();
-            m_DeltaTime = currTime - m_PreviousTime;
+            m_DeltaTime = static_cast<float>(currTime - m_PreviousTime);
 
             // update window title
             if (m_AverageFrameTime > 0)

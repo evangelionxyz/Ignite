@@ -106,7 +106,7 @@ namespace ignite
                 // check if src entity has parent
                 if (idComp.parent != 0)
                 {
-                    // current parent should be remove it
+                    // current parent should be removed it
                     Entity parent = SceneManager::GetEntity(m_Scene, idComp.parent);
                     parent.GetComponent<ID>().RemoveChild(idComp.uuid);
 

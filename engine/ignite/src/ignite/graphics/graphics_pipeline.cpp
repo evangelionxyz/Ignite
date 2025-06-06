@@ -90,7 +90,7 @@ namespace ignite {
 
         if (m_NeedsToCompileShader)
         {
-            Renderer::GetShaderContext()->CompileShader(m_ShaderContexts);
+            Renderer::GetShaderLibrary().GetContext()->CompileShader(m_ShaderContexts);
 
             for (auto& context : m_ShaderContexts)
             {

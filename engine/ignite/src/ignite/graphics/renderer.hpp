@@ -15,15 +15,28 @@ namespace ignite
     class Shader;
 
     // vertex/pixel shader
-    struct VPShader
+    struct ShaderHandleContext
     {
-        nvrhi::ShaderHandle vertex;
-        nvrhi::ShaderHandle pixel;
-        Ref<ShaderMake::ShaderContext> vertexContext;
-        Ref<ShaderMake::ShaderContext> pixelContext;
+        Ref<ShaderMake::ShaderContext> context;
+        nvrhi::ShaderHandle handle;
+    };
 
-        VPShader() = default;
-        VPShader(nvrhi::IDevice *device, const std::string &filepath);
+    class ShaderLibrary
+    {
+    public:
+        void Init(nvrhi::GraphicsAPI api);
+        void Compile();
+        void Load(const std::string &name, const std::string &filepath);
+        bool Exists(const std::string &name) const;
+        
+        std::unordered_map<nvrhi::ShaderType, ShaderHandleContext> Get(const std::string &name);
+
+        ShaderMake::Context *GetContext() const;
+
+    private:
+        std::unordered_map<std::string, std::unordered_map<nvrhi::ShaderType, ShaderHandleContext>> m_Shaders;
+        Scope<ShaderMake::Context> m_ShaderContext = nullptr;
+        ShaderMake::Options m_ShaderMakeOptions;
     };
 
     enum class GPipelines
@@ -41,28 +54,20 @@ namespace ignite
         Renderer(DeviceManager *deviceManager, nvrhi::GraphicsAPI api);
 
         ~Renderer();
-
-        static ShaderMake::Context *GetShaderContext();
         
         static Ref<Texture> GetWhiteTexture();
         static Ref<Texture> GetBlackTexture();
         static void CreatePipelines(nvrhi::IFramebuffer *framebuffer);
-
         static nvrhi::GraphicsAPI GetGraphicsAPI();
 
-        static VPShader *GetDefaultShader(const std::string &shaderName);
+        static ShaderLibrary &GetShaderLibrary();
         static Ref<GraphicsPipeline> GetPipeline(GPipelines gpipeline);
         
     private:
-
-        void LoadDefaultShaders(nvrhi::IDevice *device);
         void InitPipelines();
 
         nvrhi::GraphicsAPI m_GraphicsAPI;
-        Scope<ShaderMake::Context> m_ShaderContext = nullptr;
-        ShaderMake::Options m_ShaderMakeOptions;
-
-        std::unordered_map<std::string, VPShader> m_Shaders;
+        ShaderLibrary m_ShaderLibrary;
         std::unordered_map<GPipelines, Ref<GraphicsPipeline>> m_Pipelines;
 
         Ref<Texture> m_WhiteTexture;

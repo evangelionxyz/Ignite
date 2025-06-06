@@ -580,7 +580,6 @@ namespace ignite
         std::string filepath = FileDialogs::OpenFile("Ignite Scene (*.ixasset)\0*.ixasset\0");
         if (!filepath.empty())
         {
-            m_CurrentSceneFilePath = filepath;
             OpenScene(filepath);
         }
     }
@@ -597,6 +596,8 @@ namespace ignite
 
             m_ActiveScene = m_EditorScene;
             m_ScenePanel->SetActiveScene(m_ActiveScene.get(), true);
+
+            m_CurrentSceneFilePath = filepath;
         }
 
         return true;

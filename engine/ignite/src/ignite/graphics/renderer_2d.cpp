@@ -60,10 +60,9 @@ namespace ignite
 
         s_r2d->quadBatch.pipeline = GraphicsPipeline::Create(params, &pci);
 
-        VPShader* vpShader = Renderer::GetDefaultShader("batch_2d_quad");
-
-        s_r2d->quadBatch.pipeline->AddShader(vpShader->vertex, nvrhi::ShaderType::Vertex)
-            .AddShader(vpShader->pixel, nvrhi::ShaderType::Pixel)
+        auto shaderContext = Renderer::GetShaderLibrary().Get("batch_2d_quad");
+        s_r2d->quadBatch.pipeline->AddShader(shaderContext[nvrhi::ShaderType::Vertex].handle, nvrhi::ShaderType::Vertex)
+            .AddShader(shaderContext[nvrhi::ShaderType::Pixel].handle, nvrhi::ShaderType::Pixel)
             .Build();
 
         size_t vertAllocSize = s_r2d->quadBatch.maxVertices * sizeof(Vertex2DQuad);
@@ -166,9 +165,10 @@ namespace ignite
 
         s_r2d->lineBatch.pipeline = GraphicsPipeline::Create(params, &pci);
 
-        VPShader* vpShader = Renderer::GetDefaultShader("batch_2d_line");
-        s_r2d->lineBatch.pipeline->AddShader(vpShader->vertex, nvrhi::ShaderType::Vertex)
-            .AddShader(vpShader->pixel, nvrhi::ShaderType::Pixel)
+        auto shaderContext = Renderer::GetShaderLibrary().Get("batch_2d_line");
+        
+        s_r2d->lineBatch.pipeline->AddShader(shaderContext[nvrhi::ShaderType::Vertex].handle, nvrhi::ShaderType::Vertex)
+            .AddShader(shaderContext[nvrhi::ShaderType::Pixel].handle, nvrhi::ShaderType::Pixel)
             .Build();
 
         size_t vertAllocSize = s_r2d->lineBatch.maxVertices * sizeof(Vertex2DLine);
