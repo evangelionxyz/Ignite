@@ -14,3 +14,4 @@ bin-cmake
 resources/shaders/bin
 scripts/__pycache__
 scripts/premake
+IGN.sln.DotSettings.user

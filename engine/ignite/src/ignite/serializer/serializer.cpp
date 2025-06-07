@@ -314,6 +314,18 @@ namespace ignite {
             }
         }
 
+        // attach each node to it's parent
+        for (auto [uuid, e] : desScene->entities)
+        {
+            Entity entity{ e, desScene.get() };
+
+            if (entity.GetParentUUID() != UUID(0))
+            {
+                Entity parent = SceneManager::GetEntity(desScene.get(), entity.GetParentUUID());
+                SceneManager::AddChild(desScene.get(), parent, entity);
+            }
+        }
+
         return desScene;
     }
 
@@ -367,8 +379,6 @@ namespace ignite {
             for (auto &[handle, metadata] : assetRegistry)
             {
                 assetSr.BeginMap(); // Begin Metadata
-
-                metadata.filepath = m_Project->GetAssetRelativeFilepath(metadata.filepath);
 
                 assetSr.AddKeyValue("Handle", static_cast<uint64_t>(handle));
                 assetSr.AddKeyValue("Type", AssetTypeToString(metadata.type));

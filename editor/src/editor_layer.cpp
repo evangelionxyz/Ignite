@@ -15,7 +15,7 @@
 #include "ignite/audio/fmod_sound.hpp"
 #include "ignite/audio/fmod_dsp.hpp"
 
-#include <inttypes.h>
+#include <cinttypes>
 
 #include <glm/glm.hpp>
 #include <nvrhi/utils.h>
@@ -32,12 +32,13 @@ namespace ignite
     {
         Ref<FmodReverb> reverb;
         Ref<FmodDistortion> distortion;
+        Ref<FmodCompressor> compressor;
         Ref<FmodSound> sound;
 
         FMOD::ChannelGroup* reverbGroup;
     };
 
-    TestAudio testAudio;
+    TestAudio audio;
     
     EditorLayer::EditorLayer(const std::string &name)
         : Layer(name)
@@ -66,35 +67,44 @@ namespace ignite
         for (int i = 0; i < cmdArgs.count; ++i)
         {
             std::string args = cmdArgs[i];
-            if (args.find("-project=") != std::string::npos)
+
+            char projectArgs[] = "-project=";
+            if (args.find(projectArgs) != std::string::npos)
             {
-                std::string projectFilepath = args.substr(9, args.size() - 9);
+                std::string projectFilepath = args.substr(std::size(projectArgs) - 1, args.size() - std::size(projectArgs) + 1);
                 OpenProject(projectFilepath);
             }
         }
 
-
         // Test Audio
 
         // Create reverb DSB
-        testAudio.reverb = FmodReverb::Create();
-        testAudio.reverb->SetDiffusion(100.0f);
-        testAudio.reverb->SetWetLevel(20.0f);
-        testAudio.reverb->SetDecayTime(5000.0f);
+        audio.reverb = FmodReverb::Create();
+        audio.reverb->SetDiffusion(25.0f);
+        audio.reverb->SetWetLevel(20.0f);
+        audio.reverb->SetDecayTime(500.0f);
 
-        // Create distortion DSB
-        testAudio.distortion = FmodDistortion::Create();
-        testAudio.distortion->SetDistortionLevel(1.0f);
+        // Create distortion DSP
+        audio.distortion = FmodDistortion::Create();
+        audio.distortion->SetDistortionLevel(0.1f);
+        audio.distortion->SetActive(false);
+
+        // Create compressor DSP
+        audio.compressor = FmodCompressor::Create();
+        audio.compressor->SetRatio(3.0f);
+        audio.compressor->SetRelease(100.0f);
 
         // Create rever group
-        testAudio.reverbGroup = FmodAudio::CreateChannelGroup("ReverbGroup");
-        testAudio.reverbGroup->setMode(FMOD_CHANNELCONTROL_DSP_TAIL);
-        testAudio.reverbGroup->addDSP(0, testAudio.reverb->GetFmodDsp()); // add dsp
+        audio.reverbGroup = FmodAudio::CreateChannelGroup("ReverbGroup");
+        audio.reverbGroup->setMode(FMOD_CHANNELCONTROL_DSP_TAIL);
+        audio.reverbGroup->addDSP(0, audio.distortion->GetFmodDsp()); // add dsp
+        audio.reverbGroup->addDSP(1, audio.reverb->GetFmodDsp()); // add dsp
+        audio.reverbGroup->addDSP(2, audio.compressor->GetFmodDsp());
 
         // create sound
-        testAudio.sound = FmodSound::Create("music", "C:/Users/Evangelion Manuhutu/Downloads/Music/test.mp3");
-        testAudio.sound->AddToChannelGroup(testAudio.reverbGroup);
-        testAudio.sound->Play();
+        audio.sound = FmodSound::Create("music", "C:/Users/Evangelion Manuhutu/Downloads/Music/06. Mick Gordon - Hellwalker.flac");
+        audio.sound->AddToChannelGroup(audio.reverbGroup);
+        audio.sound->Play();
     }
 
     void EditorLayer::OnDetach()

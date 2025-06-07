@@ -988,12 +988,9 @@ namespace ignite
 
     void ScenePanel::DebugRender()
     {
-        ImGui::Begin("Debug Render");
+        /*ImGui::Begin("Debug Render");
 
-        ImTextureID depthImage = reinterpret_cast<ImTextureID>(m_RenderTarget->GetDepthAttachment().Get());
-        ImGui::Image(depthImage, {512, 256});
-
-        ImGui::End();
+        ImGui::End();*/
     }
 
     void ScenePanel::CameraSettingsUI()
@@ -1339,9 +1336,12 @@ namespace ignite
 
     void ScenePanel::DuplicateSelectedEntity()
     {
-        if (m_SelectedEntity.IsValid())
+        for (Entity entity : m_SelectedEntities)
         {
-            SceneManager::DuplicateEntity(m_Scene, m_SelectedEntity);
+            if (entity.IsValid())
+            {
+                SceneManager::DuplicateEntity(m_Scene, entity);
+            }
         }
     }
 }

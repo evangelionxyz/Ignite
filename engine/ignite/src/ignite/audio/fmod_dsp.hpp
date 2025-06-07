@@ -143,7 +143,7 @@ namespace ignite
         [[nodiscard]] float GetThreshold() const;
         
         /// @param ratio Units: linear
-        /// range[0, 50], default [2.5]
+        /// range[0, 5.0], default [2.5]
         /// Compression ratio
         void SetRatio(float ratio) const;
         [[nodiscard]] float GetRatio() const;

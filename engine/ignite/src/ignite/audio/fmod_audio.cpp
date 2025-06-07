@@ -73,7 +73,7 @@ namespace ignite {
         s_fmod_audio->m_ChannelGroups[name] = group;
         return group;
     }
-
+    
     std::unordered_map<std::string, FMOD::ChannelGroup*> FmodAudio::GetChannelGroupMap()
     {
         return s_fmod_audio->m_ChannelGroups;    

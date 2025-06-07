@@ -28,6 +28,7 @@ namespace ignite
 
         static FMOD::ChannelGroup *CreateChannelGroup(const std::string &name);
         static std::unordered_map<std::string, FMOD::ChannelGroup *> GetChannelGroupMap();
+        
         static FMOD::ChannelGroup *GetChannelGroup(const std::string &name);
         static FmodAudio &GetInstance();
         static FMOD::System *GetFmodSystem();
