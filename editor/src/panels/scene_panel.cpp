@@ -125,7 +125,7 @@ namespace ignite
         ImGui::BeginChild("entity_hierachy", ImGui::GetContentRegionAvail(), 0, windowFlags);
         ImGui::Text("Entity count: %zu", m_Scene->entities.size());
 
-        static ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_ScrollX;
+        ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_ScrollX;
         if (ImGui::BeginTable("entity_hierarchy_table", 3, tableFlags))
         {
             // setup table 3 columns
@@ -815,8 +815,8 @@ namespace ignite
 
         const ImGuiWindow *window = ImGui::GetCurrentWindow();
 
-        m_ViewportData.isFocused = ImGui::IsWindowFocused();
-        m_ViewportData.isHovered = ImGui::IsWindowHovered();
+        m_IsFocused = ImGui::IsWindowFocused();
+        m_IsHovered = ImGui::IsWindowHovered();
 
         ImVec2 canvasPos = ImGui::GetCursorScreenPos();
         ImVec2 canvasSize = ImGui::GetContentRegionMax();
@@ -1108,7 +1108,7 @@ namespace ignite
 
     bool ScenePanel::OnMouseScrolledEvent(MouseScrolledEvent &event)
     {
-        if (m_ViewportData.isHovered)
+        if (m_IsHovered)
         {
             const f32 dx = event.GetXOffset(), dy = event.GetYOffset();
 
@@ -1156,7 +1156,7 @@ namespace ignite
                 }
             }
 
-            if (m_ViewportData.isFocused)
+            if (m_IsFocused)
             {
             }
 
@@ -1208,7 +1208,7 @@ namespace ignite
             LOG_INFO(j->ToString());
         }
 
-        if (!m_ViewportData.isHovered)
+        if (!m_IsHovered)
             return;
 
         

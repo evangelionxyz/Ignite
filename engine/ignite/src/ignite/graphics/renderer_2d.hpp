@@ -49,6 +49,9 @@ namespace ignite
     {
         BatchRender<Vertex2DQuad> quadBatch;
         std::unordered_map<GPipeline, nvrhi::BindingSetHandle> quadBindingSets;
+        nvrhi::BufferHandle quadOutlineVertexBuffer;
+        VertexOutline *quadVertexOutlineBase = nullptr;
+        VertexOutline *quadVertexOutlinePtr = nullptr;
 
         BatchRender<Vertex2DLine> lineBatch;
         nvrhi::BindingSetHandle lineBindingSet;
@@ -63,7 +66,13 @@ namespace ignite
         static void Shutdown();
 
         static void Begin(nvrhi::ICommandList *commandList, nvrhi::IFramebuffer* framebuffer);
-        static void Flush(Ref<GraphicsPipeline> quadPipeline, Ref<GraphicsPipeline> linePipeline, bool outlining = false);
+        static void Flush(Ref<GraphicsPipeline> quadPipeline, Ref<GraphicsPipeline> linePipeline);
+
+        static void BeginOutline();
+        static void FlushOutline(Ref<GraphicsPipeline> quadPipeline);
+
+        static void DrawQuadOutline(const glm::mat4 &transform);
+
         static void End();
 
         static void DrawBox(const glm::mat4& transform, const glm::vec4& color = glm::vec4(1.0f), uint32_t entityID = 0);

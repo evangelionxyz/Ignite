@@ -31,6 +31,7 @@ namespace ignite
             bool multiSelect = false;
             bool settingsWindow = false;
             bool popupNewProjectModal = false;
+            bool assetRegistryWindow = false;
             bool isPickingEntity = false;
             uint32_t hoveredEntity = uint32_t(-1);
 

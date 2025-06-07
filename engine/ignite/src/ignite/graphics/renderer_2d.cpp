@@ -26,6 +26,7 @@ namespace ignite
     {
         if (s_r2d)
         {
+            delete[] s_r2d->quadVertexOutlineBase;
             delete s_r2d;
         }
     }
@@ -34,19 +35,36 @@ namespace ignite
     {
         nvrhi::IDevice* device = Application::GetRenderDevice();
 
-        size_t vertAllocSize = s_r2d->quadBatch.maxVertices * sizeof(Vertex2DQuad);
-        s_r2d->quadBatch.vertexBufferBase = new Vertex2DQuad[vertAllocSize];
+        {
+            size_t vertAllocSize = s_r2d->quadBatch.maxVertices * sizeof(Vertex2DQuad);
+            s_r2d->quadBatch.vertexBufferBase = new Vertex2DQuad[vertAllocSize];
 
-        // create buffers
-        const auto vbDesc = nvrhi::BufferDesc()
-            .setByteSize(vertAllocSize)
-            .setIsVertexBuffer(true)
-            .setInitialState(nvrhi::ResourceStates::VertexBuffer)
-            .setKeepInitialState(true)
-            .setDebugName("Renderer 2D Quad Vertex Buffer");
+            // create buffers
+            const auto desc = nvrhi::BufferDesc()
+                .setByteSize(vertAllocSize)
+                .setIsVertexBuffer(true)
+                .setInitialState(nvrhi::ResourceStates::VertexBuffer)
+                .setKeepInitialState(true)
+                .setDebugName("Renderer 2D Quad Vertex Buffer");
 
-        s_r2d->quadBatch.vertexBuffer = device->createBuffer(vbDesc);
-        LOG_ASSERT(s_r2d->quadBatch.vertexBuffer, "[Renderer 2D] Failed to create Renderer 2D Quad Vertex Buffer");
+            s_r2d->quadBatch.vertexBuffer = device->createBuffer(desc);
+            LOG_ASSERT(s_r2d->quadBatch.vertexBuffer, "[Renderer 2D] Failed to create Renderer 2D Quad Vertex Buffer");
+        }
+
+        {
+            size_t vertAllocSize = s_r2d->quadBatch.maxVertices * sizeof(VertexOutline);
+            s_r2d->quadVertexOutlineBase = new VertexOutline[vertAllocSize];
+
+            const auto desc = nvrhi::BufferDesc()
+                .setByteSize(vertAllocSize)
+                .setIsVertexBuffer(true)
+                .setInitialState(nvrhi::ResourceStates::VertexBuffer)
+                .setKeepInitialState(true)
+                .setDebugName("Renderer 2D Quad Outline Vertex Buffer");
+
+            s_r2d->quadOutlineVertexBuffer = device->createBuffer(desc);
+            LOG_ASSERT(s_r2d->quadOutlineVertexBuffer, "[Renderer 2D] Failed to create Renderer 2D Quad Outline Vertex Buffer");
+        }
 
         const auto ibDesc = nvrhi::BufferDesc()
             .setByteSize(s_r2d->quadBatch.maxIndices * sizeof(u32))
@@ -161,7 +179,7 @@ namespace ignite
         renderFramebuffer = framebuffer;
     }
 
-    void Renderer2D::Flush(Ref<GraphicsPipeline> quadPipeline, Ref<GraphicsPipeline> linePipeline, bool outlining)
+    void Renderer2D::Flush(Ref<GraphicsPipeline> quadPipeline, Ref<GraphicsPipeline> linePipeline)
     {
         nvrhi::Viewport viewport = renderFramebuffer->getFramebufferInfo().getViewport();
 
@@ -173,7 +191,7 @@ namespace ignite
             const auto graphicsState = nvrhi::GraphicsState()
                 .setPipeline(quadPipeline->GetHandle())
                 .setFramebuffer(renderFramebuffer)
-                .addBindingSet(s_r2d->quadBindingSets[outlining ? GPipeline::OUTLINE : GPipeline::QUAD2D])
+                .addBindingSet(s_r2d->quadBindingSets[GPipeline::QUAD2D])
                 .setViewport(nvrhi::ViewportState().addViewportAndScissorRect(viewport))
                 .addVertexBuffer(nvrhi::VertexBufferBinding{ s_r2d->quadBatch.vertexBuffer, 0, 0 })
                 .setIndexBuffer({ s_r2d->quadBatch.indexBuffer, nvrhi::Format::R32_UINT });
@@ -207,8 +225,59 @@ namespace ignite
         }
     }
 
+    void Renderer2D::BeginOutline()
+    {
+        // Quad outline data
+        s_r2d->quadBatch.indexCount = 0;
+        s_r2d->quadBatch.count = 0;
+        s_r2d->quadVertexOutlinePtr = s_r2d->quadVertexOutlineBase;
+    }
+
+    void Renderer2D::FlushOutline(Ref<GraphicsPipeline> quadPipeline)
+    {
+        nvrhi::Viewport viewport = renderFramebuffer->getFramebufferInfo().getViewport();
+
+        if (s_r2d->quadBatch.indexCount > 0)
+        {
+            const size_t bufferSize = reinterpret_cast<uint8_t *>(s_r2d->quadVertexOutlinePtr) - reinterpret_cast<uint8_t *>(s_r2d->quadVertexOutlineBase);
+            renderCommandList->writeBuffer(s_r2d->quadOutlineVertexBuffer, s_r2d->quadVertexOutlineBase, bufferSize);
+
+            const auto graphicsState = nvrhi::GraphicsState()
+                .setPipeline(quadPipeline->GetHandle())
+                .setFramebuffer(renderFramebuffer)
+                .addBindingSet(s_r2d->quadBindingSets[GPipeline::OUTLINE])
+                .setViewport(nvrhi::ViewportState().addViewportAndScissorRect(viewport))
+                .addVertexBuffer(nvrhi::VertexBufferBinding{ s_r2d->quadOutlineVertexBuffer, 0, 0 })
+                .setIndexBuffer({ s_r2d->quadBatch.indexBuffer, nvrhi::Format::R32_UINT });
+
+            renderCommandList->setGraphicsState(graphicsState);
+            nvrhi::DrawArguments args;
+            args.vertexCount = s_r2d->quadBatch.indexCount;
+            args.instanceCount = 1;
+
+            renderCommandList->drawIndexed(args);
+        }
+    }
+
+    void Renderer2D::DrawQuadOutline(const glm::mat4 &transform)
+    {
+        for (u32 i = 0; i < 4; ++i)
+        {
+            s_r2d->quadVertexOutlinePtr->position = transform * s_r2d->quadPositions[i];
+            s_r2d->quadVertexOutlinePtr++;
+        }
+
+        s_r2d->quadBatch.indexCount += 6;
+        s_r2d->quadBatch.count++;
+    }
+
     void Renderer2D::End()
     {
+        s_r2d->quadBatch.indexCount = 0;
+        s_r2d->quadBatch.count = 0;
+
+        s_r2d->lineBatch.indexCount = 0;
+        s_r2d->lineBatch.count = 0;
     }
     
     void Renderer2D::DrawBox(const glm::mat4& transform, const glm::vec4& color, uint32_t entityID)

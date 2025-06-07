@@ -33,13 +33,14 @@ namespace ignite::vfs
     class Blob : public IBlob
     {
     public:
+        Blob() = default;
         Blob(void *data, size_t size);
         ~Blob() override;
         [[nodiscard]] const void *Data() const override;
         [[nodiscard]] size_t Size() const override;
     private:
-        void *m_Data;
-        size_t m_Size;
+        void *m_Data = nullptr;
+        size_t m_Size = 0;
     };
 
     class IFileSystem

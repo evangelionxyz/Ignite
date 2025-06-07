@@ -1,7 +1,6 @@
 #include "imgui_layer.hpp"
 #include "ignite/core/application.hpp"
 #include "ignite/core/logger.hpp"
-#include "ignite/core/vfs/vfs.hpp"
 
 #include <backends/imgui_impl_glfw.h>
 #include <ImGuizmo.h>
@@ -21,19 +20,42 @@
 
 namespace ignite
 {
-    void RegisteredFont::CreateScaledFont(f32 displayScale)
+
+    GuiFont::GuiFont()
+        : m_IsDefault(false)
+        , m_IsCompressed(false)
+        , m_SizeAtDefaultScale(0.0f)
+    {
+    }
+
+    GuiFont::GuiFont(f32 size)
+        : m_IsDefault(true)
+        , m_IsCompressed(false)
+        , m_SizeAtDefaultScale(0.0f)
+    {
+    }
+
+    GuiFont::GuiFont(Buffer data, bool isCompressed, f32 size)
+        : m_Data(data)
+        , m_IsDefault(false)
+        , m_IsCompressed(isCompressed)
+        , m_SizeAtDefaultScale(size)
+    {
+    }
+
+    void GuiFont::CreateScaledFont(f32 displayScale)
     {
         ImFontConfig fontConfig;
         fontConfig.SizePixels = m_SizeAtDefaultScale * displayScale;
 
         m_ImFont = nullptr;
-        if (m_Data)
+
+        if (m_Data.Data)
         {
             fontConfig.FontDataOwnedByAtlas = false;
-            if (m_IsCompressed)
-                m_ImFont = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(m_Data->Data(), static_cast<int>(m_Data->Size()), 0.0f, &fontConfig);
-            else
-                m_ImFont = ImGui::GetIO().Fonts->AddFontFromMemoryTTF(const_cast<void *>(m_Data->Data()), int(m_Data->Size()), 0.0f, &fontConfig);
+            m_ImFont = m_IsCompressed 
+                ? ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(m_Data.Data, static_cast<int>(m_Data.Size), 0.0f, &fontConfig)
+                : ImGui::GetIO().Fonts->AddFontFromMemoryTTF(m_Data.Data, static_cast<int>(m_Data.Size), 0.0f, &fontConfig);
         }
         else if (m_IsDefault)
         {
@@ -46,7 +68,7 @@ namespace ignite
         }
     }
 
-    void RegisteredFont::ReleaseScaledFont()
+    void GuiFont::ReleaseScaledFont()
     {
         m_ImFont = nullptr;
     }
@@ -62,16 +84,40 @@ namespace ignite
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
 
-        m_DefaultFont = CreateRef<RegisteredFont>(13.0f);
-        m_Fonts.push_back(m_DefaultFont);
+        std::filesystem::path fontPath = "resources/fonts/segoeui.ttf";
+        
+        LOG_ASSERT(std::filesystem::exists(fontPath), "[ImGui Layer] font does not found");
+
+        std::ifstream file(fontPath, std::ios::binary);
+        if (file.is_open())
+        {
+            file.seekg(0, std::ios::end);
+            u64 size = file.tellg();
+            file.seekg(0, std::ios::beg);
+
+            char *data = static_cast<char *>(malloc(size));
+            LOG_ASSERT(data, "Out of memory");
+
+            file.read(data, size);
+            
+            if (file.good())
+            {
+                m_Font = std::make_shared<GuiFont>(Buffer(data, size), false, 16);
+            }
+            else
+            {
+                free(data);
+            }
+            file.close();
+        }
 
         ImGuiStyle &style = ImGui::GetStyle();
 
         ImVec4 *colors = style.Colors;
         colors[ImGuiCol_Text] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
         colors[ImGuiCol_TextDisabled] = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
-        colors[ImGuiCol_WindowBg] = ImVec4(22.0f/255.0f, 22.0f/255.0f, 22.0f/255.0f, 1.00f);
-        colors[ImGuiCol_ChildBg] = ImVec4(22.0f/255.0f, 22.0f/255.0f, 22.0f/255.0f, 1.00f);
+        colors[ImGuiCol_WindowBg] = ImVec4(22.0f/255.0f, 22.0f/255.0f, 22.0f/255.0f, 0.9f);
+        colors[ImGuiCol_ChildBg] = ImVec4(22.0f/255.0f, 22.0f/255.0f, 22.0f/255.0f, 0.9f);
         colors[ImGuiCol_PopupBg] = ImVec4(0.10f, 0.10f, 0.10f, 0.94f);
         colors[ImGuiCol_Border] = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
         colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
@@ -203,41 +249,8 @@ namespace ignite
 
     bool ImGuiLayer::Init()
     {
-        imgui_nvrhi = CreateScope<ImGui_NVRHI>();
-        return imgui_nvrhi->Init(m_DeviceManager->GetDevice());
-    }
-
-    Ref<RegisteredFont> ImGuiLayer::CreateFontFromFile(vfs::IFileSystem &fs, const std::filesystem::path &fontFile, f32 fontSize)
-    {
-        auto fontData = fs.ReadFile(fontFile);
-
-        if(!fontData)
-            return CreateRef<RegisteredFont>();
-
-        Ref<RegisteredFont> font = CreateRef<RegisteredFont>(fontData, false, fontSize);
-        m_Fonts.push_back(font);
-
-        return std::move(font);
-    }
-
-    Ref<RegisteredFont> ImGuiLayer::CreateFontFromMemoryInternal(void const *pData, size_t size, bool compressed, f32 fontSize)
-    {
-        if (!pData || !size)
-            return CreateRef<RegisteredFont>();
-
-        // copy the font data into a blob to make the RegisteredFont object own it
-        void *dataCopy = malloc(size);
-        memcpy(dataCopy, pData, size);
-        Ref<vfs::Blob> blob = CreateRef<vfs::Blob>(dataCopy, size);
-
-        Ref<RegisteredFont> font = CreateRef<RegisteredFont>(blob, compressed, fontSize);
-        m_Fonts.push_back(font);
-        return std::move(font);
-    }
-
-    Ref<RegisteredFont> ImGuiLayer::CreateFontFromMemoryCompressed(void const *pData, size_t size, f32 fontSize)
-    {
-        return CreateFontFromMemoryInternal(pData, size, true, fontSize);
+        imguiNVRHI = CreateScope<ImGui_NVRHI>();
+        return imguiNVRHI->Init(m_DeviceManager->GetDevice());
     }
 
     void ImGuiLayer::OnEvent(Event &event)
@@ -250,8 +263,8 @@ namespace ignite
 
     bool ImGuiLayer::OnFramebufferResize(FramebufferResizeEvent &event) const
     {
-        if (imgui_nvrhi)
-            imgui_nvrhi->BackBufferResizing();
+        if (imguiNVRHI)
+            imguiNVRHI->BackBufferResizing();
 
         if (!m_SupportExplicitDisplayScaling)
             return false;
@@ -260,8 +273,7 @@ namespace ignite
         io.Fonts->Clear();
         io.Fonts->TexID = 0;
 
-        for (auto &font : m_Fonts)
-            font->ReleaseScaledFont();
+        m_Font->ReleaseScaledFont();
 
         ImGui::GetStyle() = ImGui::GetStyle();
         ImGui::GetStyle().ScaleAllSizes(f32(event.GetWidth()));
@@ -271,19 +283,18 @@ namespace ignite
 
     void ImGuiLayer::BeginFrame()
     {
-        if (!imgui_nvrhi || m_BeginFrameCalled)
+        if (!imguiNVRHI || m_BeginFrameCalled)
             return;
 
         f32 scaleX, scaleY;
         m_DeviceManager->GetDPIScaleInfo(scaleX, scaleY);
 
-        for (const auto &font : m_Fonts)
+        if (!m_Font->GetScaledFont())
         {
-            if (!font->GetScaledFont())
-                font->CreateScaledFont(m_SupportExplicitDisplayScaling ? scaleX : 1.0f);
+            m_Font->CreateScaledFont(m_SupportExplicitDisplayScaling ? scaleX : 1.0f);
         }
 
-        imgui_nvrhi->UpdateFontTexture();
+        imguiNVRHI->UpdateFontTexture();
 
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -295,44 +306,12 @@ namespace ignite
     void ImGuiLayer::EndFrame(nvrhi::IFramebuffer* framebuffer)
     {
         ImGui::Render();
-        imgui_nvrhi->Render(framebuffer);
+        imguiNVRHI->Render(framebuffer);
         m_BeginFrameCalled = false;
-    }
-
-    void ImGuiLayer::BeginFullScreenWindow()
-    {
-        ImGuiIO const &io = ImGui::GetIO();
-        ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always);
-        ImGui::SetNextWindowSize(
-            { io.DisplaySize.x / io.DisplayFramebufferScale.x, io.DisplaySize.y / io.DisplayFramebufferScale.y},
-            ImGuiCond_Always
-        );
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::SetNextWindowBgAlpha(0.0f);
-        ImGui::Begin(" ", nullptr, ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar);
-    }
-
-    void ImGuiLayer::DrawScreenCenteredText(const char *text)
-    {
-        ImGuiIO const &io = ImGui::GetIO();
-        ImVec2 textSize = ImGui::CalcTextSize(text);
-        ImGui::SetCursorPosX((io.DisplaySize.x / io.DisplayFramebufferScale.x - textSize.x) * 0.5f);
-        ImGui::SetCursorPosY((io.DisplaySize.y / io.DisplayFramebufferScale.y - textSize.y) * 0.5f);
-        ImGui::TextUnformatted(text);
-    }
-
-    void ImGuiLayer::EndFullScreenWindow()
-    {
-        ImGui::End();
-        ImGui::PopStyleVar();
     }
 
     void ImGuiLayer::OnDetach()
     {
-        m_Fonts.clear();
-        m_DefaultFont = nullptr;
-
         switch (Renderer::GetGraphicsAPI())
         {
             case nvrhi::GraphicsAPI::D3D12:
@@ -347,6 +326,6 @@ namespace ignite
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
 
-        imgui_nvrhi->Shutdown();
+        imguiNVRHI->Shutdown();
     }
 }

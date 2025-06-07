@@ -30,7 +30,7 @@ namespace ignite
         // Fail = Keep, Pass = Replace
         params.frontFaceStencilDesc.failOp = nvrhi::StencilOp::Keep;      // Stencil test fails
         params.frontFaceStencilDesc.depthFailOp = nvrhi::StencilOp::Keep; // Depth test fails
-        params.frontFaceStencilDesc.passOp = nvrhi::StencilOp::Replace;   // Both tests pass - WRite to stencil
+        params.frontFaceStencilDesc.passOp = nvrhi::StencilOp::Replace;   // Both tests pass - Write to stencil
         params.frontFaceStencilDesc.stencilFunc = nvrhi::ComparisonFunc::Always; // Always pass stencil test
 
         params.stencilWriteMask = 0xFF;
@@ -68,10 +68,8 @@ namespace ignite
 
         // Batch Quad 2D
         {
-            
             params.fillMode = nvrhi::RasterFillMode::Solid;
-            params.cullMode = nvrhi::RasterCullMode::Front;
-
+            params.cullMode = nvrhi::RasterCullMode::None;
             params.comparison = nvrhi::ComparisonFunc::LessOrEqual;
 
             params.enableDepthStencil = true;
@@ -120,21 +118,21 @@ namespace ignite
             params.depthTest = true; // Use existing depth buffer
             params.primitiveType = nvrhi::PrimitiveType::TriangleList;
             params.fillMode = nvrhi::RasterFillMode::Solid;
-            params.cullMode = nvrhi::RasterCullMode::None;
+            params.cullMode = nvrhi::RasterCullMode::Front;
             params.comparison = nvrhi::ComparisonFunc::LessOrEqual;
 
             params.enableDepthStencil = true;
 
             params.frontFaceStencilDesc.failOp = nvrhi::StencilOp::Keep;
             params.frontFaceStencilDesc.depthFailOp = nvrhi::StencilOp::Keep;
-            params.frontFaceStencilDesc.passOp = nvrhi::StencilOp::Replace;       // Don't modify stencil
-            params.frontFaceStencilDesc.stencilFunc = nvrhi::ComparisonFunc::Never; // Only render where stencil != 1
+            params.frontFaceStencilDesc.passOp = nvrhi::StencilOp::Keep;       // Don't modify stencil
+            params.frontFaceStencilDesc.stencilFunc = nvrhi::ComparisonFunc::NotEqual; // Only render where stencil != 1
             
             params.stencilWriteMask = 0x00; // Don't write to stencil
             params.stencilReadMask = 0xFF; // READ from stencil
             params.stencilRefValue = 1; // Compare against value 1
 
-            auto attributes = Vertex2DQuad::GetAttributes();
+            auto attributes = VertexOutline::GetAttributes();
             GraphicsPiplineCreateInfo pci;
             pci.attributes = attributes.data();
             pci.attributeCount = static_cast<uint32_t>(attributes.size());
@@ -231,8 +229,7 @@ namespace ignite
     {
         {
             // Second pass: Outlining
-            Renderer2D::Begin(commandList, framebuffer);
-
+            Renderer2D::BeginOutline();
             for (Entity entity : selectedEntities)
             {
                 auto &tr = entity.GetTransform();
@@ -240,23 +237,23 @@ namespace ignite
                 if (!tr.visible)
                     continue;
 
-                float baseThickness = 0.01f;
+                float baseThickness = 0.05f;
                 float distance = glm::distance(camera->position, tr.translation);
-                float thicknessFactor = glm::clamp(baseThickness * distance, baseThickness, 1.3f);
+                float thicknessFactor = glm::clamp(baseThickness * glm::sqrt(distance), baseThickness, 0.5f);
 
                 glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), tr.scale + thicknessFactor);
-                glm::vec3 outlineOffset = camera->GetForwardDirection() * 0.001f;
-                glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), tr.translation + outlineOffset);
+                glm::vec3 offsetTranslation = camera->GetForwardDirection() * 0.001f;
+                glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), tr.translation + offsetTranslation);
                 
                 if (entity.HasComponent<Sprite2D>())
                 {
                     auto &sprite = entity.GetComponent<Sprite2D>();
                     glm::mat4 transform = translationMatrix * glm::mat4(tr.rotation) * scaleMatrix;
-                    Renderer2D::DrawQuad(transform, sprite.color, sprite.texture, sprite.tilingFactor, entity);
+                    Renderer2D::DrawQuadOutline(transform);
                 }
             }
 
-            Renderer2D::Flush(m_OutlineQuadPipeline, m_BatchLinePipeline, true);
+            Renderer2D::FlushOutline(m_OutlineQuadPipeline);
             Renderer2D::End();
         }
     }

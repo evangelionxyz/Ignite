@@ -89,13 +89,11 @@ namespace ignite {
         sr.BeginMap(); // START
 
         sr.BeginMap("Scene"); // scene file header
-
+        sr.AddKeyValue<std::string>("Version", ENGINE_VERSION);
         sr.AddKeyValue<std::string>("Title", m_Scene->name);
-        sr.AddKeyValue<std::string>("Version", "1.0");
-
         sr.BeginSequence("Entities");
 
-        // entites sequence
+        // entities sequence
         for (auto &[uuid, e] : m_Scene->entities)
         {
             Entity entity = { e, m_Scene.get() };
@@ -185,14 +183,14 @@ namespace ignite {
 
         sr.EndMap(); // END
 
-// Example
+        // Example
 #if 0
         sr.BeginMap(); // START
 
         sr.BeginMap("Scene"); // scene file header
 
         sr.AddKeyValue<std::string>("Title", m_Scene->name);
-        sr.AddKeyValue<std::string>("Version", "1.0");
+        sr.AddKeyValue<std::string>("Version", ENGINE_VERSION);
 
         sr.BeginSequence("Entities");
 
@@ -348,7 +346,7 @@ namespace ignite {
 
         projectSr.BeginMap("Project");
 
-        projectSr.AddKeyValue("Version", "1.0");
+        projectSr.AddKeyValue("Version", ENGINE_VERSION);
         projectSr.AddKeyValue("Name", projectInfo.name);
         projectSr.AddKeyValue("AssetPath", projectInfo.assetFilepath.generic_string());
         projectSr.AddKeyValue("AssetRegistry", projectInfo.assetRegistryFilename.generic_string());
@@ -467,6 +465,7 @@ namespace ignite {
         sr.BeginMap(); // START
 
         sr.BeginMap("Animation");
+        sr.AddKeyValue("Version", ENGINE_VERSION);
         sr.AddKeyValue("Name", m_Animation->name);
         sr.AddKeyValue("Duration", m_Animation->duration);
         sr.AddKeyValue("TicksPerSeconds", m_Animation->ticksPerSeconds);

@@ -76,6 +76,7 @@ namespace ignite
             }
         }
 
+#if 0
         // Test Audio
 
         // Create reverb DSB
@@ -105,6 +106,7 @@ namespace ignite
         audio.sound = FmodSound::Create("music", "C:/Users/Evangelion Manuhutu/Downloads/Music/06. Mick Gordon - Hellwalker.flac");
         audio.sound->AddToChannelGroup(audio.reverbGroup);
         audio.sound->Play();
+#endif
     }
 
     void EditorLayer::OnDetach()
@@ -163,6 +165,14 @@ namespace ignite
 
         switch (event.GetKeyCode())
         {
+            case Key::Escape:
+            {
+                if (m_ScenePanel->IsFocused())
+                {
+                    m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::NONE);
+                }
+                break;
+            }
             case Key::S:
             {
                 if (control)
@@ -230,7 +240,7 @@ namespace ignite
 
     bool EditorLayer::OnMouseButtonPressed(MouseButtonPressedEvent &event)
     {
-        if (event.Is(Mouse::ButtonLeft) && !m_ScenePanel->IsGizmoBeingUse() && m_ScenePanel->IsViewportHovered())
+        if (event.Is(Mouse::ButtonLeft) && !m_ScenePanel->IsGizmoBeingUse() && m_ScenePanel->IsHovered())
         {
             m_Data.isPickingEntity = true;
         }
@@ -307,7 +317,7 @@ namespace ignite
                     }
                 }
 
-                if (!found)
+                if (!found && !m_Data.multiSelect)
                 {
                     m_ScenePanel->SetSelectedEntity(Entity{});
                 }
@@ -527,6 +537,16 @@ namespace ignite
                 memset(filepathBuffer, 0, sizeof(filepathBuffer));
 
                 ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+
+        if (ImGui::BeginPopup("MenuBar_View"))
+        {
+            if (ImGui::MenuItem("Asset Registry", nullptr, false, m_ActiveProject != nullptr))
+            {
+                m_Data.assetRegistryWindow = true;
             }
 
             ImGui::EndPopup();
@@ -803,5 +823,67 @@ namespace ignite
         }
 
         ImGui::End();
+
+
+        if (m_Data.assetRegistryWindow)
+        {
+            static std::unordered_set<std::string> registryFilter;
+            static bool showFullPath = false;
+            ImGui::Begin("Asset Registry", &m_Data.assetRegistryWindow);
+
+            static char buffer[256];
+            ImGui::Text("Filter");
+            ImGui::SameLine();
+            ImGui::InputText("##filter", buffer, sizeof(buffer));
+            ImGui::SameLine();
+
+            ImGui::Text("Full path");
+            ImGui::SameLine();
+            ImGui::Checkbox("##fullpath", &showFullPath);
+
+            auto assetRegistry = m_ActiveProject->GetAssetManager().GetAssetAssetRegistry();
+            ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_ScrollX;
+            if (ImGui::BeginTable("asset_registry_table", 3, tableFlags))
+            {
+
+                // setup table 3 columns
+                // AssetHandle, Type, Filepath
+                ImGui::TableSetupScrollFreeze(0, 1);
+                ImGui::TableSetupColumn("UUID", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+                ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthStretch, 0.5f);
+                ImGui::TableSetupColumn("Filepath", ImGuiTableColumnFlags_WidthStretch, 1.5f);
+                ImGui::TableHeadersRow();
+
+                for (auto &[handle, metadata] : assetRegistry)
+                {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%llu", static_cast<uint64_t>(handle));
+
+                    ImGui::TableNextColumn();
+
+                    std::string assetTypeStr = AssetTypeToString(metadata.type);
+                    ImGui::TextWrapped("%s", assetTypeStr.c_str());
+
+                    ImGui::TableNextColumn();
+                    if (showFullPath)
+                    {
+                        std::string assetTypeStr = std::filesystem::absolute(m_ActiveProject->GetAssetFilepath(metadata.filepath)).generic_string();
+                        ImGui::TextWrapped("%s", assetTypeStr.c_str());
+                    }
+                    else
+                    {
+                        std::string assetTypeStr = metadata.filepath.generic_string();
+                        ImGui::TextWrapped("%s", assetTypeStr.c_str());
+                    }
+                }
+
+
+                ImGui::EndTable();
+            }
+            
+
+            ImGui::End();
+        }
     }
 }

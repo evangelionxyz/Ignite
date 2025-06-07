@@ -45,8 +45,8 @@ namespace ignite
 
         void SetGizmoOperation(ImGuizmo::OPERATION op);
         void SetGizmoMode(ImGuizmo::MODE mode);
+
         bool IsGizmoBeingUse() const { return m_Data.isGizmoBeingUse; }
-        bool IsViewportHovered() const { return m_ViewportData.isHovered; }
         
         Camera *GetViewportCamera() const { return m_ViewportCamera.get(); }
 
@@ -107,8 +107,6 @@ namespace ignite
 
         struct ViewportData
         {
-            bool isHovered = false;
-            bool isFocused = false;
             Rect rect = { 0, 0, 1, 1 };
             glm::vec2 mousePos = glm::vec2(0.0f);
         } m_ViewportData;

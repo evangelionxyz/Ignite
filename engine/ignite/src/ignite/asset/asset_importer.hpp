@@ -17,9 +17,7 @@ namespace ignite {
     {
     public:
         static void SyncMainThread(nvrhi::ICommandList *commandList, nvrhi::IDevice *device);
-        
         static Ref<Asset> Import(AssetHandle handle, const AssetMetaData &metadata);
-
     };
 
     class ModelImporter : public AssetImporter

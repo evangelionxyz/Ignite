@@ -25,6 +25,8 @@
     #define ENABLE_VERIFY
 #endif
 
+#define ENGINE_VERSION "Alpha-0.1"
+
 #define EXPAND_MACRO(x)
 #define STRINGIFY_MACRO(x) #x
 
