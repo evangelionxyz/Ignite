@@ -240,9 +240,9 @@ namespace ignite
                 if (!tr.visible)
                     continue;
 
-                float baseThickness = 0.025f;
+                float baseThickness = 0.01f;
                 float distance = glm::distance(camera->position, tr.translation);
-                float thicknessFactor = glm::clamp(baseThickness * distance, 0.025f, 1.8f);
+                float thicknessFactor = glm::clamp(baseThickness * distance, baseThickness, 1.3f);
 
                 glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), tr.scale + thicknessFactor);
                 glm::vec3 outlineOffset = camera->GetForwardDirection() * 0.001f;
