@@ -886,12 +886,73 @@ namespace ignite
 
         m_Data.isGizmoBeingUse = false;
 
-        for (auto &entity : m_SelectedEntities)
+        if (m_SelectedEntities.size() > 1)
         {
-            ImGui::PushID(entity.GetUUID());
-            
-            Transform &tr = entity.GetTransform();
+            // Step 1: Compute shared pivot
+            glm::vec3 pivot(0.0f);
+            for (Entity entity : m_SelectedEntities)
+                pivot += entity.GetTransform().translation;
+            pivot /= static_cast<float>(m_SelectedEntities.size());
+     
+            // Step 2: create gizmo transform
+            glm::mat4 gizmoTransform = glm::translate(glm::mat4(1.0f), pivot);
+            glm::mat4 manipulatedTransform = gizmoTransform;
+     
+            // Step 3: Render gizmo once
+            m_Gizmo.Manipulate(manipulatedTransform);
+            if (m_Gizmo.IsManipulating())
+            {
+                glm::mat4 gizmoDelta = glm::inverse(gizmoTransform) * manipulatedTransform;
 
+                // Extract delta scale from the gizmo delta transform
+                glm::vec3 deltaTranslation, deltaScale, deltaRotation;
+                Math::DecomposeTransformEuler(gizmoDelta , deltaTranslation, deltaRotation, deltaScale);
+                
+                for (Entity entity : m_SelectedEntities)
+                {
+                    Transform &tr = entity.GetTransform();
+     
+                    glm::mat4 worldMatrix = tr.GetWorldMatrix();
+     
+                    // 1. Move to pivot space
+                    glm::mat4 toPivot = glm::translate(glm::mat4(1.0f), -pivot);
+                    glm::mat4 fromPivot = glm::translate(glm::mat4(1.0f), pivot);
+     
+                    // 2. Apply delta transform around pivot
+                    glm::mat4 noScale = Math::RemoveScale(gizmoDelta);
+                    glm::mat4 newWorldMatrix = fromPivot * noScale * toPivot * worldMatrix;
+     
+                    // 3. decompose
+                    glm::vec3 translation, scale, rotation;
+                    Math::DecomposeTransformEuler(newWorldMatrix, translation, rotation, scale);
+                    
+                    if (entity.GetParentUUID() != UUID(0))
+                    {
+                        Entity parent = SceneManager::GetEntity(m_Scene, entity.GetParentUUID());
+                        const Transform &parentTr = parent.GetTransform();
+                        glm::mat4 parentWorld = parentTr.GetWorldMatrix();
+                        glm::mat4 localMatrix = glm::inverse(parentWorld) * newWorldMatrix;
+
+                        glm::vec3 localTranslation, localEuler, localScale;
+                        Math::DecomposeTransformEuler(localMatrix, localTranslation, localEuler, localScale);
+            
+                        tr.localTranslation = localTranslation;
+                        tr.localRotation = glm::quat(localEuler);
+                        tr.localScale = deltaScale /  parentTr.scale;
+                    }
+                    else
+                    {
+                        tr.localTranslation = translation;
+                        tr.localRotation = glm::quat(rotation);
+                        tr.localScale = deltaScale;
+                    }
+                    tr.dirty = true;
+                }
+            }
+        }
+        else if (Entity entity = m_SelectedEntity)
+        {
+            Transform &tr = entity.GetTransform();
             glm::mat4 transformMatrix = tr.GetWorldMatrix();
 
             m_Gizmo.Manipulate(transformMatrix);
@@ -909,26 +970,19 @@ namespace ignite
                     tr.localTranslation = localTranslation;
                     tr.localRotation = glm::inverse(ptc.rotation) * glm::quat(rotation);
                     tr.localScale = scale / ptc.scale;
-
-                    tr.dirty = true;
                 }
                 else
                 {
                     tr.localTranslation = translation;
-                    glm::vec3 localEuler = glm::eulerAngles(tr.localRotation);
-                    localEuler += rotation - localEuler;
-                    tr.localRotation = glm::quat(localEuler);
+                    tr.localRotation = glm::quat(rotation);
                     tr.localScale = scale;
-
-                    tr.dirty = true;
                 }
-
+                tr.dirty = true;
             }
-
-            m_Data.isGizmoBeingUse = m_Gizmo.IsManipulating() || m_Gizmo.IsHovered();
-
-            ImGui::PopID();
         }
+
+        m_Data.isGizmoBeingUse = m_Gizmo.IsManipulating() || m_Gizmo.IsHovered();
+
         ImGui::End();
     }
 
