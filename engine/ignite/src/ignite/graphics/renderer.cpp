@@ -3,16 +3,85 @@
 #include "texture.hpp"
 #include "shader.hpp"
 
+#include "environment.hpp"
+
 #include "ignite/core/device/device_manager.hpp"
+#include "ignite/core/application.hpp"
+#include <ranges>
 
 namespace ignite
 {
     Renderer *s_instance = nullptr;
 
-    VPShader::VPShader(nvrhi::IDevice *device, const std::string &filename)
+    void ShaderLibrary::Init(nvrhi::GraphicsAPI api)
     {
-        vertexContext = CreateRef<ShaderMake::ShaderContext>(filename + ".vertex.hlsl", ShaderMake::ShaderType::Vertex);
-        pixelContext = CreateRef<ShaderMake::ShaderContext>(filename + ".pixel.hlsl", ShaderMake::ShaderType::Pixel);
+        m_ShaderMakeOptions.compilerType = ShaderMake::CompilerType_DXC;
+        m_ShaderMakeOptions.optimizationLevel = 3;
+        m_ShaderMakeOptions.baseDirectory = "resources/shaders/";
+        m_ShaderMakeOptions.outputDir = "bin";
+
+        if (api == nvrhi::GraphicsAPI::VULKAN)
+            m_ShaderMakeOptions.platformType = ShaderMake::PlatformType_SPIRV;
+        else if (api == nvrhi::GraphicsAPI::D3D12)
+            m_ShaderMakeOptions.platformType = ShaderMake::PlatformType_DXIL;
+
+        m_ShaderContext = CreateScope<ShaderMake::Context>(&m_ShaderMakeOptions);
+    }
+
+    void ShaderLibrary::Compile()
+    {
+        nvrhi::IDevice *device = Application::GetRenderDevice();
+        
+        std::vector<Ref<ShaderMake::ShaderContext>> contexts;
+        for (auto &shader : m_Shaders | std::views::values)
+        {
+            for (auto & [context, handle] : shader | std::views::values)
+            {
+                contexts.push_back(context);
+            }
+        }
+
+        // compile at once
+        m_ShaderContext->CompileShader(contexts);
+
+        // load to NVRHI Shader handle
+        for (auto& shader : m_Shaders | std::views::values)
+        {
+            for (auto &[type, shader] : shader)
+            {
+                shader.handle = device->createShader(type,
+                shader.context->blob.data.data(),
+                shader.context->blob.dataSize());
+            }
+        }
+    }
+
+    void ShaderLibrary::Load(const std::string& name, const std::string& filepath)
+    {
+        if (!Exists(name))
+        {
+            std::unordered_map<nvrhi::ShaderType, ShaderHandleContext> shader;
+            shader[nvrhi::ShaderType::Vertex] = { CreateRef<ShaderMake::ShaderContext>(filepath + ".vertex.hlsl", ShaderMake::ShaderType::Vertex), nullptr };
+            shader[nvrhi::ShaderType::Pixel] = { CreateRef<ShaderMake::ShaderContext>(filepath + ".pixel.hlsl", ShaderMake::ShaderType::Pixel), nullptr };
+            m_Shaders[name] = shader;
+        }
+    }
+
+    bool ShaderLibrary::Exists(const std::string& name) const
+    {
+        return m_Shaders.contains(name);
+    }
+
+    std::unordered_map<nvrhi::ShaderType, ShaderHandleContext> ShaderLibrary::Get(const std::string& name)
+    {
+        if (Exists(name))
+            return m_Shaders[name];
+        return {};
+    }
+
+    ShaderMake::Context *ShaderLibrary::GetContext() const
+    {
+        return m_ShaderContext.get();
     }
 
     Renderer::Renderer(DeviceManager *deviceManager, nvrhi::GraphicsAPI api)
@@ -25,7 +94,6 @@ namespace ignite
 
         {
             TextureCreateInfo textureCI;
-            textureCI.device = device;
             textureCI.format = nvrhi::Format::RGBA8_UNORM;
             textureCI.dimension = nvrhi::TextureDimension::Texture2D;
             textureCI.samplerMode = nvrhi::SamplerAddressMode::ClampToBorder;
@@ -43,29 +111,45 @@ namespace ignite
             m_WhiteTexture->Write(commandList);
             m_BlackTexture->Write(commandList);
             commandList->close();
+
         }
-
-        // Create shader make
-        {
-            m_ShaderMakeOptions.compilerType = ShaderMake::CompilerType_DXC;
-            m_ShaderMakeOptions.optimizationLevel = 3;
-            m_ShaderMakeOptions.baseDirectory = "resources/shaders/";
-            m_ShaderMakeOptions.outputDir = "bin";
-
-            if (m_GraphicsAPI == nvrhi::GraphicsAPI::VULKAN)
-                m_ShaderMakeOptions.platformType = ShaderMake::PlatformType_SPIRV;
-            else if (m_GraphicsAPI == nvrhi::GraphicsAPI::D3D12)
-                m_ShaderMakeOptions.platformType = ShaderMake::PlatformType_DXIL;
-
-            m_ShaderContext = CreateScope<ShaderMake::Context>(&m_ShaderMakeOptions);
-        }
-
-        // initialize default shaders
-        LoadDefaultShaders(device);
-        
         device->executeCommandList(commandList);
 
-        Renderer2D::Init(device);
+        // Create shaders
+        {
+            m_ShaderLibrary.Init(m_GraphicsAPI);
+            
+            m_ShaderLibrary.Load("batch_2d_quad", "batch_2d_quad");
+            m_ShaderLibrary.Load("batch_2d_line", "batch_2d_line");
+            m_ShaderLibrary.Load("outline", "outline");
+            m_ShaderLibrary.Load("imgui", "imgui");
+            m_ShaderLibrary.Load("skybox", "skybox");
+
+            m_ShaderLibrary.Compile();
+        }
+
+        // Create binding layouts
+        m_BindingLayouts[GPipeline::MESH] = device->createBindingLayout(VertexMesh::GetBindingLayoutDesc());
+        m_BindingLayouts[GPipeline::QUAD2D] = device->createBindingLayout(Vertex2DQuad::GetBindingLayoutDesc());
+        m_BindingLayouts[GPipeline::LINE] = device->createBindingLayout(Vertex2DLine::GetBindingLayoutDesc());
+        m_BindingLayouts[GPipeline::ENVIRONMENT] = device->createBindingLayout(Environment::GetBindingLayoutDesc());
+        m_BindingLayouts[GPipeline::OUTLINE] = device->createBindingLayout(VertexOutline::GetBindingLayoutDesc());
+
+
+        // Create camera constant buffer
+        nvrhi::BufferDesc cameraConstantBufferDesc;
+        cameraConstantBufferDesc.byteSize = sizeof(CameraBuffer);
+        cameraConstantBufferDesc.isConstantBuffer = true;
+        cameraConstantBufferDesc.isVolatile = true;
+        cameraConstantBufferDesc.debugName = "Camera constant buffer";
+        cameraConstantBufferDesc.initialState = nvrhi::ResourceStates::ConstantBuffer;
+        cameraConstantBufferDesc.keepInitialState = true;
+        cameraConstantBufferDesc.maxVersions = 16;
+
+        m_CameraBufferHandle = device->createBuffer(cameraConstantBufferDesc);
+        LOG_ASSERT(m_CameraBufferHandle, "[Renderer] Failed to create constant buffer");
+
+        Renderer2D::Init();
     }
 
     Renderer::~Renderer()
@@ -74,52 +158,27 @@ namespace ignite
         Renderer2D::Shutdown();
     }
 
-    ShaderMake::Context *Renderer::GetShaderContext()
-    {
-        return s_instance->m_ShaderContext.get();
-    }
-
     nvrhi::GraphicsAPI Renderer::GetGraphicsAPI()
     {
         return s_instance->m_GraphicsAPI;
     }
 
-    VPShader *Renderer::GetDefaultShader(const std::string &shaderName)
+    nvrhi::BindingLayoutHandle Renderer::GetBindingLayout(GPipeline type)
     {
-        if (s_instance->m_Shaders.contains(shaderName))
-            return &s_instance->m_Shaders[shaderName];
+        if (s_instance->m_BindingLayouts.contains(type))
+            return s_instance->m_BindingLayouts[type];
+
         return nullptr;
     }
 
-    void Renderer::LoadDefaultShaders(nvrhi::IDevice *device)
+    ShaderLibrary &Renderer::GetShaderLibrary()
     {
-        // create shaders
-        m_Shaders["quadBatch2D"] = VPShader(device, "quad_batch_2d");
-        m_Shaders["imgui"] = VPShader(device, "imgui");
-        m_Shaders["default_mesh"] = VPShader(device, "default_mesh");
-        m_Shaders["skybox"] = VPShader(device, "skybox");
+        return s_instance->m_ShaderLibrary;
+    }
 
-        std::vector<Ref<ShaderMake::ShaderContext>> contexts;
-        for (auto &shader : m_Shaders)
-        {
-            contexts.push_back(shader.second.vertexContext);
-            contexts.push_back(shader.second.pixelContext);
-        }
-
-        // compile at once
-        m_ShaderContext->CompileShader(contexts);
-
-        // load to NVRHI Shader handle
-        for (auto &[name, shader] : m_Shaders)
-        {
-            shader.vertex = device->createShader(nvrhi::ShaderType::Vertex,
-                shader.vertexContext->blob.data.data(),
-                shader.vertexContext->blob.dataSize());
-
-            shader.pixel = device->createShader(nvrhi::ShaderType::Pixel,
-                shader.pixelContext->blob.data.data(),
-                shader.pixelContext->blob.dataSize());
-        }
+    nvrhi::BufferHandle Renderer::GetCameraBufferHandle()
+    {
+        return s_instance->m_CameraBufferHandle;
     }
 
     Ref<Texture> Renderer::GetWhiteTexture()
@@ -131,5 +190,4 @@ namespace ignite
     {
         return s_instance->m_BlackTexture;
     }
-
 }

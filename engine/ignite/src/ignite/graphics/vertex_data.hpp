@@ -2,13 +2,12 @@
 
 #include <nvrhi/nvrhi.h>
 #include <glm/glm.hpp>
-
 #include "ignite/core/types.hpp"
 
 namespace ignite
 {
 #define VERTEX_MAX_BONES 4
-#define MAX_BONES 200
+#define MAX_BONES 150
 
     struct CameraBuffer
     {
@@ -30,10 +29,11 @@ namespace ignite
         glm::vec2 texCoord;
         glm::vec2 tilingFactor;
         glm::vec4 color;
-        uint32_t boneIDs[VERTEX_MAX_BONES] = { 0 };
+        u32 boneIDs[VERTEX_MAX_BONES] = { 0 };
         f32 weights[VERTEX_MAX_BONES] = { 0.0f };
+        u32 entityID;
 
-        static std::array<nvrhi::VertexAttributeDesc, 7> GetAttributes()
+        static std::array<nvrhi::VertexAttributeDesc, 8> GetAttributes()
         {
             return 
             {
@@ -66,13 +66,16 @@ namespace ignite
                     .setName("BONEIDS")
                     .setFormat(nvrhi::Format::RGBA32_UINT)
                     .setOffset(offsetof(VertexMesh, boneIDs))
-                    .setArraySize(VERTEX_MAX_BONES)
                     .setElementStride(sizeof(VertexMesh)),
                 nvrhi::VertexAttributeDesc()
                     .setName("WEIGHTS")
                     .setFormat(nvrhi::Format::RGBA32_FLOAT)
                     .setOffset(offsetof(VertexMesh, weights))
-                    .setArraySize(VERTEX_MAX_BONES)
+                    .setElementStride(sizeof(VertexMesh)),
+                nvrhi::VertexAttributeDesc()
+                    .setName("ENTITYID")
+                    .setFormat(nvrhi::Format::R32_UINT)
+                    .setOffset(offsetof(VertexMesh, entityID))
                     .setElementStride(sizeof(VertexMesh))
             };
         }
@@ -82,11 +85,10 @@ namespace ignite
             return nvrhi::BindingLayoutDesc()
                 .setVisibility(nvrhi::ShaderType::All)
                 .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0)) // camera
-                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1)) // directional light
-                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(2)) // environment
-                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(3)) // model
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1)) // model
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(2)) // directional light
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(3)) // environment
                 .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(4)) // material
-                .addItem(nvrhi::BindingLayoutItem::ConstantBuffer(5)) // debug
 
                 .addItem(nvrhi::BindingLayoutItem::Texture_SRV(0)) // diffuse
                 .addItem(nvrhi::BindingLayoutItem::Texture_SRV(1)) // specular
@@ -98,15 +100,16 @@ namespace ignite
         }
     };
 
-    struct VertexQuad
+    struct Vertex2DQuad
     {
         glm::vec3 position;
         glm::vec2 texCoord;
         glm::vec2 tilingFactor;
         glm::vec4 color;
         u32 texIndex;
+        u32 entityID;
 
-        static std::array<nvrhi::VertexAttributeDesc, 5> GetAttributes()
+        static std::array<nvrhi::VertexAttributeDesc, 6> GetAttributes()
         {
             return
             {
@@ -114,47 +117,108 @@ namespace ignite
                     .setName("POSITION")
                     .setBufferIndex(0)
                     .setFormat(nvrhi::Format::RGB32_FLOAT)
-                    .setOffset(offsetof(VertexQuad, position))
-                    .setElementStride(sizeof(VertexQuad)),
+                    .setOffset(offsetof(Vertex2DQuad, position))
+                    .setElementStride(sizeof(Vertex2DQuad)),
                 nvrhi::VertexAttributeDesc()
                     .setName("TEXCOORD")
                     .setFormat(nvrhi::Format::RG32_FLOAT)
-                    .setOffset(offsetof(VertexQuad, texCoord))
-                    .setElementStride(sizeof(VertexQuad)),
+                    .setOffset(offsetof(Vertex2DQuad, texCoord))
+                    .setElementStride(sizeof(Vertex2DQuad)),
                 nvrhi::VertexAttributeDesc()
                     .setName("TILINGFACTOR")
                     .setFormat(nvrhi::Format::RG32_FLOAT)
-                    .setOffset(offsetof(VertexQuad, tilingFactor))
-                    .setElementStride(sizeof(VertexQuad)),
+                    .setOffset(offsetof(Vertex2DQuad, tilingFactor))
+                    .setElementStride(sizeof(Vertex2DQuad)),
                 nvrhi::VertexAttributeDesc()
                     .setName("COLOR")
                     .setFormat(nvrhi::Format::RGBA32_FLOAT)
-                    .setOffset(offsetof(VertexQuad, color))
-                    .setElementStride(sizeof(VertexQuad)),
+                    .setOffset(offsetof(Vertex2DQuad, color))
+                    .setElementStride(sizeof(Vertex2DQuad)),
                 nvrhi::VertexAttributeDesc()
                     .setName("TEXINDEX")
                     .setFormat(nvrhi::Format::R32_UINT)
-                    .setOffset(offsetof(VertexQuad, texIndex))
-                    .setElementStride(sizeof(VertexQuad))
+                    .setOffset(offsetof(Vertex2DQuad, texIndex))
+                    .setElementStride(sizeof(Vertex2DQuad)),
+                 nvrhi::VertexAttributeDesc()
+                    .setName("ENTITYID")
+                    .setFormat(nvrhi::Format::R32_UINT)
+                    .setOffset(offsetof(Vertex2DQuad, entityID))
+                    .setElementStride(sizeof(Vertex2DQuad))
             };
         }
 
         static nvrhi::BindingLayoutDesc GetBindingLayoutDesc()
         {
-            const uint16_t maxTextureCount = 16;
-
             nvrhi::BindingLayoutDesc bindingDesc;
             bindingDesc.setVisibility(nvrhi::ShaderType::All);
             bindingDesc.addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0));
             bindingDesc.addItem(nvrhi::BindingLayoutItem::Sampler(0));
-
-            // Add each texture binding individually
-            for (i32 i = 0; i < maxTextureCount; ++i)
-            {
-                bindingDesc.addItem(nvrhi::BindingLayoutItem::Texture_SRV(i));
-            }
-
+            bindingDesc.addItem(nvrhi::BindingLayoutItem::Texture_SRV(0));
             return bindingDesc;
+        }
+    };
+
+    struct Vertex2DLine
+    {
+        glm::vec3 position;
+        glm::vec4 color;
+        u32 entityID;
+
+        static std::array<nvrhi::VertexAttributeDesc, 3> GetAttributes()
+        {
+            return
+            {
+                nvrhi::VertexAttributeDesc()
+                    .setName("POSITION")
+                    .setBufferIndex(0)
+                    .setFormat(nvrhi::Format::RGB32_FLOAT)
+                    .setOffset(offsetof(Vertex2DLine, position))
+                    .setElementStride(sizeof(Vertex2DLine)),
+                nvrhi::VertexAttributeDesc()
+                    .setName("COLOR")
+                    .setFormat(nvrhi::Format::RGBA32_FLOAT)
+                    .setOffset(offsetof(Vertex2DLine, color))
+                    .setElementStride(sizeof(Vertex2DLine)),
+                nvrhi::VertexAttributeDesc()
+                    .setName("ENTITYID")
+                    .setFormat(nvrhi::Format::R32_UINT)
+                    .setOffset(offsetof(Vertex2DLine, entityID))
+                    .setElementStride(sizeof(Vertex2DLine))
+            };
+        }
+
+        static nvrhi::BindingLayoutDesc GetBindingLayoutDesc()
+        {
+            nvrhi::BindingLayoutDesc bindingDesc;
+            bindingDesc.setVisibility(nvrhi::ShaderType::All);
+            bindingDesc.addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0));
+            return bindingDesc;
+        }
+    };
+
+    struct VertexOutline
+    {
+        glm::vec3 position;
+
+        static std::array<nvrhi::VertexAttributeDesc, 1> GetAttributes()
+        {
+            return
+            {
+                nvrhi::VertexAttributeDesc()
+                    .setName("POSITION")
+                    .setBufferIndex(0)
+                    .setFormat(nvrhi::Format::RGB32_FLOAT)
+                    .setOffset(offsetof(VertexOutline, position))
+                    .setElementStride(sizeof(VertexOutline))
+            };
+        }
+
+        static nvrhi::BindingLayoutDesc GetBindingLayoutDesc()
+        {
+            nvrhi::BindingLayoutDesc desc;
+            desc.setVisibility(nvrhi::ShaderType::All);
+            desc.addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0));
+            return desc;
         }
     };
 }

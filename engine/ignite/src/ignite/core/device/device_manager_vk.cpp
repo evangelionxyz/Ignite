@@ -951,7 +951,7 @@ namespace ignite
         physicalDeviceFeatures2.pNext = pNext;
         m_VulkanPhysicalDevice.getFeatures2(&physicalDeviceFeatures2);
 
-        std::unordered_set<int> uniqueQueueFamilies = {
+        std::unordered_set uniqueQueueFamilies = {
             m_GraphicsQueueFamily
         };
 
@@ -998,6 +998,7 @@ namespace ignite
             .setAttachmentFragmentShadingRate(true);
         auto vulkan13features = vk::PhysicalDeviceVulkan13Features()
             .setSynchronization2(synchronization2Supported)
+            .setShaderDemoteToHelperInvocation(true)
             .setMaintenance4(maintenance4Features.maintenance4);
         auto aftermathFeatures = vk::DeviceDiagnosticsConfigCreateInfoNV()
             .setFlags(vk::DeviceDiagnosticsConfigFlagBitsNV::eEnableResourceTracking
@@ -1019,6 +1020,7 @@ namespace ignite
 #undef APPEND_EXTENSION
 
         auto deviceFeatures = vk::PhysicalDeviceFeatures()
+            .setIndependentBlend(true)
             .setShaderImageGatherExtended(true)
             .setSamplerAnisotropy(true)
             .setTessellationShader(true)
@@ -1050,11 +1052,11 @@ namespace ignite
 
         auto deviceDesc = vk::DeviceCreateInfo()
             .setPQueueCreateInfos(queueDesc.data())
-            .setQueueCreateInfoCount(uint32_t(queueDesc.size()))
+            .setQueueCreateInfoCount(static_cast<uint32_t>(queueDesc.size()))
             .setPEnabledFeatures(&deviceFeatures)
-            .setEnabledExtensionCount(uint32_t(extVec.size()))
+            .setEnabledExtensionCount(static_cast<uint32_t>(extVec.size()))
             .setPpEnabledExtensionNames(extVec.data())
-            .setEnabledLayerCount(uint32_t(layerVec.size()))
+            .setEnabledLayerCount(static_cast<uint32_t>(layerVec.size()))
             .setPpEnabledLayerNames(layerVec.data())
             .setPNext(&vulkan12features);
 

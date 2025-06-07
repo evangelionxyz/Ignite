@@ -1,6 +1,8 @@
 #include "serializer.hpp"
 
+#include "ignite/asset/asset_importer.hpp"
 #include "ignite/scene/scene.hpp"
+#include "ignite/project/project.hpp"
 #include "ignite/core/logger.hpp"
 
 #include "ignite/scene/entity.hpp"
@@ -18,7 +20,7 @@ namespace ignite {
 
     void Serializer::Serialize() const
     {
-        std::ofstream outFile(m_Filepath);
+        std::ofstream outFile(m_Filepath, std::ios::trunc);
         outFile << m_Emitter.c_str();
         outFile.close();
     }
@@ -27,7 +29,7 @@ namespace ignite {
     {
         m_Filepath = filepath;
 
-        std::ofstream outFile(m_Filepath);
+        std::ofstream outFile(m_Filepath, std::ios::trunc);
         outFile << m_Emitter.c_str();
         outFile.close();
     }
@@ -79,6 +81,9 @@ namespace ignite {
 
     bool SceneSerializer::Serialize(const std::filesystem::path &filepath)
     {
+        if (!m_Scene)
+            return false;
+
         Serializer sr(filepath);
 
         sr.BeginMap(); // START
@@ -310,5 +315,211 @@ namespace ignite {
         }
 
         return desScene;
+    }
+
+
+    ProjectSerializer::ProjectSerializer(const Ref<Project> &project)
+        : m_Project(project)
+    {
+    }
+
+    bool ProjectSerializer::Serialize(const std::filesystem::path &filepath)
+    {
+        if (!m_Project)
+            return false;
+
+        const auto &projectInfo = m_Project->GetInfo();
+
+        Serializer projectSr(filepath);
+
+        projectSr.BeginMap(); // START
+
+        projectSr.BeginMap("Project");
+
+        projectSr.AddKeyValue("Version", "1.0");
+        projectSr.AddKeyValue("Name", projectInfo.name);
+        projectSr.AddKeyValue("AssetPath", projectInfo.assetFilepath.generic_string());
+        projectSr.AddKeyValue("AssetRegistry", projectInfo.assetRegistryFilename.generic_string());
+        projectSr.AddKeyValue("DefaultSceneHandle", projectInfo.defaultSceneHandle);
+
+        projectSr.EndMap();
+
+        projectSr.EndMap(); // END
+
+        projectSr.Serialize();
+
+        // set dirty flags
+        m_Project->SetDirtyFlag(false);
+
+        // Serialize asset manager
+        auto &assetManager = m_Project->GetAssetManager();
+        auto &assetRegistry = assetManager.GetAssetAssetRegistry();
+
+        {
+            const std::filesystem::path assetRegFilepath = filepath.parent_path() / projectInfo.assetRegistryFilename;
+            Serializer assetSr(assetRegFilepath);
+
+            assetSr.BeginMap(); // Start
+
+            assetSr.BeginMap("AssetRegistry");
+
+            assetSr.BeginSequence("Assets"); // Asset sequence
+            for (auto &[handle, metadata] : assetRegistry)
+            {
+                assetSr.BeginMap(); // Begin Metadata
+
+                metadata.filepath = m_Project->GetAssetRelativeFilepath(metadata.filepath);
+
+                assetSr.AddKeyValue("Handle", static_cast<uint64_t>(handle));
+                assetSr.AddKeyValue("Type", AssetTypeToString(metadata.type));
+                assetSr.AddKeyValue("Filepath", metadata.filepath.generic_string());
+
+                assetSr.EndMap();
+            }
+
+            assetSr.EndSequence(); // Asset sequence
+
+            assetSr.EndMap(); // End
+
+            assetSr.Serialize();
+        }
+
+        return true;
+    }
+
+    Ref<Project> ProjectSerializer::Deserialize(const std::filesystem::path &filepath)
+    {
+        bool exists = std::filesystem::exists(filepath);
+        LOG_ASSERT(exists, "[Project Serializer] File does not exists");
+        if (!exists)
+        {
+            return nullptr;
+        }
+
+        YAML::Node projectFileNode = Serializer::Deserialize(filepath);
+        YAML::Node projectNode = projectFileNode["Project"];
+
+        ProjectInfo info;
+        info.name = projectNode["Name"].as<std::string>();
+        info.filepath = filepath;
+        info.assetFilepath = projectNode["AssetPath"].as<std::string>();
+        info.assetRegistryFilename = projectNode["AssetRegistry"].as<std::string>();
+        info.defaultSceneHandle = AssetHandle(projectNode["DefaultSceneHandle"].as<uint64_t>());
+
+        Ref<Project> project = Project::Create(info);
+
+        auto &assetManager = project->GetAssetManager();
+
+        // import registry
+        if (!info.assetRegistryFilename.empty())
+        {
+            // project filepath / asset filename (.ixreg)
+            std::filesystem::path assetRegFilepath = filepath.parent_path() / info.assetRegistryFilename;
+            YAML::Node assetRegFileNode = Serializer::Deserialize(assetRegFilepath);
+            YAML::Node assetRegNode = assetRegFileNode["AssetRegistry"];
+
+            for (YAML::Node assetNode : assetRegNode["Assets"])
+            {
+                AssetHandle handle = AssetHandle(assetNode["Handle"].as<uint64_t>());
+                AssetMetaData metadata;
+                metadata.type = AssetTypeFromString(assetNode["Type"].as<std::string>());
+                metadata.filepath = assetNode["Filepath"].as<std::string>();
+
+                assetManager.InsertMetaData(handle, metadata);
+
+                // assetManager.ImportAsset(metadata.filepath);
+            }
+        }
+
+        if (info.defaultSceneHandle != AssetHandle(0))
+        {
+            Ref<Scene> activeScene = Project::GetAsset<Scene>(info.defaultSceneHandle);
+            if (activeScene)
+                project->SetActiveScene(activeScene);
+        }
+
+        return project;
+    }
+
+
+    AnimationSerializer::AnimationSerializer(const Ref<SkeletalAnimation> &animation)
+        : m_Animation(animation)
+    {
+    }
+
+    bool AnimationSerializer::Serialize(const std::filesystem::path &filepath)
+    {
+        if (!m_Animation)
+            return false;
+
+        Serializer sr(filepath);
+
+        sr.BeginMap(); // START
+
+        sr.BeginMap("Animation");
+        sr.AddKeyValue("Name", m_Animation->name);
+        sr.AddKeyValue("Duration", m_Animation->duration);
+        sr.AddKeyValue("TicksPerSeconds", m_Animation->ticksPerSeconds);
+
+        sr.BeginSequence("Channels");
+
+        for (auto &[name, channel] : m_Animation->channels)
+        {
+            sr.BeginMap();
+
+            sr.AddKeyValue("Name", name);
+
+            // Translation
+            sr.BeginSequence("TranslationKeys");
+            for (auto &f : channel.translationKeys.frames)
+            {
+                sr.BeginMap();
+                sr.AddKeyValue("Timestamp", f.Timestamp);
+                sr.AddKeyValue("Value", f.Value);
+                sr.EndMap();
+            }
+            sr.EndSequence();
+
+            // Rotation
+            sr.BeginSequence("RotationKeys");
+            for (auto &f : channel.rotationKeys.frames)
+            {
+                sr.BeginMap();
+                sr.AddKeyValue("Timestamp", f.Timestamp);
+                sr.AddKeyValue("Value", f.Value);
+                sr.EndMap();
+            }
+            sr.EndSequence();
+
+            // Scale
+            sr.BeginSequence("ScaleKeys");
+            for (auto &f : channel.scaleKeys.frames)
+            {
+                sr.BeginMap();
+                sr.AddKeyValue("Timestamp", f.Timestamp);
+                sr.AddKeyValue("Value", f.Value);
+                sr.EndMap();
+            }
+            sr.EndSequence();
+
+            sr.EndMap();
+        }
+
+        sr.EndSequence();
+
+        sr.EndMap();
+
+        sr.EndMap(); // END
+
+        sr.Serialize(filepath);
+
+        return true;
+    }
+
+    Ref<SkeletalAnimation> AnimationSerializer::Deserialize(const std::filesystem::path &filepath)
+    {
+        Ref<SkeletalAnimation> animation;
+
+        return animation;
     }
 }

@@ -45,8 +45,12 @@ namespace ignite
 
         void SetGizmoOperation(ImGuizmo::OPERATION op);
         void SetGizmoMode(ImGuizmo::MODE mode);
+        bool IsGizmoBeingUse() const { return m_Data.isGizmoBeingUse; }
+        bool IsViewportHovered() const { return m_ViewportData.isHovered; }
         
         Camera *GetViewportCamera() const { return m_ViewportCamera.get(); }
+
+        const glm::vec2 &GetViewportMousePos() const { return m_ViewportData.mousePos; }
 
         void RenderHierarchy();
         Entity ShowEntityContextMenu();
@@ -62,15 +66,22 @@ namespace ignite
 
         Entity SetSelectedEntity(Entity entity);
         Entity GetSelectedEntity();
+
+        const std::vector<Entity> &GetSelectedEntities() { return m_SelectedEntities; }
         
         void DuplicateSelectedEntity();
 
         template<typename T, typename UIFunction>
         void RenderComponent(const std::string &name, Entity entity, UIFunction uiFunction, bool allowedToRemove = true);
 
+    private:
+
+        void DebugRender();
+
         struct Data
         {
             bool settingsWindow = true;
+            bool isGizmoBeingUse = false;
         } m_Data;
 
         Scope<Camera> m_ViewportCamera;
@@ -78,11 +89,11 @@ namespace ignite
         EditorLayer *m_Editor;
 
         Scene *m_Scene = nullptr;
-        
         Gizmo m_Gizmo;
 
-        std::vector<UUID> m_SelectedEntityIDs;
-        Entity m_SelectedEntity {};
+        std::vector<Entity> m_SelectedEntities;
+
+        Entity m_SelectedEntity{};
 
         static UUID m_TrackingSelectedEntity;
 
@@ -98,10 +109,10 @@ namespace ignite
         {
             bool isHovered = false;
             bool isFocused = false;
-            f32 width = 0.0f;
-            f32 height = 0.0f;
-            glm::vec2 relativeMousePos = glm::vec2(0.0f);
+            Rect rect = { 0, 0, 1, 1 };
+            glm::vec2 mousePos = glm::vec2(0.0f);
         } m_ViewportData;
 
+        
     };
 }

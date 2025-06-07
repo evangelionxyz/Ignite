@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ignite/animation/skeletal_animation.hpp"
 #include "ignite/core/uuid.hpp"
 #include "ignite/math/math.hpp"
 
@@ -264,6 +265,7 @@ namespace ignite {
 namespace ignite {
 
     class Scene;
+    class Project;
 
     class Serializer
     {
@@ -309,4 +311,27 @@ namespace ignite {
         Ref<Scene> m_Scene;
     };
 
+    class ProjectSerializer
+    {
+    public:
+        ProjectSerializer(const Ref<Project> &project);
+
+        bool Serialize(const std::filesystem::path &filepath);
+        static Ref<Project> Deserialize(const std::filesystem::path &filepath);
+
+    private:
+        Ref<Project> m_Project;
+    };
+
+    class AnimationSerializer
+    {
+    public:
+        AnimationSerializer(const Ref<SkeletalAnimation> &animation);
+
+        bool Serialize(const std::filesystem::path &filepath);
+        static Ref<SkeletalAnimation> Deserialize(const std::filesystem::path &filepath);
+
+    private:
+        Ref<SkeletalAnimation> m_Animation;
+    };
 }

@@ -3,11 +3,15 @@
 
 #include <stb_image.h>
 
+#include "ignite/core/application.hpp"
+
 namespace ignite
 {
     Texture::Texture(Buffer buffer, const TextureCreateInfo &createInfo)
         : m_CreateInfo(createInfo), m_Data(buffer.Data)
     {
+        nvrhi::IDevice *device = Application::GetRenderDevice();
+        
         LOG_ASSERT(m_Data && buffer.Data, "[Texture] Pixel data is null");
 
         const auto &textureDesc = nvrhi::TextureDesc()
@@ -19,14 +23,14 @@ namespace ignite
             .setKeepInitialState(true)
             .setDebugName("Geometry Texture");
         
-        m_Handle = m_CreateInfo.device->createTexture(textureDesc);
+        m_Handle = device->createTexture(textureDesc);
         LOG_ASSERT(m_Handle, "Failed to create texture");
 
         const auto samplerDesc = nvrhi::SamplerDesc()
             .setAllAddressModes(nvrhi::SamplerAddressMode::Repeat)
             .setAllFilters(true);
 
-        m_Sampler = m_CreateInfo.device->createSampler(samplerDesc);
+        m_Sampler = device->createSampler(samplerDesc);
         LOG_ASSERT(m_Sampler, "Failed to create texture sampler");
     }
 
@@ -63,6 +67,8 @@ namespace ignite
             }
         }
 
+        nvrhi::IDevice *device = Application::GetRenderDevice();
+
         const auto &textureDesc = nvrhi::TextureDesc()
             .setDimension(m_CreateInfo.dimension)
             .setWidth(m_CreateInfo.width)
@@ -72,14 +78,14 @@ namespace ignite
             .setKeepInitialState(true)
             .setDebugName("Geometry Texture");
 
-        m_Handle = m_CreateInfo.device->createTexture(textureDesc);
+        m_Handle = device->createTexture(textureDesc);
         LOG_ASSERT(m_Handle, "Failed to create texture");
 
         const auto samplerDesc = nvrhi::SamplerDesc()
             .setAllAddressModes(nvrhi::SamplerAddressMode::Repeat)
             .setAllFilters(true);
 
-        m_Sampler = m_CreateInfo.device->createSampler(samplerDesc);
+        m_Sampler = device->createSampler(samplerDesc);
         LOG_ASSERT(m_Sampler, "Failed to create texture sampler");
     }
 

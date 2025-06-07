@@ -7,8 +7,8 @@
 
 namespace ignite {
 
-    GraphicsPipeline::GraphicsPipeline(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo)
-        : m_Params(params), m_CreateInfo(std::move(createInfo))
+    GraphicsPipeline::GraphicsPipeline(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo, nvrhi::BindingLayoutHandle bindingLayout)
+        : m_Params(params), m_CreateInfo(std::move(createInfo)), m_BindingLayout(bindingLayout)
     {
     }
 
@@ -18,10 +18,20 @@ namespace ignite {
         Ref<ShaderMake::ShaderContext> context = CreateRef<ShaderMake::ShaderContext>(filepath, shaderType, ShaderMake::ShaderContextDesc(), recompile);
         m_ShaderContexts.push_back(std::move(context));
 
+        m_NeedsToCompileShader = true;
+
         return *this;
     }
 
-    void GraphicsPipeline::Create(nvrhi::IFramebuffer *framebuffer)
+    GraphicsPipeline& GraphicsPipeline::AddShader(nvrhi::ShaderHandle& handle, nvrhi::ShaderType type)
+    {
+        m_NeedsToCompileShader = false;
+        m_Shaders[type] = handle;
+
+        return *this;
+    }
+
+    void GraphicsPipeline::CreatePipeline(nvrhi::IFramebuffer *framebuffer)
     {
         if (m_Handle == nullptr)
         {
@@ -29,10 +39,21 @@ namespace ignite {
             nvrhi::BlendState blendState;
             blendState.targets[0].blendEnable = m_Params.enableBlend;
 
+            // Attachment 1 (R32_UINT - does NOT support blending)
+            blendState.targets[1].blendEnable = false;
+            blendState.targets[1].colorWriteMask = nvrhi::ColorMask::All; // still write, just no blending
+
             nvrhi::DepthStencilState depthStencilState;
             depthStencilState.depthWriteEnable = m_Params.depthWrite;
             depthStencilState.depthTestEnable = m_Params.depthTest;
-            depthStencilState.depthFunc = m_Params.comparison; // use 1.0 for far depth
+            depthStencilState.depthFunc = m_Params.comparison;
+
+            depthStencilState.stencilEnable = m_Params.enableDepthStencil;
+            depthStencilState.frontFaceStencil = m_Params.frontFaceStencilDesc;
+            depthStencilState.backFaceStencil = m_Params.backFaceStencilDesc;
+            depthStencilState.stencilWriteMask = m_Params.stencilWriteMask;
+            depthStencilState.stencilReadMask = m_Params.stencilReadMask;
+            depthStencilState.stencilRefValue = m_Params.stencilRefValue;
 
             nvrhi::RasterState rasterState;
             rasterState.cullMode = m_Params.cullMode;
@@ -59,10 +80,12 @@ namespace ignite {
             pipelineDesc.setRenderState(renderState);
             pipelineDesc.primType = m_Params.primitiveType;
 
-            pipelineDesc.addBindingLayout(m_BindingLayout);
+            if (m_BindingLayout)
+                pipelineDesc.addBindingLayout(m_BindingLayout);
 
             // create with the same framebuffer to be render
             nvrhi::IDevice* device = Application::GetRenderDevice();
+
             m_Handle = device->createGraphicsPipeline(pipelineDesc, framebuffer);
             LOG_ASSERT(m_Handle, "Failed to create graphics pipeline");
         }
@@ -73,31 +96,32 @@ namespace ignite {
         m_Handle.Reset();
     }
 
-    void GraphicsPipeline::CompileShaders()
+    void GraphicsPipeline::Build()
     {
-        Renderer::GetShaderContext()->CompileShader(m_ShaderContexts);
-
         nvrhi::IDevice* device = Application::GetRenderDevice();
-        for (auto& context : m_ShaderContexts)
+
+        if (m_NeedsToCompileShader)
         {
-            nvrhi::ShaderType shaderType = GetNVRHIShaderType(context->GetType());
-            m_Shaders[shaderType] = device->createShader(shaderType, context->blob.data.data(), context->blob.dataSize());
+            Renderer::GetShaderLibrary().GetContext()->CompileShader(m_ShaderContexts);
 
-            LOG_ASSERT(m_Shaders[shaderType], "[Graphics Pipline] Failed to create shader");
+            for (auto& context : m_ShaderContexts)
+            {
+                nvrhi::ShaderType shaderType = GetNVRHIShaderType(context->GetType());
+                m_Shaders[shaderType] = device->createShader(shaderType, context->blob.data.data(), context->blob.dataSize());
+
+                LOG_ASSERT(m_Shaders[shaderType], "[Graphics Pipline] Failed to create shader");
+            }
+
+            m_ShaderContexts.clear();
         }
-
-        m_ShaderContexts.clear();
 
         m_InputLayout = device->createInputLayout(m_CreateInfo->attributes, m_CreateInfo->attributeCount, nullptr);
         LOG_ASSERT(m_InputLayout, "[Graphics Pipeline] Failed to create input layout");
-
-        m_BindingLayout = device->createBindingLayout(m_CreateInfo->bindingLayoutDesc);
-        LOG_ASSERT(m_BindingLayout, "[Graphics Pipeline] Failed to create binding layout");
     }
 
-    Ref<GraphicsPipeline> GraphicsPipeline::Create(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo)
+    Ref<GraphicsPipeline> GraphicsPipeline::Create(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo, nvrhi::BindingLayoutHandle bindingLayout)
     {
-        return CreateRef<GraphicsPipeline>(params, createInfo);
+        return CreateRef<GraphicsPipeline>(params, createInfo, bindingLayout);
     }
 
 }

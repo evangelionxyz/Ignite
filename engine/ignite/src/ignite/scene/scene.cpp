@@ -3,13 +3,21 @@
 #include <ranges>
 
 #include <entt/entt.hpp>
-#include "camera.hpp"
-#include "ignite/graphics/renderer_2d.hpp"
-#include "ignite/physics/2d/physics_2d.hpp"
 
+#include "ignite/graphics/mesh.hpp"
+#include "camera.hpp"
+#include "ignite/graphics/renderer.hpp"
+#include "ignite/graphics/renderer_2d.hpp"
+#include "ignite/graphics/environment.hpp"
+#include "ignite/physics/2d/physics_2d.hpp"
+#include "ignite/math/math.hpp"
+#include "scene_manager.hpp"
 #include "entity.hpp"
 
-#include "scene_manager.hpp"
+
+#include "ignite/core/application.hpp"
+
+#include "ignite/animation/animation_system.hpp"
 
 namespace ignite
 {
@@ -28,50 +36,125 @@ namespace ignite
 
     void Scene::OnStart()
     {
-        m_Playing = true;
+        // reset time
+        timeInSeconds = 0.0f;
 
+        m_Playing = true;
         physics2D->SimulationStart();
     }
 
     void Scene::OnStop()
     {
+        timeInSeconds = 0.0f;
+
         m_Playing = false;
         
         physics2D->SimulationStop();
     }
 
-    void Scene::OnUpdateEdit(f32 deltaTime)
+    void Scene::UpdateTransforms(float deltaTime)
     {
-        // NOTE: currently we are not updating transformation with edit mode
-        // TODO: calulcate parent & child transformation
-
-        for (entt::entity e: entities | std::views::values)
+        auto skinnedMeshView = registry->view<SkinnedMesh>();
+        for (auto entity : skinnedMeshView)
         {
-            const ID &id = registry->get<ID>(e);
-            Transform &tr = registry->get<Transform>(e);
-
-            // calculate transform from entity's parent
-            if (id.parent != 0)
+            SkinnedMesh &skinnedMesh = skinnedMeshView.get<SkinnedMesh>(entity);
+            if (!skinnedMesh.animations.empty() && skinnedMesh.animations[skinnedMesh.activeAnimIndex]->isPlaying)
             {
-                SceneManager::CalculateParentTransform(this, tr, id.parent);
+                if (AnimationSystem::UpdateSkeleton(skinnedMesh.skeleton, skinnedMesh.animations[skinnedMesh.activeAnimIndex], timeInSeconds))
+                {
+                    AnimationSystem::ApplySkeletonToEntities(this, skinnedMesh.skeleton);
+                    skinnedMesh.boneTransforms = AnimationSystem::GetFinalJointTransforms(skinnedMesh.skeleton);
+                }
             }
-            else
+        }
+
+        auto view = registry->view<ID, Transform>();
+        for (auto ent : view)
+        {
+            const auto &[id, transform] = view.get<ID, Transform>(ent);
+            if (id.parent == 0)
             {
-                tr.translation = tr.localTranslation;
-                tr.rotation = tr.localRotation;
-                tr.scale = tr.localScale;
+                UpdateTransformRecursive(Entity { ent, this }, glm::mat4(1.0f));
             }
         }
     }
 
-    void Scene::OnUpdateRuntimeSimulate(f32 deltaTime)
+    void Scene::UpdateTransformRecursive(Entity entity, const glm::mat4 &parentWorldTransform)
     {
-        physics2D->Simulate(deltaTime);
+        Transform &transform = entity.GetTransform();
+        ID &id = entity.GetComponent<ID>();
+
+        glm::vec3 skew;
+        glm::vec4 perspective;
+        
+        glm::mat4 worldMatrix = parentWorldTransform * transform.GetLocalMatrix();
+        
+        glm::decompose(worldMatrix,
+            transform.scale,
+            transform.rotation,
+            transform.translation,
+            skew,
+            perspective);
+        
+        // Special logic for MeshRenderer (e.g., skeletal animation)
+        if (entity.HasComponent<MeshRenderer>())
+        {
+            MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
+
+            meshRenderer.meshBuffer.transformation = worldMatrix;
+            glm::decompose(meshRenderer.meshBuffer.transformation, transform.scale, transform.rotation, transform.translation, skew, perspective);
+
+            glm::mat3 normalMat3 = glm::transpose(glm::inverse(glm::mat3(meshRenderer.meshBuffer.transformation)));
+            meshRenderer.meshBuffer.normal = glm::mat4(normalMat3);
+            if (meshRenderer.root != UUID(0))
+            {
+                Entity rootNodeEntity = SceneManager::GetEntity(this, meshRenderer.root);
+                SkinnedMesh &skinnedMesh = rootNodeEntity.GetComponent<SkinnedMesh>();
+                
+                const size_t numBones = std::min(skinnedMesh.boneTransforms.size(), static_cast<size_t>(MAX_BONES));
+                for (size_t i = 0; i < numBones; ++i)
+                {
+                    meshRenderer.meshBuffer.boneTransforms[i] = skinnedMesh.boneTransforms[i];
+                }
+                
+                for (size_t i = numBones; i < MAX_BONES; ++i)
+                {
+                    meshRenderer.meshBuffer.boneTransforms[i] = glm::mat4(1.0f);
+                }
+            }
+            else
+            {
+                for (size_t i = 0; i < MAX_BONES; ++i)
+                {
+                    meshRenderer.meshBuffer.boneTransforms[i] = glm::mat4(1.0f);
+                }
+            }
+        }
+
+        transform.dirty = false;
+
+        // Recurse for children
+        for (const UUID &childUUID : id.children)
+        {
+            Entity child = SceneManager::GetEntity(this, childUUID);
+            UpdateTransformRecursive(child, worldMatrix);
+        }
     }
 
-    void Scene::OnRenderRuntime(nvrhi::IFramebuffer *framebuffer)
+    void Scene::OnUpdateEdit(f32 deltaTime)
     {
-        // TODO: render with camera component
+        timeInSeconds += deltaTime;
+
+        UpdateTransforms(deltaTime);
+    }
+
+    void Scene::OnUpdateRuntimeSimulate(f32 deltaTime)
+    {
+        timeInSeconds += deltaTime;
+
+        UpdateTransforms(deltaTime);
+
+        physics2D->Simulate(deltaTime);
     }
 
     Ref<Scene> Scene::Create(const std::string &name)
@@ -79,27 +162,44 @@ namespace ignite
         return CreateRef<Scene>(name);
     }
 
-    void Scene::OnRenderRuntimeSimulate(Camera *camera, nvrhi::IFramebuffer *framebuffer)
+    template<typename T>
+    void Scene::OnComponentAdded(Entity entity, T &comp)
     {
-        Renderer2D::Begin(camera, framebuffer);
+    }
 
-        for (entt::entity e: entities | std::views::values)
-        {
-            Entity entity = { e, this };
-            auto &tr = entity.GetComponent<Transform>();
-            
-            if (!tr.visible)
-                continue;
+    template<>
+    void Scene::OnComponentAdded<ID>(Entity entity, ID &comp)
+    {
+    }
 
-            if (entity.HasComponent<Sprite2D>())
-            {
-                auto &sprite = entity.GetComponent<Sprite2D>();
-                Renderer2D::DrawQuad(tr.WorldTransform(), sprite.color, sprite.texture);
-            }
-        }
+    template<>
+    void Scene::OnComponentAdded<Transform>(Entity entity, Transform &comp)
+    {
+    }
 
-        Renderer2D::Flush();
-        Renderer2D::End();
+    template<>
+    void Scene::OnComponentAdded<Sprite2D>(Entity entity, Sprite2D &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<SkinnedMesh>(Entity entity, SkinnedMesh &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<MeshRenderer>(Entity entity, MeshRenderer &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<Rigidbody2D>(Entity entity, Rigidbody2D &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<BoxCollider2D>(Entity entity, BoxCollider2D &comp)
+    {
     }
 }
 

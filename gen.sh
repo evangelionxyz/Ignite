@@ -24,6 +24,6 @@ sudo apt install vulkan-sdk
 sudo apt install libvulkan1 mesa-vulkan-drivers vulkan-utils -y
 
 # run the python setup script
-pushd ./scripts
+pushd pushd "$(pwd)"
 sudo python3 setup.py
 popd

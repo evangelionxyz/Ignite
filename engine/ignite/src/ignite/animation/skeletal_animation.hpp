@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ignite/asset/asset.hpp"
 #include "keyframes.hpp"
 
 #include <string>
@@ -28,7 +29,7 @@ namespace ignite {
         glm::quat rotation;
     };
 
-    class SkeletalAnimation
+    class SkeletalAnimation : public Asset
     {
     public:
         SkeletalAnimation() = default;
@@ -41,5 +42,8 @@ namespace ignite {
         bool isPlaying = false;
 
         std::unordered_map<std::string, AnimationChannel> channels;
+
+        static AssetType GetStaticType() { return AssetType::SkeletalAnimation; }
+        virtual AssetType GetType() override { return GetStaticType(); }
     };
 }

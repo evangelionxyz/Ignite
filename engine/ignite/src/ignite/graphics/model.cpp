@@ -5,6 +5,8 @@
 #include "renderer.hpp"
 #include "texture.hpp"
 
+#include "environment.hpp"
+
 namespace ignite {
     // Model class
     Model::Model(const std::filesystem::path &filepath, const ModelCreateInfo &createInfo)
@@ -16,13 +18,17 @@ namespace ignite {
         LOG_ASSERT(scene == nullptr || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || scene->mRootNode,
             "[Model] Failed to load {}: {}", filepath, m_Importer.GetErrorString());
 
+        if (!scene)
+        {
+            return;
+        }
+
         if (scene->HasAnimations())
         {
             MeshLoader::LoadAnimation(scene, animations);
-
             // Process Skeleton
             MeshLoader::ExtractSkeleton(scene, skeleton);
-            MeshLoader::SortJointsHierchically(skeleton);
+            MeshLoader::SortJointsHierarchically(skeleton);
         }
 
         meshes.resize(scene->mNumMeshes);
@@ -31,6 +37,7 @@ namespace ignite {
             meshes[i] = CreateRef<Mesh>();
         }
 
+        skeleton = CreateRef<Skeleton>();
         MeshLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), meshes, nodes, skeleton, -1);
         MeshLoader::CalculateWorldTransforms(nodes, meshes);
 
@@ -43,21 +50,21 @@ namespace ignite {
         MeshLoader::ClearTextureCache();
     }
 
-    void Model::SetEnvironmentTexture(nvrhi::TextureHandle envTexture)
+    void Model::SetEnvironment(const Ref<Environment> &env)
     {
-        m_EnvironmentTexture = envTexture;
+        m_Environment = env.get();
     }
 
-    void Model::CreateBindingSet(nvrhi::BindingLayoutHandle bindingLayout)
+    void Model::CreateBindingSet()
     {
-        for (auto &mesh : meshes)
+        for (const auto &mesh : meshes)
         {
             auto desc = nvrhi::BindingSetDesc();
 
             desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, m_CreateInfo.cameraBuffer));
-            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, m_CreateInfo.lightBuffer));
-            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, m_CreateInfo.envBuffer));
-            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, mesh->objectBuffer));
+            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, mesh->objectBuffer));
+            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, m_CreateInfo.lightBuffer));
+            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, m_CreateInfo.envBuffer));
             desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, mesh->materialBuffer));
             desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(5, m_CreateInfo.debugBuffer));
 
@@ -66,10 +73,19 @@ namespace ignite {
             desc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, mesh->material.textures[aiTextureType_EMISSIVE].handle));
             desc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, mesh->material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
             desc.addItem(nvrhi::BindingSetItem::Texture_SRV(4, mesh->material.textures[aiTextureType_NORMALS].handle));
-            desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, m_EnvironmentTexture ? m_EnvironmentTexture : Renderer::GetBlackTexture()->GetHandle()));
+
+            if (m_Environment && m_Environment->GetHDRTexture())
+            {
+                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, m_Environment->GetHDRTexture()));
+            }
+            else
+            {
+                desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, Renderer::GetBlackTexture()->GetHandle()));
+            }
+
             desc.addItem(nvrhi::BindingSetItem::Sampler(0, mesh->material.sampler));
 
-            mesh->bindingSet = m_CreateInfo.device->createBindingSet(desc, bindingLayout);
+            mesh->bindingSet = m_CreateInfo.device->createBindingSet(desc, Renderer::GetBindingLayout(GPipeline::MESH));
             LOG_ASSERT(mesh->bindingSet, "Failed to create binding set");
         }
     }
@@ -79,7 +95,7 @@ namespace ignite {
         if (m_BufferWritten)
             return;
 
-        for (auto &mesh : meshes)
+        for (const auto &mesh : meshes)
         {
             // m_CreateInfo.commandList->open();
             commandList->writeBuffer(mesh->vertexBuffer, mesh->vertices.data(), sizeof(VertexMesh) * mesh->vertices.size());
@@ -97,9 +113,13 @@ namespace ignite {
 
     void Model::OnUpdate(f32 deltaTime)
     {
+        if (m_Environment && m_Environment->IsUpdatingTexture())
+        {
+            CreateBindingSet();
+        }
     }
 
-    void Model::Render(nvrhi::CommandListHandle commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline)
+    void Model::Render(const nvrhi::CommandListHandle& commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline)
     {
         nvrhi::Viewport viewport = framebuffer->getFramebufferInfo().getViewport();
 
@@ -114,12 +134,12 @@ namespace ignite {
 
             glm::mat4 meshTransform = mesh->worldTransform;
 
-            if (activeAnimIndex >= 0 && animations[activeAnimIndex]->isPlaying && mesh->nodeID != -1)
+            if (activeAnimIndex >= 0 && animations[activeAnimIndex]->isPlaying && mesh->nodeParentID != -1)
             {
-                auto it = skeleton.nameToJointMap.find(nodes[mesh->nodeID].name);
-                if (it != skeleton.nameToJointMap.end())
+                auto it = skeleton->nameToJointMap.find(nodes[mesh->nodeParentID].name);
+                if (it != skeleton->nameToJointMap.end())
                 {
-                    Joint &joint = skeleton.joints[it->second];
+                    Joint &joint = skeleton->joints[it->second];
                     meshTransform = joint.globalTransform * joint.inverseBindPose * mesh->worldTransform;
                 }
             }
@@ -156,7 +176,7 @@ namespace ignite {
             commandList->setGraphicsState(meshGraphicsState);
 
             nvrhi::DrawArguments args;
-            args.setVertexCount((uint32_t)mesh->indices.size());
+            args.setVertexCount(static_cast<uint32_t>(mesh->indices.size()));
             args.instanceCount = 1;
 
             commandList->drawIndexed(args);
@@ -172,6 +192,7 @@ namespace ignite {
     {
         if (animations.empty() || activeAnimIndex == -1 || activeAnimIndex >= animations.size())
             return nullptr;
+
         return animations[activeAnimIndex];
     }
 

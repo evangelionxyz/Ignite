@@ -18,10 +18,10 @@ namespace ignite {
         for (auto &attachment : m_CreateInfo.attachments)
         {
             bool isDepthAttachment = attachment.format == nvrhi::Format::D32S8 || attachment.format == nvrhi::Format::D16 || attachment.format == nvrhi::Format::D24S8 || attachment.format == nvrhi::Format::D32;
-            bool isColorAttachment = attachment.format == nvrhi::Format::RGBA8_UNORM || attachment.format == nvrhi::Format::SRGBA8_UNORM;
+            bool isColorAttachment = attachment.format == nvrhi::Format::RGBA8_UNORM || attachment.format == nvrhi::Format::SRGBA8_UNORM || attachment.format == nvrhi::Format::R32_UINT;
+            bool isRenderTarget = true;
 
             // find depth attachment if framebuffer is not created yet
-
             if (isDepthAttachment && m_DepthAttachment == nullptr && m_Framebuffers.empty())
             {
                 nvrhi::TextureDesc depthDesc = nvrhi::TextureDesc();
@@ -29,10 +29,10 @@ namespace ignite {
                 depthDesc.setHeight(m_Height);
                 depthDesc.setFormat(attachment.format);
                 depthDesc.setDebugName("Render target depth attachment");
-                depthDesc.setInitialState(m_CreateInfo.depthWrite ? nvrhi::ResourceStates::DepthWrite : nvrhi::ResourceStates::Unknown);
+                depthDesc.setInitialState(attachment.state);
                 depthDesc.setIsRenderTarget(true);
                 depthDesc.setIsTypeless(true);
-                depthDesc.setKeepInitialState(m_CreateInfo.depthWrite);
+                depthDesc.setKeepInitialState(true);
                 depthDesc.setClearValue(nvrhi::Color(0.f));
                 depthDesc.setUseClearValue(true);
                 depthDesc.setDimension(nvrhi::TextureDimension::Texture2D);
@@ -42,7 +42,7 @@ namespace ignite {
             }
 
             // create color attachment if color attachments are empty
-            if (isColorAttachment && m_ColorAttachments.empty())
+            if (isColorAttachment)
             {
                 // create color attachment texture
                 nvrhi::TextureDesc colorDesc;
@@ -50,10 +50,10 @@ namespace ignite {
                 colorDesc.setHeight(m_Height);
                 colorDesc.setFormat(attachment.format);
                 colorDesc.setDebugName("Render target color attachment texture");
-                colorDesc.setInitialState(nvrhi::ResourceStates::RenderTarget);
+                colorDesc.setInitialState(attachment.state);
                 colorDesc.setKeepInitialState(true);
                 colorDesc.setIsUAV(false);
-                colorDesc.setIsRenderTarget(true);
+                colorDesc.setIsRenderTarget(isRenderTarget);
                 colorDesc.setIsTypeless(false);
                 colorDesc.setUseClearValue(true);
 
@@ -176,11 +176,11 @@ namespace ignite {
         return m_ColorAttachments;
     }
 
-    void RenderTarget::ClearColorAttachment(nvrhi::CommandListHandle commandList, uint32_t index, const glm::vec3 &clearColor)
+    void RenderTarget::ClearColorAttachmentFloat(nvrhi::CommandListHandle commandList, uint32_t attachmentIndex, const glm::vec3 &clearColor) const
     {
-        if (index >= m_ColorAttachments.size())
+        if (attachmentIndex >= m_ColorAttachments.size())
         {
-            index = glm::max((int)m_ColorAttachments.size() - 1, 0);
+            attachmentIndex = glm::max(static_cast<int>(m_ColorAttachments.size()) - 1, 0);
             LOG_ASSERT(false, "[Render target] Color attachments index out of bound!");
         }
 
@@ -188,10 +188,35 @@ namespace ignite {
         if (m_IsSingleFramebuffer)
             backBufferIndex = 0;
 
-        nvrhi::utils::ClearColorAttachment(commandList, m_Framebuffers[backBufferIndex], index, nvrhi::Color(clearColor.x, clearColor.y, clearColor.z, 1.0f));
+        nvrhi::TextureHandle texture = m_ColorAttachments[attachmentIndex];
+        const nvrhi::Format format = texture->getDesc().format;
+
+        nvrhi::utils::ClearColorAttachment(
+            commandList,
+            m_Framebuffers[backBufferIndex],
+            attachmentIndex,
+            nvrhi::Color(clearColor.x, clearColor.y, clearColor.z, 1.0f)
+        );
     }
 
-    void RenderTarget::ClearDepthAttachment(nvrhi::CommandListHandle commandList, float depth, uint32_t stencil)
+    void RenderTarget::ClearColorAttachmentUint(nvrhi::CommandListHandle commandList, uint32_t attachmentIndex, uint32_t clearColor) const
+    {
+        if (attachmentIndex >= m_ColorAttachments.size())
+        {
+            attachmentIndex = glm::max((int)m_ColorAttachments.size() - 1, 0);
+            LOG_ASSERT(false, "[Render target] Color attachments index out of bound!");
+        }
+
+        nvrhi::TextureHandle texture = m_ColorAttachments[attachmentIndex];
+        const nvrhi::Format format = texture->getDesc().format;
+
+        bool isUint = format == nvrhi::Format::R32_UINT || format == nvrhi::Format::RGBA8_UINT || format == nvrhi::Format::R8_UINT;
+        LOG_ASSERT(isUint, "[Render Target] Color attachment is not UINT type!");
+
+        commandList->clearTextureUInt(texture, nvrhi::AllSubresources, clearColor);
+    }
+
+    void RenderTarget::ClearDepthAttachment(nvrhi::CommandListHandle commandList, float depth, uint32_t stencil) const
     {
         i32 backBufferIndex = m_CurrentBackBufferIndex;
         if (m_IsSingleFramebuffer)

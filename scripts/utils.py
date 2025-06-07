@@ -1,10 +1,6 @@
-import sys
 import os
 import requests
-import time
 import urllib
-import subprocess
-import json
 import tarfile
 from zipfile import ZipFile
 import platform
@@ -75,14 +71,11 @@ def set_system_path_variable(new_path):
 
 
 def download_file(url, filepath):
-    path = filepath
     filepath = os.path.abspath(filepath)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
     if (type(url) is list):
         for url_option in url:
-            print("Downloading", url_option)
-
             try:
                 download_file(url_option, filepath)
                 return
@@ -111,34 +104,9 @@ def download_file(url, filepath):
         if total is None:
             f.write(response.content)
         else:
-            downloaded = 0
             total = int(total)
-            startTime = time.time()
-
-            # Download filechunk
             for data in response.iter_content(chunk_size = max(int(total / 1000), 1024 * 1024)):
-                downloaded += len(data)
                 f.write(data)
-
-                # Print progress
-                done = int(50 * downloaded / total)
-                percentage = (downloaded / total) * 100
-                elpased_time = time.time() - startTime
-                avg_kb_per_sec = downloaded / 1024 / elpased_time
-
-                if avg_kb_per_sec > 1024:
-                    avg_speed_string = '{:.2f} MB/s'.format(avg_kb_per_sec / 1024)
-                else:
-                    avg_speed_string = '{:.2f} MB/s'.format(avg_kb_per_sec)
-
-                sys.stdout.write('\r[{}{}] {:2f}% ({})    '.format(
-                    '█' * done, ' ' * (50 - done), percentage, avg_speed_string
-                ))
-                sys.stdout.flush()
-
-            sys.stdout.write('\n')
-            sys.stdout.flush()
-
 
 def extract_archive(filepath, delete_after_extraction=True):
     arch_filepath = os.path.abspath(filepath)
@@ -146,51 +114,17 @@ def extract_archive(filepath, delete_after_extraction=True):
 
     if platform.system() == "Windows":
         zip_file = dict()
-        zip_file_content_size = 0
-
         with ZipFile(arch_filepath, 'r') as zip_file_folder:
             for name in zip_file_folder.namelist():
                 zip_file[name] = zip_file_folder.getinfo(name).file_size
 
-            zip_file_content_size = sum(zip_file.values())
-            extracted_content_size = 0
-            
-            start_time = time.time()
-            for zipped_filename, zipped_file_size in zip_file.items():
+            for zipped_filename, _ in zip_file.items():
                 unzipped_filepath = os.path.abspath(f"{arch_file_location}/{zipped_filename}")
                 os.makedirs(os.path.dirname(unzipped_filepath), exist_ok=True)
 
+                # Check if the file already exists
                 if not os.path.isfile(unzipped_filepath):
                     zip_file_folder.extract(zipped_filename, path = arch_file_location, pwd = None)
-                    extracted_content_size += zipped_file_size
-                else:
-                    extracted_content_size += zipped_file_size
-
-                if zip_file_content_size > 0:
-                    done = int(50 * extracted_content_size / zip_file_content_size)
-                    percentage = extracted_content_size / zip_file_content_size * 100
-                else:
-                    done = 50
-                    percentage = 100
-
-                elapsed_time = time.time() - start_time
-
-                try:
-                    avg_kb_per_sec = extracted_content_size / 1024 / elapsed_time
-                except ZeroDivisionError:
-                    avg_kb_per_sec = 0
-
-                if avg_kb_per_sec > 1024:
-                    avg_speed_string = '{:.2f} MB/s'.format(avg_kb_per_sec / 1024)
-                else:
-                    avg_speed_string = '{:.2f} KB/s'.format(avg_kb_per_sec)
-
-                sys.stdout.write('\r[{}{}] {:2f}% ({})'
-                                .format('█' * done, ' ' * (50 - done), percentage, avg_speed_string))
-                
-                sys.stdout.flush()
-
-        sys.stdout.write('\n')
 
     elif platform.system() == "Linux":
         file = tarfile.open(arch_filepath)

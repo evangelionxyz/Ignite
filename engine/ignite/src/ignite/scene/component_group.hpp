@@ -14,6 +14,8 @@ namespace ignite
         Transform, 
         Sprite2D,
         Rigidbody2D,
-        BoxCollider2D
+        BoxCollider2D,
+        SkinnedMesh,
+        MeshRenderer
     >; 
 }

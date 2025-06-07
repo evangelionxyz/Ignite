@@ -1,35 +1,40 @@
 #pragma once
 
 #define GLM_ENABLE_EXPERIMENTAL
+
+#include "icomponent.hpp"
+#include "ignite/graphics/material.hpp"
+#include "ignite/core/uuid.hpp"
+#include "ignite/math/aabb.hpp"
+#include "ignite/graphics/mesh.hpp"
+#include "ignite/graphics/vertex_data.hpp"
+#include "ignite/animation/skeletal_animation.hpp"
+
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <nvrhi/nvrhi.h>
 #include <string>
-#include "ignite/core/uuid.hpp"
-#include "icomponent.hpp"
 
 namespace ignite
 {
     class Texture;
-    class Mesh;
-    class Model;
-    struct Material;
 
     static std::unordered_map<std::string, CompType> s_ComponentsName =
     {
         { "Rigid Body 2D", CompType_Rigidbody2D },
         { "Sprite 2D", CompType_Sprite2D},
         { "Box Collider 2D", CompType_BoxCollider2D },
-        { "Skinned Mesh Renderer", CompType_SkinnedMeshRenderer },
-        { "Static Mesh hRenderer", CompType_StaticMeshRenderer },
+        { "Mesh Renderer", CompType_MeshRenderer },
+        { "Skinned Mesh", CompType_SkinnedMesh},
     };
 
     enum EntityType : u8
     {
-        EntityType_Common = 0,
+        EntityType_Node,
         EntityType_Camera,
         EntityType_Mesh,
         EntityType_Prefab,
+        EntityType_Joint,
         EntityType_Invalid
     };
 
@@ -37,26 +42,27 @@ namespace ignite
     {
         switch (type)
         {
-        case EntityType_Common: return "Common";
+        case EntityType_Node: return "Node";
         case EntityType_Camera: return "Camera";
         case EntityType_Mesh: return "Mesh";
         case EntityType_Prefab: return "Prefab";
+        case EntityType_Joint: return "Joint";
         case EntityType_Invalid:
-        default:
-            return "Invalid";
+        default: return "Invalid";
         }
     }
 
     static EntityType EntityTypeFromString(const std::string &typeStr)
     {
-        if (typeStr == "Common") return EntityType_Common;
-        else if (typeStr == "Camera") return EntityType_Camera;
-        else if (typeStr == "Mesh") return EntityType_Mesh;
-        else if (typeStr == "Prefab") return EntityType_Prefab;
+        if (typeStr == "Node") return EntityType_Node;
+        if (typeStr == "Camera") return EntityType_Camera;
+        if (typeStr == "Mesh") return EntityType_Mesh;
+        if (typeStr == "Prefab") return EntityType_Prefab;
+        if (typeStr == "Joint") return EntityType_Prefab;
         return EntityType_Invalid;
     }
 
-    class ID : public IComponent
+    class ID final : public IComponent
     {
     public:
         std::string name;
@@ -98,7 +104,6 @@ namespace ignite
     class Transform : public IComponent
     {
     public:
-
         // world transforms
         glm::vec3 translation, scale;
         glm::quat rotation;
@@ -107,6 +112,7 @@ namespace ignite
         glm::vec3 localTranslation, localScale;
         glm::quat localRotation;
 
+        bool isAnimated = false;
         bool visible = true;
 
         Transform() = default;
@@ -131,16 +137,52 @@ namespace ignite
         {
         }
 
-        glm::mat4 WorldTransform()
+        // local transformation
+        void SetLocalTranslation(const glm::vec3 &newTranslation)
         {
-            return glm::translate(glm::mat4(1.0f), translation)
-                * glm::toMat4(rotation) * glm::scale(glm::mat4(1.0f), scale);
+            localTranslation = newTranslation;
+            dirty = true;
         }
 
-        glm::mat4 LocalTransform()
+        void SetLocalRotation(const glm::quat &newRotation)
         {
-            return glm::translate(glm::mat4(1.0f), localTranslation)
-                * glm::toMat4(localRotation) * glm::scale(glm::mat4(1.0f), localScale);
+            localRotation = newRotation;
+            dirty = true;
+        }
+
+        void SetLocalScale(const glm::vec3 &newScale)
+        {
+            localScale = newScale;
+            dirty = true;
+        }
+
+        glm::mat4 GetLocalMatrix() const
+        {
+            return glm::translate(glm::mat4(1.0f), localTranslation) * glm::mat4(localRotation) * glm::scale(glm::mat4(1.0f), localScale);
+        }
+
+        // World transformation
+        void SetWorldTranslation(const glm::vec3 &newTranslation)
+        {
+            translation = newTranslation;
+            dirty = true;
+        }
+
+        void SetWorldRotation(const glm::quat &newRotation)
+        {
+            rotation = newRotation;
+            dirty = true;
+        }
+
+        void SetWorldScale(const glm::vec3 &newScale)
+        {
+            scale = newScale;
+            dirty = true;
+        }
+
+        glm::mat4 GetWorldMatrix() const
+        {
+            return glm::translate(glm::mat4(1.0f), translation) * glm::mat4(rotation) * glm::scale(glm::mat4(1.0f), scale);
         }
 
         static CompType StaticType() { return CompType_Transform; }
@@ -158,31 +200,45 @@ namespace ignite
         virtual CompType GetType() override { return StaticType(); }
     };
 
+     class SkinnedMesh : public IComponent
+     {
+     public:
+         Ref<Skeleton> skeleton;
+         std::vector<glm::mat4> boneTransforms;
+         std::vector<Ref<SkeletalAnimation>> animations;
+         i32 activeAnimIndex = 0;
 
-    class MeshRenderer
+         static CompType StaticType() { return CompType_SkinnedMesh; }
+         virtual CompType GetType() override { return StaticType(); };
+     };
+
+    class MeshRenderer : public IComponent
     {
     public:
-        Ref<Material> material;
+        std::string name;
+        Ref<EntityMesh> mesh;
+        UUID root = UUID(0);
+
+        ObjectBuffer meshBuffer;
+        Material material;
 
         nvrhi::RasterCullMode cullMode = nvrhi::RasterCullMode::Front;
         nvrhi::RasterFillMode fillMode = nvrhi::RasterFillMode::Solid;
-    };
 
-    class SkinnedMeshRenderer : public IComponent, public MeshRenderer
-    {
-    public:
-        // Root joint
+        MeshRenderer() = default;
+        MeshRenderer(const MeshRenderer &other)
+        {
+            name = other.name;
+            mesh = CreateRef<EntityMesh>(*other.mesh.get());
 
-        static CompType StaticType() { return CompType_SkinnedMeshRenderer; }
-        virtual CompType GetType() override { return StaticType(); }
-    };
+            material = other.material;
+            cullMode = other.cullMode;
+            fillMode = other.fillMode;
 
-    class StaticMeshRenderer : public IComponent, public MeshRenderer
-    {
-    public:
+            meshBuffer = other.meshBuffer;
+        }
 
-        static CompType StaticType() { return CompType_StaticMeshRenderer; }
+        static CompType StaticType() { return CompType_MeshRenderer; }
         virtual CompType GetType() override { return StaticType(); }
     };
 }
-

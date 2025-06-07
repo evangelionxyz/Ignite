@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-
+#include <spdlog/fmt/fmt.h>
 
 namespace ignite::joystick{
 
@@ -53,5 +53,28 @@ typedef uint8_t JButton;
             RIGHT_TRIGGER = 5,
             LAST          = RIGHT_TRIGGER
         };
+    }
+
+    static std::string ButtonToString(JButton bt)
+    {
+        switch (bt)
+        {
+            case button::A: return "A";
+            case button::B: return "B";
+            case button::X: return "X";
+            case button::Y: return "Y";
+            case button::LEFT_BUMPER: return "LB";
+            case button::RIGHT_BUMPER: return "RB";
+            case button::BACK: return "Back";
+            case button::START: return "Start";
+            case button::GUIDE: return "Guide";
+            case button::LEFT_THUMB: return "LThumb";
+            case button::RIGHT_THUMB: return "RThumb";
+            case button::DPAD_UP: return "DPadUp";
+            case button::DPAD_RIGHT: return "DPadRight";
+            case button::DPAD_DOWN: return "DPadDown";
+            case button::DPAD_LEFT: return "DPadLeft";
+            default: return fmt::format("Unknown ({})", bt);
+        }
     }
 }

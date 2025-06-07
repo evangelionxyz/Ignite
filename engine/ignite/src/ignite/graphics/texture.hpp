@@ -12,8 +12,6 @@ namespace ignite
 {
     struct TextureCreateInfo
     {
-        nvrhi::IDevice *device;
-        
         i32 width = 1;
         i32 height = 1;
 

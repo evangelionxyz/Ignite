@@ -4,14 +4,11 @@
 #include "ignite/core/layer.hpp"
 #include "ignite/ignite.hpp"
 #include "ignite/graphics/graphics_pipeline.hpp"
+#include "ignite/graphics/scene_renderer.hpp"
 #include "ignite/graphics/environment.hpp"
-#include "ignite/graphics/lighting.hpp"
 #include "ignite/serializer/serializer.hpp"
-
+#include "ignite/project/project.hpp"
 #include "states.hpp"
-
-#include <mutex>
-#include <thread>
 #include <future>
 
 namespace ignite
@@ -19,12 +16,10 @@ namespace ignite
     class ShaderFactory;
     class DeviceManager;
     class ScenePanel;
+    class ContentBrowserPanel;
     class Model;
-
-    struct DebugRenderData
-    {
-        int renderIndex = 0;
-    };
+    class SkeletalAnimation;
+    struct Skeleton;
 
     class EditorLayer final : public Layer
     {
@@ -35,6 +30,11 @@ namespace ignite
             bool developerMode = false;
             bool multiSelect = false;
             bool settingsWindow = false;
+            bool popupNewProjectModal = false;
+            bool isPickingEntity = false;
+            uint32_t hoveredEntity = uint32_t(-1);
+
+            ProjectInfo projectCreateInfo;
 
             State sceneState = State::SceneEdit;
             nvrhi::RasterFillMode rasterFillMode = nvrhi::RasterFillMode::Solid;
@@ -48,14 +48,20 @@ namespace ignite
         void OnDetach() override;
         void OnUpdate(f32 deltaTime) override;
         void OnEvent(Event& e) override;
+
         bool OnKeyPressedEvent(KeyPressedEvent &event);
+        bool OnMouseButtonPressed(MouseButtonPressedEvent &event);
+
         void OnRender(nvrhi::IFramebuffer *framebuffer) override;
         void OnGuiRender() override;
 
         Scene *GetActiveScene() { return m_ActiveScene.get(); }
+        Project *GetActiveProject() { return m_ActiveProject.get(); }
+
         EditorData GetState() const { return m_Data; }
 
     private:
+
         void NewScene();
         void SaveScene();
         void SaveSceneAs();
@@ -63,12 +69,10 @@ namespace ignite
         void OpenScene();
         bool OpenScene(const std::filesystem::path &filepath);
         
-        void NewProject();
         void SaveProject();
-        void SaveProject(const std::filesystem::path &filepath);
         void SaveProjectAs();
         void OpenProject();
-        void OpenProject(const std::filesystem::path &filepath);
+        bool OpenProject(const std::filesystem::path &filepath);
 
         void OnScenePlay();
         void OnSceneStop();
@@ -76,25 +80,13 @@ namespace ignite
 
         void SettingsUI();
 
-        void TraverseNodes(Model *model, const NodeInfo &node, int traverseIndex = 0);
-
         Ref<ScenePanel> m_ScenePanel;
+        Ref<ContentBrowserPanel> m_ContentBrowserPanel;
+        SceneRenderer m_SceneRenderer;
+
         Ref<Scene> m_ActiveScene;
         Ref<Scene> m_EditorScene;
-        
-        Ref<GraphicsPipeline> m_MeshPipeline;
-
-        Ref<GraphicsPipeline> m_EnvPipeline;
-
-        std::vector<Ref<Model>> m_Models;
-
-        Model *m_SelectedModel = nullptr;
-
-        MaterialData *m_SelectedMaterial = nullptr;
-
-        Ref<Environment> m_Environment;
-
-        DebugRenderData m_DebugRenderData;
+        Ref<Project> m_ActiveProject;
         EditorData m_Data;
 
         std::filesystem::path m_CurrentSceneFilePath;
@@ -102,6 +94,10 @@ namespace ignite
         nvrhi::BufferHandle m_DebugRenderBuffer;
         
         nvrhi::CommandListHandle m_CommandList;
+        nvrhi::StagingTextureHandle m_EntityIDStagingTexture;
+            
         nvrhi::IDevice *m_Device = nullptr;
+
+        friend class ScenePanel;
     };
 }

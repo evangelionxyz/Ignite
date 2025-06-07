@@ -7,14 +7,14 @@ namespace ignite
 {
     struct OBB
     {
-        glm::vec3 Center;
-        glm::vec3 HalfExtents;
-        glm::mat3 Orientation;
+        glm::vec3 center;
+        glm::vec3 halfExtents;
+        glm::mat3 orientation;
 
         OBB() = default;
         OBB(const OBB &) = default;
         OBB(const glm::vec3 &center, const glm::vec3 &worldScale, const glm::quat &rotation)
-            : Center(center), HalfExtents(worldScale * 0.5f), Orientation(glm::mat3_cast(rotation))
+            : center(center), halfExtents(worldScale * 0.5f), orientation(glm::mat3_cast(rotation))
         {
         }
 
@@ -23,30 +23,30 @@ namespace ignite
             std::array<glm::vec3, 8> vertices;
             glm::vec3 axes[3] =
             {
-                Orientation[0] * HalfExtents.x,
-                Orientation[1] * HalfExtents.y,
-                Orientation[2] * HalfExtents.z
+                orientation[0] * halfExtents.x,
+                orientation[1] * halfExtents.y,
+                orientation[2] * halfExtents.z
             };
 
-            vertices[0] = Center - axes[0] - axes[1] - axes[2];
-            vertices[1] = Center + axes[0] - axes[1] - axes[2];
-            vertices[2] = Center - axes[0] + axes[1] - axes[2];
-            vertices[3] = Center + axes[0] + axes[1] - axes[2];
-            vertices[4] = Center - axes[0] - axes[1] + axes[2];
-            vertices[5] = Center + axes[0] - axes[1] + axes[2];
-            vertices[6] = Center - axes[0] + axes[1] + axes[2];
-            vertices[7] = Center + axes[0] + axes[1] + axes[2];
+            vertices[0] = center - axes[0] - axes[1] - axes[2];
+            vertices[1] = center + axes[0] - axes[1] - axes[2];
+            vertices[2] = center - axes[0] + axes[1] - axes[2];
+            vertices[3] = center + axes[0] + axes[1] - axes[2];
+            vertices[4] = center - axes[0] - axes[1] + axes[2];
+            vertices[5] = center + axes[0] - axes[1] + axes[2];
+            vertices[6] = center - axes[0] + axes[1] + axes[2];
+            vertices[7] = center + axes[0] + axes[1] + axes[2];
 
             return vertices;
         }
 
         bool RayIntersection(const glm::vec3 &rayOrigin, const glm::vec3 &rayDirection, float &tIntersect)
         {
-            glm::vec3 delta = Center - rayOrigin;
+            glm::vec3 delta = center - rayOrigin;
             float tNear = std::numeric_limits<float>::lowest();  // start with lowest possible value
             float tFar = std::numeric_limits<float>::max();  // start with max possible value
 
-            std::array<glm::vec3, 3> axes = { Orientation[0], Orientation[1], Orientation[2] };
+            std::array<glm::vec3, 3> axes = { orientation[0], orientation[1], orientation[2] };
 
             for (int i = 0; i < axes.size(); ++i)
             {
@@ -56,8 +56,8 @@ namespace ignite
                 // ray is not parallel to the slab
                 if (fabs(f) > glm::epsilon<float>())
                 {
-                    float t1 = (e + HalfExtents[i]) / f;
-                    float t2 = (e - HalfExtents[i]) / f;
+                    float t1 = (e + halfExtents[i]) / f;
+                    float t2 = (e - halfExtents[i]) / f;
 
                     if (t1 > t2) std::swap(t1, t2);  // ensure t1 is the near intersection
 
@@ -69,7 +69,7 @@ namespace ignite
                 }
                 else // ray is parallel to the slab
                 {
-                    if (-e - HalfExtents[i] > 0.0f || -e + HalfExtents[i] < 0.0f)
+                    if (-e - halfExtents[i] > 0.0f || -e + halfExtents[i] < 0.0f)
                         return false;  // no intersection
                 }
             }

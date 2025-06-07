@@ -38,18 +38,12 @@ struct Material
     float emissive;
 };
 
-struct Debug
-{
-    int renderIndex;
-};
-
 // push constant buffers
 cbuffer CameraBuffer : register(b0) { Camera camera; }
-cbuffer DirLightBuffer : register(b1) { DirLight dirLight; }
-cbuffer EnvironmentBuffer : register(b2) { Environment env; }
-cbuffer ObjectBuffer : register(b3) { Object object; }
+cbuffer ObjectBuffer : register(b1) { Object object; }
+cbuffer DirLightBuffer : register(b2) { DirLight dirLight; }
+cbuffer EnvironmentBuffer : register(b3) { Environment env; }
 cbuffer MaterialBuffer : register(b4) { Material material; }
-cbuffer DebugBuffer : register(b5) { Debug debug; }
 
 struct PSInput
 {
@@ -59,6 +53,7 @@ struct PSInput
     float2 uv           : TEXCOORD;
     float2 tilingFactor : TILINGFACTOR;
     float4 color        : COLOR;
+    uint entityID       : ENTITYID;
 };
 
 Texture2D diffuseTex : register(t0);
@@ -85,7 +80,13 @@ float3 CalcDirLight(float3 ldirection, float3 lcolor, float3 normal, float3 view
     return (ambientColor + diffuseColor + specularColor) * diffTexColor;
 }
 
-float4 main(PSInput input) : SV_TARGET
+struct PSOutput
+{
+    float4 color : SV_TARGET0;
+    uint4 entityID : SV_TARGET1;
+};
+
+PSOutput main(PSInput input)
 {
     float3 lighting = float3(0.0f, 0.0f, 0.0f);
 
@@ -145,26 +146,11 @@ float4 main(PSInput input) : SV_TARGET
     // Add emissive
     float3 emissive = TextureEmissive(emissiveCol, material.emissive);
     lighting += emissive;
-
-    switch (debug.renderIndex)
-    {
-        case 0:
-        default:
-        {
-            // ===== TONE MAPPING & OUTPUT =====
-            lighting= FilmicTonemap(lighting, env.exposure, env.gamma);
-            return float4(lighting, 1.0f);
-        }
-        case 1:
-            return float4((normal * 0.5 + 0.5) * normalColTex, 1.0);
-        case 2:
-            // Debug view for roughness
-            return float4(filteredRoughness, filteredRoughness, filteredRoughness, 1.0);
-        case 3:
-            // Debug view for metallic
-            return float4(finalMetallic, finalMetallic, finalMetallic, 1.0);
-        case 4:
-            // Debug reflection only
-            return float4(reflectedSpecular, 1.0);
-    }
+    
+    PSOutput result;
+    lighting = FilmicTonemap(lighting, env.exposure, env.gamma);
+    result.color = float4(lighting, 1.0);
+    result.entityID = uint4(input.entityID, input.entityID, input.entityID, input.entityID);
+    
+    return result;
 }

@@ -11,8 +11,9 @@ namespace ignite
         CompType_ID = 1,
         CompType_Transform,
         CompType_Sprite2D,
-        CompType_SkinnedMeshRenderer,
-        CompType_StaticMeshRenderer,
+        CompType_SkinnedMesh,
+        CompType_StaticMesh,
+        CompType_MeshRenderer,
         CompType_BoxCollider2D,
         CompType_Rigidbody2D
     };
@@ -20,6 +21,7 @@ namespace ignite
     class IComponent
     {
     public:
+        virtual ~IComponent() = default;
 
         template<typename T>
         T *As()
@@ -28,6 +30,8 @@ namespace ignite
         }
 
         UUID GetCompID() { return m_UUID; }
+
+        bool dirty = true;
 
         virtual CompType GetType() { return CompType_Invalid; };
     private:

@@ -57,8 +57,9 @@ namespace ignite
     }
 
 
-    Shader::Shader(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile)
+    Shader::Shader(const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile)
     {
+        nvrhi::IDevice *device = Application::GetRenderDevice();
         CreateShaderCachedDirectoryIfNeeded();
 
         ShaderMake::ShaderBlob blob = CompileOrGetShader(filepath, type, recompile);
@@ -89,8 +90,8 @@ namespace ignite
             ShaderMake::ShaderContextDesc shaderDesc = ShaderMake::ShaderContextDesc();
 
             // filepath from filepathCopy
-            std::shared_ptr<ShaderMake::ShaderContext> shaderContext = std::make_shared<ShaderMake::ShaderContext>(filepathCopy.generic_string(), type, shaderDesc, recompile);
-            ShaderMake::CompileStatus status = Renderer::GetShaderContext()->CompileShader({ shaderContext });
+            Ref<ShaderMake::ShaderContext> shaderContext = CreateRef<ShaderMake::ShaderContext>(filepathCopy.generic_string(), type, shaderDesc, recompile);
+            ShaderMake::CompileStatus status = Renderer::GetShaderLibrary().GetContext()->CompileShader({ shaderContext });
 
             bool success = status == ShaderMake::CompileStatus::Success;
             LOG_ASSERT(success, "[Shader] failed to get or compile shader");
@@ -176,9 +177,9 @@ namespace ignite
         }
     }
 
-    Ref<Shader> Shader::Create(nvrhi::IDevice *device, const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile)
+    Ref<Shader> Shader::Create(const std::filesystem::path &filepath, ShaderMake::ShaderType type, bool recompile)
     {
-        Ref<Shader> returnShader = CreateRef<Shader>(device, filepath, type, recompile);
+        Ref<Shader> returnShader = CreateRef<Shader>(filepath, type, recompile);
         if (returnShader->GetHandle() == nullptr)
             return nullptr;
 

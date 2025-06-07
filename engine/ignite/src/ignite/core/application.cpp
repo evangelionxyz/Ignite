@@ -21,7 +21,9 @@ namespace ignite
             for (i32 i = 0; i < m_CreateInfo.cmdLineArgs.count; ++i)
             {
                 if (strcmp(createInfo.cmdLineArgs.args[i], "-dx12") == 0)
+                {
                     m_CreateInfo.graphicsApi = nvrhi::GraphicsAPI::D3D12;
+                }
             }
         }
 
@@ -100,7 +102,7 @@ namespace ignite
             m_Window->PollEvents();
 
             const f64 currTime = glfwGetTime();
-            m_DeltaTime = currTime - m_PreviousTime;
+            m_DeltaTime = static_cast<float>(currTime - m_PreviousTime);
 
             // update window title
             if (m_AverageFrameTime > 0)
@@ -153,9 +155,9 @@ namespace ignite
                                 m_ImGuiLayer->EndFrame(framebuffer);
                             }
                         }
+
                         if (!deviceManager->Present())
                             continue;
-
                     }
                 }
             }

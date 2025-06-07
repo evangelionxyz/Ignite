@@ -27,7 +27,9 @@ namespace ignite
             if constexpr (std::is_base_of<IComponent, T>::value)
             {
                 m_Scene->registeredComps[m_Handle].emplace_back(static_cast<IComponent*>(&comp));
+                m_Scene->OnComponentAdded<T>(*this, comp);
             }
+
             return comp;
         }
 
@@ -38,6 +40,7 @@ namespace ignite
             if constexpr (std::is_base_of<IComponent, T>::value)
             {
                 m_Scene->registeredComps[m_Handle].emplace_back(static_cast<IComponent*>(&comp));
+                m_Scene->OnComponentAdded<T>(*this, comp);
             }
             return comp;
         }
@@ -87,6 +90,9 @@ namespace ignite
         bool operator!=(const Entity &other) const { return !(*this == other); }
 
         UUID GetUUID() { return GetComponent<ID>().uuid; }
+        UUID GetParentUUID() { return GetComponent<ID>().parent; }
+        Transform &GetTransform() { return GetComponent<Transform>(); }
+        
         const std::string &GetName() { return GetComponent<ID>().name; }
 
     private:

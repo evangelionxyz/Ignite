@@ -1,5 +1,8 @@
 #include "mesh.hpp"
 
+#include "ignite/scene/scene.hpp"
+#include "ignite/scene/scene_manager.hpp"
+
 #include "renderer.hpp"
 #include "texture.hpp"
 #include "lighting.hpp"
@@ -67,11 +70,12 @@ namespace ignite {
     }
 
     // Mesh loader
-    void MeshLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID)
+    void MeshLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Ref<Skeleton> &skeleton, i32 parentNodeID)
     {
         // Create a node entry and get its index
         NodeInfo nodeInfo;
         nodeInfo.localTransform = Math::AssimpToGlmMatrix(node->mTransformation);
+        nodeInfo.id = nodes.size();
         nodeInfo.parentID = parentNodeID;
         nodeInfo.name = node->mName.C_Str();
         i32 currentNodeID = nodes.size();
@@ -87,23 +91,35 @@ namespace ignite {
         for (uint32_t i = 0; i < node->mNumMeshes; ++i)
         {
             i32 meshIndex = node->mMeshes[i];
-            aiMesh *mesh = scene->mMeshes[meshIndex];
+            aiMesh *assimpMesh = scene->mMeshes[meshIndex];
 
+            meshes[meshIndex]->name = assimpMesh->mName.C_Str();
+
+            // Set node
+            meshes[meshIndex]->nodeID = currentNodeID;
+
+            // Set parent node
             if (nodeInfo.parentID != -1)
             {
                 // Go up 
                 NodeInfo parentNode = nodes[nodeInfo.parentID];
-                auto it = skeleton.nameToJointMap.find(parentNode.name);
-                if (it != skeleton.nameToJointMap.end())
+                auto it = skeleton->nameToJointMap.find(parentNode.name);
+                if (it != skeleton->nameToJointMap.end())
                 {
-                    meshes[meshIndex]->nodeID = nodeInfo.parentID;
+                    meshes[meshIndex]->nodeParentID = nodeInfo.parentID;
                 }
             }
 
             // Store mesh index in the node
             nodes[currentNodeID].meshIndices.push_back(meshIndex);
 
-            LoadSingleMesh(scene, meshIndex, mesh, filepath, meshes, skeleton);
+            if (assimpMesh->mMaterialIndex >= 0)
+            {
+                aiMaterial *mat = scene->mMaterials[assimpMesh->mMaterialIndex];
+                LoadMaterial(scene, mat, filepath, meshes[meshIndex]->material);
+            }
+
+            LoadSingleMesh<Mesh>(scene, meshIndex, assimpMesh, meshes[meshIndex], filepath, skeleton);
         }
 
         // Process all children with this node as parent
@@ -112,27 +128,32 @@ namespace ignite {
             ProcessNode(scene, node->mChildren[i], filepath, meshes, nodes, skeleton, currentNodeID);
         }
     }
-    
-    void MeshLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, const Skeleton &skeleton)
-    {
-        meshes[meshIndex]->name = mesh->mName.C_Str();
 
+    template<typename T>
+    void MeshLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *assimpMesh, Ref<T> &mesh, const std::string &filepath, const Ref<Skeleton> &skeleton)
+    {
         // vertices;
         VertexMesh vertex;
-        meshes[meshIndex]->vertices.resize(mesh->mNumVertices);
+        mesh->vertices.resize(assimpMesh->mNumVertices);
 
-        for (uint32_t i = 0; i < mesh->mNumVertices; ++i)
+        mesh->aabb.min = glm::vec3(FLT_MAX);
+        mesh->aabb.max = glm::vec3(-FLT_MAX);
+
+        for (uint32_t i = 0; i < assimpMesh->mNumVertices; ++i)
         {
-            vertex.position = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
-            vertex.color = { 1.0f, 1.0f, 1.0f, 1.0f };
+            vertex.position = { assimpMesh->mVertices[i].x, assimpMesh->mVertices[i].y, assimpMesh->mVertices[i].z };
 
-            if (mesh->HasNormals())
-                vertex.normal = { mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z };
+            mesh->aabb.min = glm::min(mesh->aabb.min, vertex.position);
+            mesh->aabb.max = glm::max(mesh->aabb.max, vertex.position);
+
+            vertex.color = { 1.0f, 1.0f, 1.0f, 1.0f };
+            if (assimpMesh->HasNormals())
+                vertex.normal = { assimpMesh->mNormals[i].x, assimpMesh->mNormals[i].y, assimpMesh->mNormals[i].z };
             else 
                 vertex.normal = { 0.0f, 1.0f, 0.0f }; // default normals
 
-            if (mesh->mTextureCoords[0])
-                vertex.texCoord = { mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y };
+            if (assimpMesh->mTextureCoords[0])
+                vertex.texCoord = { assimpMesh->mTextureCoords[0][i].x, assimpMesh->mTextureCoords[0][i].y };
             else
                 vertex.texCoord = { 0.0f, 0.0f };
 
@@ -143,44 +164,48 @@ namespace ignite {
                 vertex.weights[j] = 0.0f;
             }
 
-            meshes[meshIndex]->vertices[i] = vertex;
+            mesh->vertices[i] = vertex;
         }
 
-        meshes[meshIndex]->indices.reserve(mesh->mNumFaces * 3);
-        for (uint32_t i = 0; i < mesh->mNumFaces; ++i)
+        mesh->indices.reserve(assimpMesh->mNumFaces * 3);
+        for (uint32_t i = 0; i < assimpMesh->mNumFaces; ++i)
         {
-            aiFace face = mesh->mFaces[i];
-            meshes[meshIndex]->indices.push_back(face.mIndices[0]);
-            meshes[meshIndex]->indices.push_back(face.mIndices[1]);
-            meshes[meshIndex]->indices.push_back(face.mIndices[2]);
+            aiFace face = assimpMesh->mFaces[i];
+            mesh->indices.push_back(face.mIndices[0]);
+            mesh->indices.push_back(face.mIndices[1]);
+            mesh->indices.push_back(face.mIndices[2]);
         }
 
         // Load bones
-        if (mesh->HasBones())
+        if (assimpMesh->HasBones())
         {
-            ProcessBodeWeights(mesh, meshes[meshIndex]->vertices, skeleton);
+            ProcessBoneWeights<T>(assimpMesh, mesh, skeleton);
         }
 
-        if (mesh->mMaterialIndex >= 0)
-        {
-            // TODO: Load material here
-            aiMaterial *mat = scene->mMaterials[mesh->mMaterialIndex];
-            LoadMaterial(scene, mat, filepath, meshes[meshIndex]);
-        }
-
-        meshes[meshIndex]->CreateBuffers();
+        mesh->CreateBuffers();
     }
 
-    void MeshLoader::ProcessBodeWeights(aiMesh *mesh, std::vector<VertexMesh> &vertices, const Skeleton &skeleton)
+    template<typename T>
+    void MeshLoader::ProcessBoneWeights(aiMesh *assimpMesh, Ref<T> &mesh, const Ref<Skeleton> &skeleton)
     {
-        for (uint32_t boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex)
+        mesh->boneMapping.clear();
+        mesh->boneInfo.resize(skeleton->joints.size());
+
+        // Copy bone offset from skeleton
+        for (size_t i = 0; i < skeleton->joints.size(); ++i)
         {
-            aiBone *bone = mesh->mBones[boneIndex];
+            mesh->boneInfo[i].offsetMatrix = skeleton->joints[i].inverseBindPose;
+            mesh->boneMapping[skeleton->joints[i].name] = static_cast<i32>(i);
+        }
+
+        for (uint32_t boneIndex = 0; boneIndex < assimpMesh->mNumBones; ++boneIndex)
+        {
+            aiBone *bone = assimpMesh->mBones[boneIndex];
             std::string boneName = bone->mName.C_Str();
 
             // Get bone ID from skeleton
-            auto it = skeleton.nameToJointMap.find(boneName);
-            if (it == skeleton.nameToJointMap.end())
+            auto it = skeleton->nameToJointMap.find(boneName);
+            if (it == skeleton->nameToJointMap.end())
             {
                 LOG_WARN("[Model Loader]: Bone {} not found in skeleton!", boneName);
                 continue;
@@ -197,10 +222,10 @@ namespace ignite {
                 // Find the first empty slot in this vertex's bone array
                 for (uint32_t j = 0; j < VERTEX_MAX_BONES; ++j)
                 {
-                    if (vertices[vertexId].weights[j] < 0.00001f)
+                    if (mesh->vertices[vertexId].weights[j] < 0.00001f)
                     {
-                        vertices[vertexId].boneIDs[j] = boneId;
-                        vertices[vertexId].weights[j] = weight;
+                        mesh->vertices[vertexId].boneIDs[j] = boneId;
+                        mesh->vertices[vertexId].weights[j] = weight;
                         break;
                     }
                 }
@@ -208,7 +233,7 @@ namespace ignite {
         }
 
         // Normalize weights to ensure the sume to 1.0
-        for (auto &vertex : vertices)
+        for (auto &vertex : mesh->vertices)
         {
             float totalWeight = 0.0f;
             for (uint32_t i = 0; i < VERTEX_MAX_BONES; ++i)
@@ -226,21 +251,20 @@ namespace ignite {
         }
     }
 
-    void MeshLoader::ExtractSkeleton(const aiScene *scene, Skeleton &skeleton)
+    void MeshLoader::ExtractSkeleton(const aiScene *scene, Ref<Skeleton> &skeleton)
     {
-        // count the number of bones
-        std::unordered_set<std::string> uniqueBoneNames;
+        // count the number of joints
+        std::unordered_set<std::string> uniqueJointNames;
         for (uint32_t m = 0; m < scene->mNumMeshes; ++m)
         {
             aiMesh *mesh = scene->mMeshes[m];
             for (uint32_t b = 0; b < mesh->mNumBones; ++b)
             {
-                uniqueBoneNames.insert(mesh->mBones[b]->mName.C_Str());
+                uniqueJointNames.insert(mesh->mBones[b]->mName.C_Str());
             }
         }
 
-        skeleton.joints.reserve(uniqueBoneNames.size());
-
+        skeleton->joints.reserve(uniqueJointNames.size());
         // create joints map and collect inverse bind matrices
         std::unordered_map<std::string, glm::mat4> inverseBindMatrices;
         for (uint32_t m = 0; m < scene->mNumMeshes; ++m)
@@ -256,29 +280,26 @@ namespace ignite {
 
         // Find all nodes related to the skeleton
         ExtractSkeletonRecursive(scene->mRootNode, -1, skeleton, inverseBindMatrices);
-        
     }
 
-    void MeshLoader::ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Skeleton &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices)
+    void MeshLoader::ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Ref<Skeleton> &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices)
     {
         std::string nodeName = node->mName.C_Str();
         bool isJoint = inverseBindMatrices.contains(nodeName);
-
         i32 currentJointId = -1;
-
         if (isJoint)
         {
             // Add this node as a joint
             Joint joint;
             joint.name = nodeName;
-            joint.id = skeleton.joints.size();
+            joint.id = static_cast<i32>(skeleton->joints.size());
             joint.parentJointId = parentJointId;
             joint.inverseBindPose = inverseBindMatrices.at(nodeName);
             joint.localTransform = Math::AssimpToGlmMatrix(node->mTransformation);
 
             currentJointId = joint.id;
-            skeleton.nameToJointMap[nodeName] = currentJointId;
-            skeleton.joints.push_back(joint);
+            skeleton->nameToJointMap[nodeName] = currentJointId;
+            skeleton->joints.push_back(joint);
         }
 
         // process childe (use parent id if this node is not a joint)
@@ -289,36 +310,31 @@ namespace ignite {
         }
     }
 
-    void MeshLoader::SortJointsHierchically(Skeleton &skeleton)
+    void MeshLoader::SortJointsHierarchically(Ref<Skeleton> &skeleton)
     {
         std::vector<Joint> sortedJoints;
-        sortedJoints.reserve(skeleton.joints.size());
-
+        sortedJoints.reserve(skeleton->joints.size());
         // use a queue to process joints level by level
         std::queue<i32> queue;
-
         // start with root joints
-        for (size_t i = 0; i < skeleton.joints.size(); ++i)
+        for (size_t i = 0; i < skeleton->joints.size(); ++i)
         {
-            if (skeleton.joints[i].parentJointId == -1)
+            if (skeleton->joints[i].parentJointId == -1)
                 queue.push(i);
         }
-
         // BFS traversal to ensure parents are processed before children
         while (!queue.empty())
         {
             i32 jointIdx = queue.front();
             queue.pop();
-
-            sortedJoints.push_back(skeleton.joints[jointIdx]);
-            i32 newIdx = sortedJoints.size() - 1;
-
+            sortedJoints.push_back(skeleton->joints[jointIdx]);
+            i32 newIdx = static_cast<int>(sortedJoints.size()) - 1;
             // Update joint indices in the new array
             if (sortedJoints[newIdx].parentJointId != -1)
             {
                 // Find new parent index
-                std::string parentName = skeleton.joints[sortedJoints[newIdx].parentJointId].name;
-                for (size_t j = 0; j < newIdx; ++j)
+                std::string parentName = skeleton->joints[sortedJoints[newIdx].parentJointId].name;
+                for (i32 j = 0; j < newIdx; ++j)
                 {
                     if (sortedJoints[j].name == parentName)
                     {
@@ -327,57 +343,53 @@ namespace ignite {
                     }
                 }
             }
-
             // Add children to queue
-            for (size_t i = 0; i < skeleton.joints.size(); ++i)
+            for (size_t i = 0; i < skeleton->joints.size(); ++i)
             {
-                if (skeleton.joints[i].parentJointId == jointIdx)
+                if (skeleton->joints[i].parentJointId == jointIdx)
                 {
                     queue.push(i);
                 }
             }
         }
-
         // Update name to joint name
-        skeleton.nameToJointMap.clear();
+        skeleton->nameToJointMap.clear();
         for (size_t i = 0; i < sortedJoints.size(); ++i)
         {
             sortedJoints[i].id = i;
-            skeleton.nameToJointMap[sortedJoints[i].name] = i;
+            skeleton->nameToJointMap[sortedJoints[i].name] = i;
         }
-
-        skeleton.joints = std::move(sortedJoints);
-
+        skeleton->joints = std::move(sortedJoints);
     }
 
-    void MeshLoader::LoadMaterial(const aiScene *scene, aiMaterial *material, const std::string &filepath, Ref<Mesh> &mesh)
+    void MeshLoader::LoadMaterial(const aiScene *scene, aiMaterial *assimpMaterial, const std::string &filepath, Material &material)
     {
-        aiColor4D base_color(1.0f, 1.0f, 1.0f, 1.0f);
-        aiColor4D diffuse_color(1.0f, 1.0f, 1.0f, 1.0f);
-        aiColor4D emmisive_color(0.0f, 0.0f, 0.0f, 0.0f);
+        aiColor4D baseColor(1.0f, 1.0f, 1.0f, 1.0f);
+        aiColor4D diffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
+        aiColor4D emissiveColor(0.0f, 0.0f, 0.0f, 0.0f);
         f32 reflectivity = 0.0f;
 
-        material->Get(AI_MATKEY_BASE_COLOR, base_color);
-        material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse_color);
-        material->Get(AI_MATKEY_COLOR_EMISSIVE, emmisive_color);
-        material->Get(AI_MATKEY_METALLIC_FACTOR, mesh->material.data.metallic);
-        material->Get(AI_MATKEY_ROUGHNESS_FACTOR, mesh->material.data.roughness);
-        material->Get(AI_MATKEY_REFLECTIVITY, reflectivity);
-        mesh->material.data.baseColor = { base_color.r, base_color.g, base_color.b, 1.0f };
+        assimpMaterial->Get(AI_MATKEY_BASE_COLOR, baseColor);
+        assimpMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor);
+        assimpMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, emissiveColor);
+        assimpMaterial->Get(AI_MATKEY_METALLIC_FACTOR, material.data.metallic);
+        assimpMaterial->Get(AI_MATKEY_ROUGHNESS_FACTOR, material.data.roughness);
+        assimpMaterial->Get(AI_MATKEY_REFLECTIVITY, reflectivity);
+        material.data.baseColor = { baseColor.r, baseColor.g, baseColor.b, 1.0f };
         
-        if (diffuse_color.r > 0.0f)
-            mesh->material.data.emissive = emmisive_color.r / diffuse_color.r;
+        if (diffuseColor.r > 0.0f)
+            material.data.emissive = emissiveColor.r / diffuseColor.r;
 
         // load textures
-        LoadTextures(scene, material, &mesh->material, aiTextureType_DIFFUSE);
-        LoadTextures(scene, material, &mesh->material, aiTextureType_SPECULAR);
-        LoadTextures(scene, material, &mesh->material, aiTextureType_EMISSIVE);
-        LoadTextures(scene, material, &mesh->material, aiTextureType_DIFFUSE_ROUGHNESS);
-        LoadTextures(scene, material, &mesh->material, aiTextureType_NORMALS);
+        LoadTextures(scene, assimpMaterial, &material, aiTextureType_DIFFUSE);
+        LoadTextures(scene, assimpMaterial, &material, aiTextureType_SPECULAR);
+        LoadTextures(scene, assimpMaterial, &material, aiTextureType_EMISSIVE);
+        LoadTextures(scene, assimpMaterial, &material, aiTextureType_DIFFUSE_ROUGHNESS);
+        LoadTextures(scene, assimpMaterial, &material, aiTextureType_NORMALS);
 
         // set transparent and reflectivity
-        mesh->material._transparent = false;
-        mesh->material._reflective = reflectivity > 0.0f;
+        material._transparent = false;
+        material._reflective = reflectivity > 0.0f;
     }
 
     void MeshLoader::LoadAnimation(const aiScene *scene, std::vector<Ref<SkeletalAnimation>> &animations)
@@ -504,7 +516,6 @@ namespace ignite {
             {
                 // Child node
                 nodes[i].worldTransform = nodes[nodes[i].parentID].worldTransform * nodes[i].localTransform;
-                
             }
 
             // Apply node's world transform to all its meshes
@@ -518,6 +529,55 @@ namespace ignite {
     void MeshLoader::ClearTextureCache()
     {
         textureCache.clear();
+    }
+
+    void EntityMesh::CreateConstantBuffers(nvrhi::IDevice *device)
+    {
+        // create buffers
+        auto constantBufferDesc = nvrhi::BufferDesc()
+            .setIsConstantBuffer(true)
+            .setIsVolatile(true)
+            .setMaxVersions(16)
+            .setInitialState(nvrhi::ResourceStates::ConstantBuffer);
+
+        // create per mesh constant buffers
+        constantBufferDesc.setDebugName("Mesh constant buffer");
+        constantBufferDesc.setByteSize(sizeof(ObjectBuffer));
+        objectBufferHandle = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(objectBufferHandle, "[Model] Failed to create object constant buffer");
+
+        constantBufferDesc.setDebugName("Material constant buffer");
+        constantBufferDesc.setByteSize(sizeof(MaterialData));
+        materialBufferHandle = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(materialBufferHandle, "[Model] Failed to create material constant buffer");
+    }
+
+    // Entity Mesh class
+    void EntityMesh::CreateBuffers()
+    {
+        nvrhi::IDevice *device = Application::GetDeviceManager()->GetDevice();
+
+        // create vertex buffer
+        nvrhi::BufferDesc vbDesc = nvrhi::BufferDesc();
+        vbDesc.isVertexBuffer = true;
+        vbDesc.byteSize = sizeof(VertexMesh) * vertices.size();
+        vbDesc.initialState = nvrhi::ResourceStates::VertexBuffer;
+        vbDesc.keepInitialState = true;
+        vbDesc.debugName = "[Mesh] vertex buffer";
+
+        vertexBuffer = device->createBuffer(vbDesc);
+        LOG_ASSERT(vertexBuffer, "[Mesh] Failed to create Vertex Buffer");
+
+        // create index buffer
+        nvrhi::BufferDesc ibDesc = nvrhi::BufferDesc();
+        ibDesc.isIndexBuffer = true;
+        ibDesc.byteSize = sizeof(uint32_t) * indices.size();
+        ibDesc.initialState = nvrhi::ResourceStates::IndexBuffer;
+        ibDesc.keepInitialState = true;
+        ibDesc.debugName = "[Mesh] index buffer";
+
+        indexBuffer = device->createBuffer(ibDesc);
+        LOG_ASSERT(indexBuffer, "[Mesh] Failed to create Index Buffer");
     }
 
 }

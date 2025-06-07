@@ -11,7 +11,6 @@ namespace ignite {
 
     struct GraphicsPiplineCreateInfo
     {
-        nvrhi::BindingLayoutDesc bindingLayoutDesc;
         nvrhi::VertexAttributeDesc *attributes;
         uint32_t attributeCount = 0;
     };
@@ -23,22 +22,31 @@ namespace ignite {
         nvrhi::PrimitiveType primitiveType = nvrhi::PrimitiveType::TriangleList;
         nvrhi::RasterFillMode fillMode = nvrhi::RasterFillMode::Solid;
 
+        nvrhi::DepthStencilState::StencilOpDesc frontFaceStencilDesc;
+        nvrhi::DepthStencilState::StencilOpDesc backFaceStencilDesc;
+
+        uint8_t stencilReadMask = 0xff;
+        uint8_t stencilWriteMask = 0xff;
+        uint8_t stencilRefValue = 0;
+
         bool enableBlend = true;
+        bool enableDepthStencil = false;
         bool depthWrite = false;
         bool depthTest = false;
-        bool recompileShader = false;
     };
 
     class GraphicsPipeline
     {
     public:
         GraphicsPipeline() = default;
-        GraphicsPipeline(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo);
+        GraphicsPipeline(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo, nvrhi::BindingLayoutHandle bindingLayout);
 
         GraphicsPipeline& AddShader(const std::string& filepath, nvrhi::ShaderType type, bool recompile = false);
-        void CompileShaders();
+        GraphicsPipeline& AddShader(nvrhi::ShaderHandle& handle, nvrhi::ShaderType type);
 
-        void Create(nvrhi::IFramebuffer *framebuffer);
+        void Build();
+
+        void CreatePipeline(nvrhi::IFramebuffer *framebuffer);
         void ResetHandle();
 
         nvrhi::GraphicsPipelineHandle GetHandle() { return m_Handle; }
@@ -53,7 +61,7 @@ namespace ignite {
             return nullptr;
         }
 
-        static Ref<GraphicsPipeline> Create(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo);
+        static Ref<GraphicsPipeline> Create(const GraphicsPipelineParams &params, GraphicsPiplineCreateInfo *createInfo, nvrhi::BindingLayoutHandle bindingLayout);
 
         GraphicsPipelineParams &GetParams() { return m_Params; }
 
@@ -65,7 +73,10 @@ namespace ignite {
 
         nvrhi::InputLayoutHandle m_InputLayout;
         nvrhi::BindingLayoutHandle m_BindingLayout;
+
         GraphicsPipelineParams m_Params;
         GraphicsPiplineCreateInfo *m_CreateInfo;
+
+        bool m_NeedsToCompileShader = false;
     };
 }

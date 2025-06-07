@@ -1,7 +1,9 @@
 #pragma once
 #include "ignite/core/types.hpp"
-#include <ShaderMake/ShaderMake.h>
+#include "graphics_pipeline.hpp"
+
 #include <nvrhi/nvrhi.h>
+#include <ShaderMake/ShaderMake.h>
 
 #include <string>
 #include <unordered_map>
@@ -13,15 +15,37 @@ namespace ignite
     class Shader;
 
     // vertex/pixel shader
-    struct VPShader
+    struct ShaderHandleContext
     {
-        nvrhi::ShaderHandle vertex;
-        nvrhi::ShaderHandle pixel;
-        Ref<ShaderMake::ShaderContext> vertexContext;
-        Ref<ShaderMake::ShaderContext> pixelContext;
+        Ref<ShaderMake::ShaderContext> context;
+        nvrhi::ShaderHandle handle;
+    };
 
-        VPShader() = default;
-        VPShader(nvrhi::IDevice *device, const std::string &filepath);
+    enum class GPipeline
+    {
+        MESH, 
+        ENVIRONMENT, 
+        QUAD2D, 
+        LINE, 
+        OUTLINE
+    };
+
+    class ShaderLibrary
+    {
+    public:
+        void Init(nvrhi::GraphicsAPI api);
+        void Compile();
+        void Load(const std::string &name, const std::string &filepath);
+        bool Exists(const std::string &name) const;
+        
+        std::unordered_map<nvrhi::ShaderType, ShaderHandleContext> Get(const std::string &name);
+
+        ShaderMake::Context *GetContext() const;
+
+    private:
+        std::unordered_map<std::string, std::unordered_map<nvrhi::ShaderType, ShaderHandleContext>> m_Shaders;
+        Scope<ShaderMake::Context> m_ShaderContext = nullptr;
+        ShaderMake::Options m_ShaderMakeOptions;
     };
 
     class Renderer
@@ -31,27 +55,25 @@ namespace ignite
         Renderer(DeviceManager *deviceManager, nvrhi::GraphicsAPI api);
 
         ~Renderer();
-
-        static ShaderMake::Context *GetShaderContext();
         
         static Ref<Texture> GetWhiteTexture();
         static Ref<Texture> GetBlackTexture();
-
         static nvrhi::GraphicsAPI GetGraphicsAPI();
+        static nvrhi::BindingLayoutHandle GetBindingLayout(GPipeline type);
 
-        static VPShader *GetDefaultShader(const std::string &shaderName);
+        static ShaderLibrary &GetShaderLibrary();
+
+        static nvrhi::BufferHandle GetCameraBufferHandle();
         
     private:
-
-        void LoadDefaultShaders(nvrhi::IDevice *device);
-
         nvrhi::GraphicsAPI m_GraphicsAPI;
-        Scope<ShaderMake::Context> m_ShaderContext = nullptr;
-        ShaderMake::Options m_ShaderMakeOptions;
+        ShaderLibrary m_ShaderLibrary;
 
-        std::unordered_map<std::string, VPShader> m_Shaders;
+        std::unordered_map<GPipeline, nvrhi::BindingLayoutHandle> m_BindingLayouts;
 
         Ref<Texture> m_WhiteTexture;
         Ref<Texture> m_BlackTexture;
+
+        nvrhi::BufferHandle m_CameraBufferHandle;
     };
 }

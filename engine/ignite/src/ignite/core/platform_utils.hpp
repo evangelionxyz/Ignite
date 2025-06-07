@@ -9,6 +9,7 @@ namespace ignite {
     {
         static std::vector<std::string> OpenFiles(const char *filter);
         static std::string OpenFile(const char *filter);
+        static std::string SelectFolder();
         static std::string SaveFile(const char *filter);
     };
 }

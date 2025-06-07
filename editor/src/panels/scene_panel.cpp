@@ -11,6 +11,7 @@
 #include "ignite/core/platform_utils.hpp"
 #include "editor_layer.hpp"
 #include "ignite/graphics/mesh.hpp"
+#include "ignite/animation/animation_system.hpp"
 #include "entt/entt.hpp"
 
 #include <set>
@@ -20,6 +21,7 @@
 
 namespace ignite
 {
+
     UUID ScenePanel::m_TrackingSelectedEntity = UUID(0);
 
     ScenePanel::ScenePanel(const char *windowTitle, EditorLayer *editor)
@@ -33,13 +35,16 @@ namespace ignite
         m_ViewportCamera->position = {3.0f, 2.0f, 3.0f};
         m_ViewportCamera->yaw = -0.729f;
         m_ViewportCamera->pitch = 0.410f;
+
+        m_ViewportCamera->UpdateViewMatrix();
+        m_ViewportCamera->UpdateProjectionMatrix();
     }
 
     void ScenePanel::SetActiveScene(Scene *scene, bool reset)
     {
         if (reset)
         {
-            m_SelectedEntityIDs.clear();
+            m_SelectedEntities.clear();
         }
 
         m_Scene = scene;
@@ -50,10 +55,11 @@ namespace ignite
     {
         RenderTargetCreateInfo createInfo = {};
         createInfo.device = device;
-        createInfo.depthWrite = true;
-        createInfo.attachments = {
-            FramebufferAttachments{ nvrhi::Format::D32S8},
-            FramebufferAttachments{ nvrhi::Format::SRGBA8_UNORM },
+        createInfo.attachments = 
+        {
+            FramebufferAttachments{ nvrhi::Format::D32S8, nvrhi::ResourceStates::DepthRead }, // Depth
+            FramebufferAttachments{ nvrhi::Format::SRGBA8_UNORM, nvrhi::ResourceStates::RenderTarget }, // Main Color
+            FramebufferAttachments{ nvrhi::Format::R32_UINT, nvrhi::ResourceStates::RenderTarget }, // Mouse picking
         };
 
         m_RenderTarget = CreateRef<RenderTarget>(createInfo);
@@ -68,22 +74,25 @@ namespace ignite
 
         ImGui::ShowDemoWindow();
 
-        RenderHierarchy();
-        RenderInspector();
+        if (m_Scene)
+        {
+            RenderHierarchy();
+            RenderInspector();
+        }
+        
         RenderViewport();
+        DebugRender();
     }
 
     void ScenePanel::OnUpdate(f32 deltaTime)
     {
         UpdateCameraInput(deltaTime);
-        m_ViewportCamera->UpdateProjectionMatrix();
-        m_ViewportCamera->UpdateViewMatrix();
     }
 
     void ScenePanel::RenderHierarchy()
     {
         ImGui::Begin("Hierarchy");
-
+      
         static ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar;
         ImGui::BeginChild("scene_hierarchy", { ImGui::GetContentRegionAvail().x, 20.0f }, 0, windowFlags);
         ImGui::Button(m_Scene->name.c_str(), ImGui::GetContentRegionAvail());
@@ -99,7 +108,7 @@ namespace ignite
                 // check if src entity has parent
                 if (idComp.parent != 0)
                 {
-                    // current parent should be remove it
+                    // current parent should be removed it
                     Entity parent = SceneManager::GetEntity(m_Scene, idComp.parent);
                     parent.GetComponent<ID>().RemoveChild(idComp.uuid);
 
@@ -154,7 +163,7 @@ namespace ignite
         Entity entity = {};
         if (ImGui::MenuItem("Empty"))
         {
-            entity = SetSelectedEntity(SceneManager::CreateEntity(m_Scene, "Empty", EntityType_Common));
+            entity = SetSelectedEntity(SceneManager::CreateEntity(m_Scene, "Empty", EntityType_Node));
         }
 
         if (ImGui::BeginMenu("2D"))
@@ -176,13 +185,15 @@ namespace ignite
 
     void ScenePanel::RenderEntityNode(Entity entity, UUID uuid, i32 index)
     {
-        ID &idComp = entity.GetComponent<ID>();
+        if (!entity.IsValid())
+            return;
 
-        if (!entity.IsValid() || (idComp.parent && index == 0))
+        ID &idComp = entity.GetComponent<ID>();
+        if (idComp.parent && index == 0)
             return;
 
         ImGuiTreeNodeFlags flags = (m_SelectedEntity == entity ? ImGuiTreeNodeFlags_Selected : 0) | (!idComp.HasChild() ? ImGuiTreeNodeFlags_Leaf : 0)
-            | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen
+            | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow
             | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
 
         void *imguiPushId = (void*)(uint64_t)(uint32_t)entity;
@@ -213,7 +224,7 @@ namespace ignite
                     DestroyEntity(entity);
                     isDeleting = true;
 
-                    m_SelectedEntityIDs.clear();
+                    m_SelectedEntities.clear();
                 }
 
                 ImGui::EndPopup();
@@ -309,14 +320,22 @@ namespace ignite
             RenderComponent<Transform>("Transform", m_SelectedEntity, [this]()
             {
                 Transform &comp = m_SelectedEntity.GetComponent<Transform>();
-                ImGui::DragFloat3("Translation", &comp.localTranslation.x, 0.025f);
+                if (ImGui::DragFloat3("Translation", &comp.localTranslation.x, 0.025f))
+                {
+                    comp.dirty = true;
+                }
 
                 glm::vec3 euler = eulerAngles(comp.localRotation);
                 if (ImGui::DragFloat3("Rotation", &euler.x, 0.025f))
                 {
                     comp.localRotation = glm::quat(euler);
+                    comp.dirty = true;
                 }
-                ImGui::DragFloat3("Scale", &comp.localScale.x, 0.025f);
+                if (ImGui::DragFloat3("Scale", &comp.localScale.x, 0.025f))
+                {
+                    comp.dirty = true;
+                }
+
             }, false); // false: not allowed to remove the component
 
             auto &comps = m_Scene->registeredComps[m_SelectedEntity];
@@ -342,7 +361,6 @@ namespace ignite
                             if (!filepath.empty())
                             {
                                 TextureCreateInfo texCI;
-                                texCI.device = Application::GetInstance()->GetDeviceManager()->GetDevice();
                                 texCI.flip = false;
                                 texCI.format = nvrhi::Format::RGBA8_UNORM;
                                 texCI.dimension = nvrhi::TextureDimension::Texture2D;
@@ -470,11 +488,203 @@ namespace ignite
 
                     break;
                 }
-                case CompType_SkinnedMeshRenderer:
+                case CompType_MeshRenderer:
                 {
-                    RenderComponent<SkinnedMeshRenderer>("Skinned Mesh Renderer", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
+                    RenderComponent<MeshRenderer>("Mesh Renderer", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
                     {
-                        SkinnedMeshRenderer *c = comp->As<SkinnedMeshRenderer>();
+                        MeshRenderer *c = comp->As<MeshRenderer>();
+                        ImGui::Text("Mesh: %s", c->name.c_str());
+                        ImGui::ColorEdit4("Base Color", &c->material.data.baseColor.x);
+                        ImGui::DragFloat("Metallic", &c->material.data.metallic, 0.025f);
+                        ImGui::DragFloat("Roughness", &c->material.data.roughness, 0.025f);
+                        ImGui::DragFloat("Emissive", &c->material.data.emissive, 0.025f);
+                    });
+                    break;
+                }
+                case CompType_SkinnedMesh:
+                {
+                    RenderComponent<SkinnedMesh>("Skinned Mesh", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene, this]()
+                    {
+                        SkinnedMesh *c = comp->As<SkinnedMesh>();
+
+                        if (ImGui::Button("Load", {50.0f, 30.0f}))
+                        {
+                            std::filesystem::path filepath = FileDialogs::OpenFile("GLB/GLTF (*.glb;*.gltf)\0*.glb;*.gltf\0FBX (*.fbx)\0*.fbx");
+                            if (!filepath.empty())
+                            {
+                                LOG_ASSERT(std::filesystem::exists(filepath), "[Mesh Loader] File does not exists!");
+
+                                Assimp::Importer importer;
+                                const aiScene *assimpScene = importer.ReadFile(filepath.generic_string(), ASSIMP_IMPORTER_FLAGS);
+
+                                LOG_ASSERT(assimpScene == nullptr || assimpScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || assimpScene->mRootNode,
+                                    "[Model] Failed to load {}: {}",
+                                    filepath,
+                                    importer.GetErrorString());
+
+                                if (!assimpScene)
+                                {
+                                    return Entity{};
+                                }
+
+                                c->skeleton = CreateRef<Skeleton>();
+
+                                if (assimpScene->HasAnimations())
+                                {
+                                    MeshLoader::LoadAnimation(assimpScene, c->animations);
+
+                                    // Process Skeleton
+                                    MeshLoader::ExtractSkeleton(assimpScene, c->skeleton);
+                                    MeshLoader::SortJointsHierarchically(c->skeleton);
+                                }
+
+                                std::vector<Ref<Mesh>> meshes;
+                                meshes.resize(assimpScene->mNumMeshes);
+                                for (auto &mesh : meshes)
+                                {
+                                    mesh = CreateRef<Mesh>();
+                                }
+
+                                std::vector<NodeInfo> nodes;
+
+                                MeshLoader::ProcessNode(assimpScene, assimpScene->mRootNode, filepath.generic_string(), meshes, nodes, c->skeleton, -1);
+                                MeshLoader::CalculateWorldTransforms(nodes, meshes);
+
+                                // First pass: create all node entities
+                                for (auto &node : nodes)
+                                {
+                                    if (node.uuid == UUID(0) || node.parentID != -1) // not yet created
+                                    {
+                                        Entity entity = SceneManager::CreateEntity(scene, node.name, EntityType_Node);
+                                        node.uuid = entity.GetUUID();
+
+                                        Transform &tr = entity.GetComponent<Transform>();
+
+                                        glm::vec3 skew;
+                                        glm::vec4 perspective;
+                                        glm::decompose(node.localTransform, tr.localScale, tr.localRotation, tr.localTranslation, skew, perspective);
+
+                                        tr.dirty = true;
+                                    }
+                                }
+
+                                // Second pass: establish hierarchy and add meshes
+                                for (auto &node : nodes)
+                                {
+                                    Entity nodeEntity = SceneManager::GetEntity(scene, node.uuid);
+
+                                    if (node.parentID == -1)
+                                    {
+                                        // Attach the node to root node
+                                        ID &id = m_SelectedEntity.GetComponent<ID>();
+                                        id.name = filepath.stem().string();
+
+                                        SceneManager::AddChild(scene, m_SelectedEntity, nodeEntity);
+                                    }
+                                    else
+                                    {
+                                        // Attach to parent if not root
+                                        const auto &parentNode = nodes[node.parentID];
+                                        Entity parentEntity = SceneManager::GetEntity(scene, parentNode.uuid);
+                                        SceneManager::AddChild(scene, parentEntity, nodeEntity);
+                                    }
+
+                                    // Attach mesh entities to this node
+                                    for (i32 meshIdx : node.meshIndices)
+                                    {
+                                        const auto &mesh = meshes[meshIdx];
+
+                                        MeshRenderer &meshRenderer = nodeEntity.AddComponent<MeshRenderer>();
+
+                                        meshRenderer.name = mesh->name;
+                                        meshRenderer.root = m_SelectedEntity.GetUUID();
+
+                                        for (auto &vertex : mesh->vertices)
+                                        {
+                                            entt::entity e = static_cast<entt::entity>(nodeEntity);
+                                            vertex.entityID = entt::to_integral(e);
+                                        }
+
+                                        meshRenderer.mesh = CreateRef<EntityMesh>();
+
+                                        meshRenderer.mesh->vertices = mesh->vertices;
+                                        meshRenderer.mesh->indices = mesh->indices;
+                                        meshRenderer.mesh->indexBuffer = mesh->indexBuffer;
+                                        meshRenderer.mesh->vertexBuffer = mesh->vertexBuffer;
+                                        meshRenderer.mesh->aabb = mesh->aabb;
+
+                                        meshRenderer.material = mesh->material;
+
+                                        SceneManager::WriteMeshBuffer(scene, meshRenderer);
+                                    }
+
+                                    // Extract skeleton joints into entity
+                                    for (size_t i = 0; i < c->skeleton->joints.size(); ++i)
+                                    {
+                                        if (const std::string &name = c->skeleton->joints[i].name; scene->nameToUUID.contains(name))
+                                        {
+                                            UUID uuid = scene->nameToUUID[name];
+                                            c->skeleton->jointEntityMap[static_cast<i32>(i)] = uuid;
+
+                                            Entity entity = SceneManager::GetEntity(scene, uuid);
+                                            entity.GetComponent<ID>().type = EntityType_Joint;
+                                        }
+                                    }
+                                }
+
+                                MeshLoader::ClearTextureCache();
+                            }
+                        }
+
+                        if (!c->animations.empty())
+                        {
+
+                            ImGui::SeparatorText("Animations");
+                            if (ImGui::Button("Save Animations"))
+                            {
+                                std::filesystem::path directory = FileDialogs::SelectFolder();
+                                if (!directory.empty())
+                                {
+                                    for (auto &anim : c->animations)
+                                    {
+                                        std::filesystem::path filepath = directory / std::format("anim_{0}.anim", anim->name);
+                                        AnimationSerializer sr(anim);
+                                        sr.Serialize(filepath);
+                                    }
+                                }
+                            }
+
+                            if (ImGui::Button("Play"))
+                            {
+                                const Ref<SkeletalAnimation> &anim = c->animations[c->activeAnimIndex];
+                                anim->isPlaying = true;
+                            }
+
+                            ImGui::SameLine();
+
+                            if (ImGui::Button("Stop"))
+                            {
+                                const Ref<SkeletalAnimation> &anim = c->animations[c->activeAnimIndex];
+                                anim->isPlaying = false;
+                            }
+
+                            if (ImGui::TreeNode("Animations"))
+                            {
+                                for (size_t animIdx = 0; animIdx < c->animations.size(); ++animIdx)
+                                {
+                                    const Ref<SkeletalAnimation> &anim = c->animations[animIdx];
+                                    if (ImGui::TreeNodeEx(anim->name.c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", anim->name.c_str()))
+                                    {
+                                        if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+                                        {
+                                            c->activeAnimIndex = animIdx;
+                                        }
+                                        ImGui::TreePop();
+                                    }
+                                }
+                                ImGui::TreePop();
+                            }
+                        }
                     });
                     break;
                 }
@@ -543,14 +753,14 @@ namespace ignite
                             entity.AddComponent<BoxCollider2D>();
                             break;
                         }
-                        case CompType_SkinnedMeshRenderer:
+                        case CompType_MeshRenderer:
                         {
-                            entity.AddComponent<SkinnedMeshRenderer>();
+                            entity.AddComponent<MeshRenderer>();
                             break;
                         }
-                        case CompType_StaticMeshRenderer:
+                        case CompType_SkinnedMesh:
                         {
-                            entity.AddComponent<StaticMeshRenderer>();
+                            entity.AddComponent<SkinnedMesh>();
                             break;
                         }
                     }
@@ -604,74 +814,194 @@ namespace ignite
         ImGui::Begin("Viewport", nullptr, windowFlags);
 
         const ImGuiWindow *window = ImGui::GetCurrentWindow();
+
         m_ViewportData.isFocused = ImGui::IsWindowFocused();
         m_ViewportData.isHovered = ImGui::IsWindowHovered();
 
-        m_ViewportData.width = window->Size.x;
-        m_ViewportData.height = window->Size.y;
+        ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+        ImVec2 canvasSize = ImGui::GetContentRegionMax();
 
-        uint32_t vpWidth = static_cast<uint32_t>(m_ViewportData.width);
-        uint32_t vpHeght = static_cast<uint32_t>(m_ViewportData.height);
+        m_ViewportData.rect.min = { canvasPos.x, canvasPos.y };
+        m_ViewportData.rect.max = { canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y };
+
+        uint32_t vpWidth = static_cast<uint32_t>(m_ViewportData.rect.GetSize().x);
+        uint32_t vpHeight = static_cast<uint32_t>(m_ViewportData.rect.GetSize().y);
+
+
+        // Mouse position in screen space
+        ImVec2 mousePos = ImGui::GetMousePos();
+
+        // Mouse position relative to viewport
+        glm::vec2 localMouse = { mousePos.x - canvasPos.x, mousePos.y - canvasPos.y };
+
+        // Clamp to valid range [0, size - 1]
+        localMouse = glm::clamp(localMouse, glm::vec2(0.0f), glm::vec2(vpWidth - 1, vpHeight - 1));
+
+        m_ViewportData.mousePos = localMouse;
 
         // trigger resize
-        if (vpWidth > 0 && vpHeght > 0 && (vpWidth != m_RenderTarget->GetWidth() || vpHeght != m_RenderTarget->GetHeight()))
+        if (vpWidth > 0 && vpHeight > 0 && (vpWidth != m_RenderTarget->GetWidth() || vpHeight != m_RenderTarget->GetHeight()))
         {
             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
-                m_RenderTarget->Resize(vpWidth, vpHeght);
+            {
+                m_RenderTarget->Resize(vpWidth, vpHeight);
+                m_ViewportCamera->SetSize(vpWidth, vpHeight);
+                m_ViewportCamera->UpdateProjectionMatrix();
+            }
         }
-
-        m_ViewportCamera->SetSize(window->Size.x, window->Size.y);
 
         const ImTextureID imguiTex = reinterpret_cast<ImTextureID>(m_RenderTarget->GetColorAttachment(0).Get());
         ImGui::Image(imguiTex, window->Size);
 
-        static glm::mat4 gridMatrix(1.0f);
+        if (ImGui::BeginDragDropTarget())
+        {
+            if (const ImGuiPayload *payload = ImGui::GetDragDropPayload())
+            {
+                if (payload->DataSize == sizeof(AssetHandle))
+                {
+                    AssetHandle *handle = static_cast<AssetHandle *>(payload->Data);
+                    if (handle && *handle != AssetHandle(0))
+                    {
+                        AssetMetaData metadata = Project::GetInstance()->GetAssetManager().GetMetaData(*handle);
+                        if (metadata.type == AssetType::Scene)
+                        {
+                            std::filesystem::path filepath = Project::GetInstance()->GetAssetFilepath(metadata.filepath);
+                            m_Editor->OpenScene(filepath);
+                        }
+                    }
+                }
+            }
+
+            ImGui::EndDragDropTarget();
+        }
 
         GizmoInfo gizmoInfo;
         gizmoInfo.cameraView = m_ViewportCamera->viewMatrix;
         gizmoInfo.cameraProjection = m_ViewportCamera->projectionMatrix;
         gizmoInfo.cameraType = m_ViewportCamera->projectionType;
-        gizmoInfo.viewRect = { window->Pos.x, window->Pos.y, window->Size.x, window->Size.y };
+
+        gizmoInfo.viewRect = m_ViewportData.rect;
 
         m_Gizmo.SetInfo(gizmoInfo);
 
-        for (auto &uuid : m_SelectedEntityIDs)
-        {
-            Entity entity = SceneManager::GetEntity(m_Scene, uuid);
-            ImGuizmo::PushID((u64)uuid);
-            
-            Transform &tr = entity.GetComponent<Transform>();
+        m_Data.isGizmoBeingUse = false;
 
-            glm::mat4 transformMatrix = tr.WorldTransform();
+        if (m_SelectedEntities.size() > 1)
+        {
+            // Step 1: Compute shared pivot
+            glm::vec3 pivot(0.0f);
+            for (Entity entity : m_SelectedEntities)
+                pivot += entity.GetTransform().translation;
+            pivot /= static_cast<float>(m_SelectedEntities.size());
+     
+            // Step 2: create gizmo transform
+            glm::mat4 gizmoTransform = glm::translate(glm::mat4(1.0f), pivot);
+            glm::mat4 manipulatedTransform = gizmoTransform;
+     
+            // Step 3: Render gizmo once
+            m_Gizmo.Manipulate(manipulatedTransform);
+            if (m_Gizmo.IsManipulating())
+            {
+                glm::mat4 gizmoDelta = glm::inverse(gizmoTransform) * manipulatedTransform;
+
+                // Extract delta scale from the gizmo delta transform
+                glm::vec3 deltaTranslation, deltaScale, deltaRotation;
+                Math::DecomposeTransformEuler(gizmoDelta , deltaTranslation, deltaRotation, deltaScale);
+                
+                for (Entity entity : m_SelectedEntities)
+                {
+                    Transform &tr = entity.GetTransform();
+     
+                    glm::mat4 worldMatrix = tr.GetWorldMatrix();
+     
+                    // 1. Move to pivot space
+                    glm::mat4 toPivot = glm::translate(glm::mat4(1.0f), -pivot);
+                    glm::mat4 fromPivot = glm::translate(glm::mat4(1.0f), pivot);
+     
+                    // 2. Apply delta transform around pivot
+                    glm::mat4 noScale = Math::RemoveScale(gizmoDelta);
+                    glm::mat4 newWorldMatrix = fromPivot * noScale * toPivot * worldMatrix;
+     
+                    // 3. decompose
+                    glm::vec3 translation, scale, rotation;
+                    Math::DecomposeTransformEuler(newWorldMatrix, translation, rotation, scale);
+                    
+                    if (entity.GetParentUUID() != UUID(0))
+                    {
+                        Entity parent = SceneManager::GetEntity(m_Scene, entity.GetParentUUID());
+                        const Transform &parentTr = parent.GetTransform();
+                        glm::mat4 parentWorld = parentTr.GetWorldMatrix();
+                        glm::mat4 localMatrix = glm::inverse(parentWorld) * newWorldMatrix;
+
+                        glm::vec3 localTranslation, localEuler, localScale;
+                        Math::DecomposeTransformEuler(localMatrix, localTranslation, localEuler, localScale);
+            
+                        tr.localTranslation = localTranslation;
+                        tr.localRotation = glm::quat(localEuler);
+                        tr.localScale = deltaScale /  parentTr.scale;
+                    }
+                    else
+                    {
+                        tr.localTranslation = translation;
+                        tr.localRotation = glm::quat(rotation);
+                        tr.localScale = deltaScale;
+                    }
+                    tr.dirty = true;
+                }
+            }
+        }
+        else if (Entity entity = m_SelectedEntity)
+        {
+            Transform &tr = entity.GetTransform();
+            glm::mat4 transformMatrix = tr.GetWorldMatrix();
 
             m_Gizmo.Manipulate(transformMatrix);
 
             if (m_Gizmo.IsManipulating())
             {
-                glm::vec3 scale, translation, skew;
-                glm::vec4 perspective;
-                glm::quat orientation;
-                glm::decompose(transformMatrix, scale, orientation, translation, skew, perspective);
+                glm::vec3 translation, rotation, scale;
+                Math::DecomposeTransformEuler(transformMatrix, translation, rotation, scale);
 
-                tr.localTranslation = translation;
-                tr.localScale = scale;
-                tr.localRotation = orientation;
+                if (entity.GetParentUUID() != UUID(0))
+                {
+                    Entity parent = SceneManager::GetEntity(m_Scene, entity.GetParentUUID());
+                    const Transform &parentTr = parent.GetTransform();
+                    glm::vec4 localTranslation = glm::inverse(parentTr.GetWorldMatrix()) * glm::vec4(translation, 1.0f);
+                    tr.localTranslation = localTranslation;
+                    tr.localRotation = glm::inverse(parentTr.rotation) * glm::quat(rotation);
+                    tr.localScale = scale / parentTr.scale;
+                }
+                else
+                {
+                    tr.localTranslation = translation;
+                    tr.localRotation = glm::quat(rotation);
+                    tr.localScale = scale;
+                }
+                tr.dirty = true;
             }
-
-            ImGuizmo::PopID();
-
         }
 
-        // m_Gizmo.DrawGrid(1000.0f);
+        m_Data.isGizmoBeingUse = m_Gizmo.IsManipulating() || m_Gizmo.IsHovered();
+
+        ImGui::End();
+    }
+
+    void ScenePanel::DebugRender()
+    {
+        ImGui::Begin("Debug Render");
+
+        ImTextureID depthImage = reinterpret_cast<ImTextureID>(m_RenderTarget->GetDepthAttachment().Get());
+        ImGui::Image(depthImage, {512, 256});
 
         ImGui::End();
     }
 
     void ScenePanel::CameraSettingsUI()
     {
+        ImGui::Text("Mouse Pos: %.2f, %.2f Entity: (%d)", m_ViewportData.mousePos.x, m_ViewportData.mousePos.y, static_cast<entt::entity>(m_SelectedEntity));
+
         // =================================
         // Camera settings
-
         static const char *cameraModeStr[2] = { "Orthographic", "Perspective" };
         const char *currentCameraModeStr = cameraModeStr[static_cast<i32>(m_ViewportCamera->projectionType)];
         if (ImGui::BeginCombo("Mode", currentCameraModeStr))
@@ -695,6 +1025,9 @@ namespace ignite
                     {
                         m_ViewportCamera->position = m_CameraData.lastPosition;
                     }
+
+                    m_ViewportCamera->UpdateProjectionMatrix();
+                    m_ViewportCamera->UpdateViewMatrix();
                 }
 
                 if (isSelected)
@@ -736,21 +1069,17 @@ namespace ignite
 
             ImGui::PushID(compID);
 
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2 { 0.5f, 2.0f });
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2 { 0.5f, 6.0f });
             ImGui::Separator();
 
             const bool open = ImGui::TreeNodeEx((const char *)(uint32_t *)(uint64_t *)&compID, treeNdeFlags, name.c_str());
             ImGui::PopStyleVar();
 
             ImGui::SameLine(ImGui::GetContentRegionAvail().x - 24.0f);
-            if (ImGui::Button("+", { 14.0f, 14.0f }))
+            if (ImGui::Button("+", {24.0f, 24.0f}))
                 ImGui::OpenPopup("comp_settings");
 
             bool componentRemoved = false;
-            if (allowedToRemove)
-            {
-
-            }
 
             if (ImGui::BeginPopup("comp_settings"))
             {
@@ -804,7 +1133,7 @@ namespace ignite
                 case Camera::Type::Orthographic:
                 default:
                 {
-                    const f32 scaleFactor = std::max(m_ViewportData.width, m_ViewportData.height);
+                    const f32 scaleFactor = std::max(m_ViewportData.rect.GetSize().x, m_ViewportData.rect.GetSize().y);
                     const f32 zoomSqrt = glm::sqrt(m_ViewportCamera->zoom * m_ViewportCamera->zoom);
                     const f32 moveSpeed = 50.0f / scaleFactor;
                     const f32 mulFactor = moveSpeed * m_ViewportCamera->GetAspectRatio() * zoomSqrt;
@@ -833,6 +1162,8 @@ namespace ignite
             if (m_ViewportData.isFocused)
             {
             }
+
+            m_ViewportCamera->UpdateViewMatrix();
         }
 
         return false;
@@ -899,8 +1230,8 @@ namespace ignite
 
         lastMousePos = currentMousePos;
 
-        const f32 x = std::min(m_ViewportData.width * 0.01f, 1.8f);
-        const f32 y = std::min(m_ViewportData.height * 0.01f, 1.8f);
+        const f32 x = std::min(m_ViewportData.rect.GetSize().x * 0.01f, 1.8f);
+        const f32 y = std::min(m_ViewportData.rect.GetSize().y * 0.01f, 1.8f);
         const f32 xFactor = 0.0366f * (x * x) - 0.1778f * x + 0.3021f;
         const f32 yFactor = 0.0366f * (y * y) - 0.1778f * y + 0.3021f;
         const f32 yawSign = m_ViewportCamera->GetUpDirection().y < 0 ? -1.0f : 1.0f;
@@ -955,6 +1286,8 @@ namespace ignite
                 m_ViewportCamera->position += m_ViewportCamera->GetRightDirection() * deltaTime * m_CameraData.moveSpeed;
             }
         }
+
+        m_ViewportCamera->UpdateViewMatrix();
     }
 
     void ScenePanel::DestroyEntity(Entity entity)
@@ -966,14 +1299,14 @@ namespace ignite
 
     void ScenePanel::ClearMultiSelectEntity()
     {
-        m_SelectedEntityIDs.clear();
+        m_SelectedEntities.clear();
     }
 
     Entity ScenePanel::SetSelectedEntity(Entity entity)
     {
         if (!entity.IsValid())
         {
-            m_SelectedEntityIDs.clear();
+            m_SelectedEntities.clear();
             m_TrackingSelectedEntity = UUID(0);
             m_SelectedEntity = {};
             return {};
@@ -983,17 +1316,17 @@ namespace ignite
 
         if (m_Editor->GetState().multiSelect)
         {
-            m_SelectedEntityIDs.push_back(m_TrackingSelectedEntity);
+            m_SelectedEntities.push_back(entity);
         }
         else
         {
-            if (m_SelectedEntityIDs.size() > 1)
-                m_SelectedEntityIDs.clear();
+            if (m_SelectedEntities.size() > 1)
+                m_SelectedEntities.clear();
 
-            if (m_SelectedEntityIDs.empty())
-                m_SelectedEntityIDs.push_back(m_TrackingSelectedEntity);
+            if (m_SelectedEntities.empty())
+                m_SelectedEntities.push_back(entity);
 
-            m_SelectedEntityIDs[0] = m_TrackingSelectedEntity;
+            m_SelectedEntities[0] = entity;
         }
 
         return m_SelectedEntity = entity;
