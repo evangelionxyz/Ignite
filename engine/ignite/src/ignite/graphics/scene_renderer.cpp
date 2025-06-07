@@ -25,7 +25,7 @@ namespace ignite
         params.fillMode = nvrhi::RasterFillMode::Solid;
         params.cullMode = nvrhi::RasterCullMode::Front;
 
-        params.enableDepthStencil = false;
+        params.enableDepthStencil = true;
 
         // Fail = Keep, Pass = Replace
         params.frontFaceStencilDesc.failOp = nvrhi::StencilOp::Keep;      // Stencil test fails
@@ -34,7 +34,7 @@ namespace ignite
         params.frontFaceStencilDesc.stencilFunc = nvrhi::ComparisonFunc::Always; // Always pass stencil test
 
         params.stencilWriteMask = 0xFF;
-        params.stencilReadMask = 0x00;
+        params.stencilReadMask = 0xFF;
         params.stencilRefValue = 1; // Write value 1 where object is rendered
 
         // Mesh pipeline
@@ -68,10 +68,13 @@ namespace ignite
 
         // Batch Quad 2D
         {
+            
             params.fillMode = nvrhi::RasterFillMode::Solid;
             params.cullMode = nvrhi::RasterCullMode::Front;
 
             params.comparison = nvrhi::ComparisonFunc::LessOrEqual;
+
+            params.enableDepthStencil = true;
 
             auto attributes = Vertex2DQuad::GetAttributes();
             GraphicsPiplineCreateInfo pci;
@@ -125,13 +128,8 @@ namespace ignite
             params.frontFaceStencilDesc.failOp = nvrhi::StencilOp::Keep;
             params.frontFaceStencilDesc.depthFailOp = nvrhi::StencilOp::Keep;
             params.frontFaceStencilDesc.passOp = nvrhi::StencilOp::Replace;       // Don't modify stencil
-            params.frontFaceStencilDesc.stencilFunc = nvrhi::ComparisonFunc::Less; // Only render where stencil != 1
-
-            // params.backFaceStencilDesc.failOp = nvrhi::StencilOp::Keep;
-            // params.backFaceStencilDesc.depthFailOp = nvrhi::StencilOp::Keep;
-            // params.backFaceStencilDesc.passOp = nvrhi::StencilOp::Replace;       // Don't modify stencil
-            // params.backFaceStencilDesc.stencilFunc = nvrhi::ComparisonFunc::Less; // Only render where stencil != 1
-
+            params.frontFaceStencilDesc.stencilFunc = nvrhi::ComparisonFunc::Never; // Only render where stencil != 1
+            
             params.stencilWriteMask = 0x00; // Don't write to stencil
             params.stencilReadMask = 0xFF; // READ from stencil
             params.stencilRefValue = 1; // Compare against value 1
@@ -247,7 +245,7 @@ namespace ignite
                 float thicknessFactor = glm::clamp(baseThickness * distance, 0.025f, 1.8f);
 
                 glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), tr.scale + thicknessFactor);
-                glm::vec3 outlineOffset = -camera->GetForwardDirection() * 0.001f;
+                glm::vec3 outlineOffset = camera->GetForwardDirection() * 0.001f;
                 glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), tr.translation + outlineOffset);
                 
                 if (entity.HasComponent<Sprite2D>())
