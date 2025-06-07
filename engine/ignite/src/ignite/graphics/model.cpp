@@ -85,7 +85,7 @@ namespace ignite {
 
             desc.addItem(nvrhi::BindingSetItem::Sampler(0, mesh->material.sampler));
 
-            mesh->bindingSet = m_CreateInfo.device->createBindingSet(desc, Renderer::GetBindingLayout(GBindingLayout::MESH));
+            mesh->bindingSet = m_CreateInfo.device->createBindingSet(desc, Renderer::GetBindingLayout(GPipeline::MESH));
             LOG_ASSERT(mesh->bindingSet, "Failed to create binding set");
         }
     }

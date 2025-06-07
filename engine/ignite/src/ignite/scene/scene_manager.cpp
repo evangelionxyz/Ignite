@@ -175,7 +175,7 @@ namespace ignite
         }
 
         auto desc = nvrhi::BindingSetDesc();
-        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, scene->sceneRenderer->GetEnvironment()->GetCameraBuffer()));
+        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, Renderer::GetCameraBufferHandle()));
         desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, meshRenderer.mesh->objectBufferHandle));
         desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, scene->sceneRenderer->GetEnvironment()->GetDirLightBuffer()));
         desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, scene->sceneRenderer->GetEnvironment()->GetParamsBuffer()));
@@ -189,7 +189,7 @@ namespace ignite
         desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, scene->sceneRenderer->GetEnvironment()->GetHDRTexture()));
         desc.addItem(nvrhi::BindingSetItem::Sampler(0, meshRenderer.material.sampler));
 
-        meshRenderer.mesh->bindingSet = device->createBindingSet(desc, Renderer::GetBindingLayout(GBindingLayout::MESH));
+        meshRenderer.mesh->bindingSet = device->createBindingSet(desc, Renderer::GetBindingLayout(GPipeline::MESH));
         LOG_ASSERT(meshRenderer.mesh->bindingSet, "Failed to create binding set");
 
         commandList->close();

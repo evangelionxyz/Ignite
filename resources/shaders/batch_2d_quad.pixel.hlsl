@@ -10,7 +10,7 @@ struct PSInput
     uint entityID       : ENTITYID;
 };
 
-Texture2D textures[16]    : register(t0);
+Texture2D texture    : register(t0);
 SamplerState samplerState : register(s0);
 
 struct PSOutput
@@ -22,7 +22,7 @@ struct PSOutput
 
 PSOutput main(PSInput input)
 {
-    float4 texColor = textures[input.texIndex].Sample(samplerState, input.texCoord * input.tilingFactor);
+    float4 texColor = texture.Sample(samplerState, input.texCoord * input.tilingFactor);
     float4 finalColor = input.color * texColor;
     
     // Discard pixel if alpha is zero

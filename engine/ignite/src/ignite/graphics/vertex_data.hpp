@@ -66,19 +66,16 @@ namespace ignite
                     .setName("BONEIDS")
                     .setFormat(nvrhi::Format::RGBA32_UINT)
                     .setOffset(offsetof(VertexMesh, boneIDs))
-                    .setArraySize(VERTEX_MAX_BONES)
                     .setElementStride(sizeof(VertexMesh)),
                 nvrhi::VertexAttributeDesc()
                     .setName("WEIGHTS")
                     .setFormat(nvrhi::Format::RGBA32_FLOAT)
                     .setOffset(offsetof(VertexMesh, weights))
-                    .setArraySize(VERTEX_MAX_BONES)
                     .setElementStride(sizeof(VertexMesh)),
                 nvrhi::VertexAttributeDesc()
                     .setName("ENTITYID")
                     .setFormat(nvrhi::Format::R32_UINT)
                     .setOffset(offsetof(VertexMesh, entityID))
-                    .setArraySize(VERTEX_MAX_BONES)
                     .setElementStride(sizeof(VertexMesh))
             };
         }
@@ -152,19 +149,11 @@ namespace ignite
 
         static nvrhi::BindingLayoutDesc GetBindingLayoutDesc()
         {
-            const uint16_t maxTextureCount = 16;
-
             nvrhi::BindingLayoutDesc bindingDesc;
             bindingDesc.setVisibility(nvrhi::ShaderType::All);
             bindingDesc.addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0));
             bindingDesc.addItem(nvrhi::BindingLayoutItem::Sampler(0));
-
-            // Add each texture binding individually
-            for (i32 i = 0; i < maxTextureCount; ++i)
-            {
-                bindingDesc.addItem(nvrhi::BindingLayoutItem::Texture_SRV(i));
-            }
-
+            bindingDesc.addItem(nvrhi::BindingLayoutItem::Texture_SRV(0));
             return bindingDesc;
         }
     };

@@ -44,7 +44,7 @@ namespace ignite
     {
         if (reset)
         {
-            m_SelectedEntityIDs.clear();
+            m_SelectedEntities.clear();
         }
 
         m_Scene = scene;
@@ -224,7 +224,7 @@ namespace ignite
                     DestroyEntity(entity);
                     isDeleting = true;
 
-                    m_SelectedEntityIDs.clear();
+                    m_SelectedEntities.clear();
                 }
 
                 ImGui::EndPopup();
@@ -886,10 +886,9 @@ namespace ignite
 
         m_Data.isGizmoBeingUse = false;
 
-        for (auto &uuid : m_SelectedEntityIDs)
+        for (auto &entity : m_SelectedEntities)
         {
-            Entity entity = SceneManager::GetEntity(m_Scene, uuid);
-            ImGui::PushID((intptr_t)uuid);
+            ImGui::PushID(entity.GetUUID());
             
             Transform &tr = entity.GetTransform();
 
@@ -1246,14 +1245,14 @@ namespace ignite
 
     void ScenePanel::ClearMultiSelectEntity()
     {
-        m_SelectedEntityIDs.clear();
+        m_SelectedEntities.clear();
     }
 
     Entity ScenePanel::SetSelectedEntity(Entity entity)
     {
         if (!entity.IsValid())
         {
-            m_SelectedEntityIDs.clear();
+            m_SelectedEntities.clear();
             m_TrackingSelectedEntity = UUID(0);
             m_SelectedEntity = {};
             return {};
@@ -1263,17 +1262,17 @@ namespace ignite
 
         if (m_Editor->GetState().multiSelect)
         {
-            m_SelectedEntityIDs.push_back(m_TrackingSelectedEntity);
+            m_SelectedEntities.push_back(entity);
         }
         else
         {
-            if (m_SelectedEntityIDs.size() > 1)
-                m_SelectedEntityIDs.clear();
+            if (m_SelectedEntities.size() > 1)
+                m_SelectedEntities.clear();
 
-            if (m_SelectedEntityIDs.empty())
-                m_SelectedEntityIDs.push_back(m_TrackingSelectedEntity);
+            if (m_SelectedEntities.empty())
+                m_SelectedEntities.push_back(entity);
 
-            m_SelectedEntityIDs[0] = m_TrackingSelectedEntity;
+            m_SelectedEntities[0] = entity;
         }
 
         return m_SelectedEntity = entity;

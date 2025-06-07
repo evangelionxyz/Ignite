@@ -2,21 +2,19 @@
 
 #include "ignite/core/types.hpp"
 #include "vertex_data.hpp"
-
 #include "graphics_pipeline.hpp"
+#include "renderer.hpp"
 
 #include "shader.hpp"
 
+#include <unordered_map>
+
 namespace ignite
 {
+    class GraphicsPipeline;
     class DeviceManager;
     class Texture;
     class Camera;
-
-    struct PushConstant2D
-    {
-        glm::mat4 mvpMatrix;
-    };
 
     template<typename VertexType>
     struct BatchRender
@@ -30,9 +28,7 @@ namespace ignite
         VertexType*vertexBufferPtr = nullptr;
         nvrhi::BufferHandle vertexBuffer = nullptr;
         nvrhi::BufferHandle indexBuffer = nullptr;
-        nvrhi::BindingLayoutHandle bindingLayout = nullptr;
         nvrhi::SamplerHandle sampler = nullptr;
-        nvrhi::BindingSetHandle bindingSet = nullptr;
         std::vector<Ref<Texture>> textureSlots;
         u8 textureSlotIndex = 1; // 0 for white texture
         u32 indexCount = 0;
@@ -52,10 +48,12 @@ namespace ignite
     struct Renderer2DData
     {
         BatchRender<Vertex2DQuad> quadBatch;
+        std::unordered_map<GPipeline, nvrhi::BindingSetHandle> quadBindingSets;
+
         BatchRender<Vertex2DLine> lineBatch;
+        nvrhi::BindingSetHandle lineBindingSet;
 
         glm::vec4 quadPositions[4];
-        nvrhi::BufferHandle constantBuffer = nullptr;
     };
 
     class Renderer2D
@@ -64,8 +62,8 @@ namespace ignite
         static void Init();
         static void Shutdown();
 
-        static void Begin(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer* framebuffer);
-        static void Flush(nvrhi::GraphicsPipelineHandle quadPipeline, nvrhi::GraphicsPipelineHandle linePipeline);
+        static void Begin(nvrhi::ICommandList *commandList, nvrhi::IFramebuffer* framebuffer);
+        static void Flush(Ref<GraphicsPipeline> quadPipeline, Ref<GraphicsPipeline> linePipeline, bool outlining = false);
         static void End();
 
         static void DrawBox(const glm::mat4& transform, const glm::vec4& color = glm::vec4(1.0f), uint32_t entityID = 0);

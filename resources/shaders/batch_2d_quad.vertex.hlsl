@@ -1,7 +1,13 @@
-cbuffer PushConstants : register(b0)
+struct Camera
 {
-    float4x4 mvp;
+    float4x4 viewProjection;
+    float3 position;
 };
+
+cbuffer CameraBuffer : register(b0)
+{
+    Camera camera;
+}
 
 struct VSInput
 {
@@ -27,7 +33,7 @@ PSInput main(VSInput input)
 {
     PSInput output;
     float4 pos          = float4(input.position.x, input.position.y, input.position.z, 1.0f);
-    output.position     = mul(mvp, pos);
+    output.position     = mul(camera.viewProjection, pos);
     output.color        = input.color;
     output.tilingFactor = input.tilingFactor;
     output.texCoord     = input.texCoord;

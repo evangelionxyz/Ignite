@@ -10,7 +10,7 @@ struct PSInput
     float2 texCoord : TEXCOORD;
 };
 
-PSInput FullscreenVS(VSInput input)
+PSInput main(VSInput input)
 {
     PSInput output;
     output.position = float4(input.position, 0.0f, 1.0f);

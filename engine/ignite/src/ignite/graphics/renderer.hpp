@@ -21,9 +21,13 @@ namespace ignite
         nvrhi::ShaderHandle handle;
     };
 
-    enum class GBindingLayout
+    enum class GPipeline
     {
-        MESH, QUAD2D, LINE, ENVIRONMENT
+        MESH, 
+        ENVIRONMENT, 
+        QUAD2D, 
+        LINE, 
+        OUTLINE
     };
 
     class ShaderLibrary
@@ -55,17 +59,21 @@ namespace ignite
         static Ref<Texture> GetWhiteTexture();
         static Ref<Texture> GetBlackTexture();
         static nvrhi::GraphicsAPI GetGraphicsAPI();
-        static nvrhi::BindingLayoutHandle GetBindingLayout(GBindingLayout type);
+        static nvrhi::BindingLayoutHandle GetBindingLayout(GPipeline type);
 
         static ShaderLibrary &GetShaderLibrary();
+
+        static nvrhi::BufferHandle GetCameraBufferHandle();
         
     private:
         nvrhi::GraphicsAPI m_GraphicsAPI;
         ShaderLibrary m_ShaderLibrary;
 
-        std::unordered_map<GBindingLayout, nvrhi::BindingLayoutHandle> m_BindingLayouts;
+        std::unordered_map<GPipeline, nvrhi::BindingLayoutHandle> m_BindingLayouts;
 
         Ref<Texture> m_WhiteTexture;
         Ref<Texture> m_BlackTexture;
+
+        nvrhi::BufferHandle m_CameraBufferHandle;
     };
 }

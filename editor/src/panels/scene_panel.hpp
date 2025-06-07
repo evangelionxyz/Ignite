@@ -45,8 +45,8 @@ namespace ignite
 
         void SetGizmoOperation(ImGuizmo::OPERATION op);
         void SetGizmoMode(ImGuizmo::MODE mode);
-        bool IsGizmoBeingUse() { return m_Data.isGizmoBeingUse; }
-        bool IsViewportHovered() { return m_ViewportData.isHovered; }
+        bool IsGizmoBeingUse() const { return m_Data.isGizmoBeingUse; }
+        bool IsViewportHovered() const { return m_ViewportData.isHovered; }
         
         Camera *GetViewportCamera() const { return m_ViewportCamera.get(); }
 
@@ -66,6 +66,8 @@ namespace ignite
 
         Entity SetSelectedEntity(Entity entity);
         Entity GetSelectedEntity();
+
+        const std::vector<Entity> &GetSelectedEntities() { return m_SelectedEntities; }
         
         void DuplicateSelectedEntity();
 
@@ -89,7 +91,7 @@ namespace ignite
         Scene *m_Scene = nullptr;
         Gizmo m_Gizmo;
 
-        std::vector<UUID> m_SelectedEntityIDs;
+        std::vector<Entity> m_SelectedEntities;
 
         Entity m_SelectedEntity{};
 

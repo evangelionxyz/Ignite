@@ -6,10 +6,8 @@
 #include "environment.hpp"
 
 #include "ignite/core/device/device_manager.hpp"
-
-#include <ranges>
-
 #include "ignite/core/application.hpp"
+#include <ranges>
 
 namespace ignite
 {
@@ -123,6 +121,7 @@ namespace ignite
             
             m_ShaderLibrary.Load("batch_2d_quad", "batch_2d_quad");
             m_ShaderLibrary.Load("batch_2d_line", "batch_2d_line");
+            m_ShaderLibrary.Load("outline", "outline");
             m_ShaderLibrary.Load("imgui", "imgui");
             m_ShaderLibrary.Load("skybox", "skybox");
 
@@ -130,10 +129,25 @@ namespace ignite
         }
 
         // Create binding layouts
-        m_BindingLayouts[GBindingLayout::MESH] = device->createBindingLayout(VertexMesh::GetBindingLayoutDesc());
-        m_BindingLayouts[GBindingLayout::QUAD2D] = device->createBindingLayout(Vertex2DQuad::GetBindingLayoutDesc());
-        m_BindingLayouts[GBindingLayout::LINE] = device->createBindingLayout(Vertex2DLine::GetBindingLayoutDesc());
-        m_BindingLayouts[GBindingLayout::ENVIRONMENT] = device->createBindingLayout(Environment::GetBindingLayoutDesc());
+        m_BindingLayouts[GPipeline::MESH] = device->createBindingLayout(VertexMesh::GetBindingLayoutDesc());
+        m_BindingLayouts[GPipeline::QUAD2D] = device->createBindingLayout(Vertex2DQuad::GetBindingLayoutDesc());
+        m_BindingLayouts[GPipeline::LINE] = device->createBindingLayout(Vertex2DLine::GetBindingLayoutDesc());
+        m_BindingLayouts[GPipeline::ENVIRONMENT] = device->createBindingLayout(Environment::GetBindingLayoutDesc());
+        m_BindingLayouts[GPipeline::OUTLINE] = device->createBindingLayout(VertexOutline::GetBindingLayoutDesc());
+
+
+        // Create camera constant buffer
+        nvrhi::BufferDesc cameraConstantBufferDesc;
+        cameraConstantBufferDesc.byteSize = sizeof(CameraBuffer);
+        cameraConstantBufferDesc.isConstantBuffer = true;
+        cameraConstantBufferDesc.isVolatile = true;
+        cameraConstantBufferDesc.debugName = "Camera constant buffer";
+        cameraConstantBufferDesc.initialState = nvrhi::ResourceStates::ConstantBuffer;
+        cameraConstantBufferDesc.keepInitialState = true;
+        cameraConstantBufferDesc.maxVersions = 16;
+
+        m_CameraBufferHandle = device->createBuffer(cameraConstantBufferDesc);
+        LOG_ASSERT(m_CameraBufferHandle, "[Renderer] Failed to create constant buffer");
 
         Renderer2D::Init();
     }
@@ -149,7 +163,7 @@ namespace ignite
         return s_instance->m_GraphicsAPI;
     }
 
-    nvrhi::BindingLayoutHandle Renderer::GetBindingLayout(GBindingLayout type)
+    nvrhi::BindingLayoutHandle Renderer::GetBindingLayout(GPipeline type)
     {
         if (s_instance->m_BindingLayouts.contains(type))
             return s_instance->m_BindingLayouts[type];
@@ -160,6 +174,11 @@ namespace ignite
     ShaderLibrary &Renderer::GetShaderLibrary()
     {
         return s_instance->m_ShaderLibrary;
+    }
+
+    nvrhi::BufferHandle Renderer::GetCameraBufferHandle()
+    {
+        return s_instance->m_CameraBufferHandle;
     }
 
     Ref<Texture> Renderer::GetWhiteTexture()

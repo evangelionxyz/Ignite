@@ -22,10 +22,15 @@ namespace ignite {
         nvrhi::PrimitiveType primitiveType = nvrhi::PrimitiveType::TriangleList;
         nvrhi::RasterFillMode fillMode = nvrhi::RasterFillMode::Solid;
 
-        nvrhi::StencilOp depthStencil;
-        nvrhi::ComparisonFunc frontFaceStencilFunc = nvrhi::ComparisonFunc::Always;
+        nvrhi::DepthStencilState::StencilOpDesc frontFaceStencilDesc;
+        nvrhi::DepthStencilState::StencilOpDesc backFaceStencilDesc;
+
+        uint8_t stencilReadMask = 0xff;
+        uint8_t stencilWriteMask = 0xff;
+        uint8_t stencilRefValue = 0;
 
         bool enableBlend = true;
+        bool enableDepthStencil = false;
         bool depthWrite = false;
         bool depthTest = false;
     };

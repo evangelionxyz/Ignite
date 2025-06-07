@@ -25,7 +25,7 @@ namespace ignite {
     public:
         Environment();
 
-        void Render(nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline, Camera *camera);
+        void Render(nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline);
         void LoadTexture(const std::string &filepath);
         void WriteBuffer(nvrhi::ICommandList *commandList);
         void SetSunDirection(float pitch, float yaw);
@@ -41,17 +41,13 @@ namespace ignite {
         DirLight dirLight;
 
         nvrhi::TextureHandle GetHDRTexture() { return m_HDRTexture->GetHandle(); }
-
         nvrhi::BufferHandle GetParamsBuffer() { return m_ParamsConstantBuffer; }
         nvrhi::BufferHandle GetDirLightBuffer() { return m_DirLightConstantBuffer; }
-        nvrhi::BufferHandle GetCameraBuffer() { return m_CameraConstantBuffer; }
 
     private:
 
         nvrhi::BufferHandle m_VertexBuffer;
         nvrhi::BufferHandle m_IndexBuffer;
-
-        nvrhi::BufferHandle m_CameraConstantBuffer;
         nvrhi::BufferHandle m_ParamsConstantBuffer;
         nvrhi::BufferHandle m_DirLightConstantBuffer;
 

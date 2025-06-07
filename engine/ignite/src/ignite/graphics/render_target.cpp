@@ -176,11 +176,11 @@ namespace ignite {
         return m_ColorAttachments;
     }
 
-    void RenderTarget::ClearColorAttachmentFloat(nvrhi::CommandListHandle commandList, uint32_t attachmentIndex, const glm::vec3 &clearColor)
+    void RenderTarget::ClearColorAttachmentFloat(nvrhi::CommandListHandle commandList, uint32_t attachmentIndex, const glm::vec3 &clearColor) const
     {
         if (attachmentIndex >= m_ColorAttachments.size())
         {
-            attachmentIndex = glm::max((int)m_ColorAttachments.size() - 1, 0);
+            attachmentIndex = glm::max(static_cast<int>(m_ColorAttachments.size()) - 1, 0);
             LOG_ASSERT(false, "[Render target] Color attachments index out of bound!");
         }
 
@@ -199,17 +199,13 @@ namespace ignite {
         );
     }
 
-    void RenderTarget::ClearColorAttachmentUint(nvrhi::CommandListHandle commandList, uint32_t attachmentIndex, uint32_t clearColor)
+    void RenderTarget::ClearColorAttachmentUint(nvrhi::CommandListHandle commandList, uint32_t attachmentIndex, uint32_t clearColor) const
     {
         if (attachmentIndex >= m_ColorAttachments.size())
         {
             attachmentIndex = glm::max((int)m_ColorAttachments.size() - 1, 0);
             LOG_ASSERT(false, "[Render target] Color attachments index out of bound!");
         }
-
-        i32 backBufferIndex = m_CurrentBackBufferIndex;
-        if (m_IsSingleFramebuffer)
-            backBufferIndex = 0;
 
         nvrhi::TextureHandle texture = m_ColorAttachments[attachmentIndex];
         const nvrhi::Format format = texture->getDesc().format;
@@ -220,7 +216,7 @@ namespace ignite {
         commandList->clearTextureUInt(texture, nvrhi::AllSubresources, clearColor);
     }
 
-    void RenderTarget::ClearDepthAttachment(nvrhi::CommandListHandle commandList, float depth, uint32_t stencil)
+    void RenderTarget::ClearDepthAttachment(nvrhi::CommandListHandle commandList, float depth, uint32_t stencil) const
     {
         i32 backBufferIndex = m_CurrentBackBufferIndex;
         if (m_IsSingleFramebuffer)

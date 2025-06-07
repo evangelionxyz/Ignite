@@ -73,18 +73,6 @@ namespace ignite {
         m_IndexBuffer = device->createBuffer(ibDesc);
         LOG_ASSERT(m_IndexBuffer, "[Environment] Failed to create index buffer!");
 
-        // create model projection buffer
-        nvrhi::BufferDesc trbDesc;
-        trbDesc.byteSize = sizeof(CameraBuffer);
-        trbDesc.isConstantBuffer = true;
-        trbDesc.isVolatile = true;
-        trbDesc.debugName = "Skybox transform constant buffer";
-        trbDesc.initialState = nvrhi::ResourceStates::ConstantBuffer;
-        trbDesc.keepInitialState = true;
-        trbDesc.maxVersions = 16;
-        m_CameraConstantBuffer = device->createBuffer(trbDesc);
-        LOG_ASSERT(m_CameraConstantBuffer, "[Environment] Failed to create camera constant buffer!");
-
         // create constant buffer
         nvrhi::BufferDesc cbDesc;
         cbDesc.byteSize = sizeof(EnvironmentParams);
@@ -111,15 +99,10 @@ namespace ignite {
         LOG_ASSERT(m_DirLightConstantBuffer, "[Environment] Failed to create directional light constant buffer!");
     }
 
-    void Environment::Render(nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline, Camera *camera)
+    void Environment::Render(nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline)
     {
         m_IsUpdatingTexture = false;
 
-        CameraBuffer camPushConstant;
-        camPushConstant.viewProjection = camera->GetViewProjectionMatrix();
-        camPushConstant.position = glm::vec4(camera->position, 1.0f);
-        commandList->writeBuffer(m_CameraConstantBuffer, &camPushConstant, sizeof(CameraBuffer));
-        
         // write params buffer
         commandList->writeBuffer(m_ParamsConstantBuffer, &params, sizeof(EnvironmentParams));
         commandList->writeBuffer(m_DirLightConstantBuffer, &dirLight, sizeof(DirLight));
@@ -133,7 +116,9 @@ namespace ignite {
         state.indexBuffer = { m_IndexBuffer, nvrhi::Format::R32_UINT };
 
         if (m_BindingSet != nullptr)
+        {
             state.addBindingSet(m_BindingSet);
+        }
 
         commandList->setGraphicsState(state);
 
@@ -159,12 +144,12 @@ namespace ignite {
 
         // create binding set after load the texture
         nvrhi::BindingSetDesc bsDesc;
-        bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, m_CameraConstantBuffer));
+        bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, Renderer::GetCameraBufferHandle()));
         bsDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, m_ParamsConstantBuffer));
         bsDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, m_HDRTexture->GetHandle()));
         bsDesc.addItem(nvrhi::BindingSetItem::Sampler(0, m_HDRTexture->GetSampler()));
 
-        m_BindingSet = device->createBindingSet(bsDesc, Renderer::GetBindingLayout(GBindingLayout::ENVIRONMENT));
+        m_BindingSet = device->createBindingSet(bsDesc, Renderer::GetBindingLayout(GPipeline::ENVIRONMENT));
         LOG_ASSERT(m_BindingSet, "Failed to create binding set");
     }
 
