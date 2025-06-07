@@ -12,7 +12,7 @@ cbuffer CameraBuffer : register(b0)
 
 struct VSInput
 {
-    float3 position : POSITIONT;
+    float3 position : POSITION;
 };
 
 struct PSInput
