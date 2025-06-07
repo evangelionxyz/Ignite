@@ -26,6 +26,7 @@ includedirs {
     "%{IncludeDir.ENTT}",
     "%{IncludeDir.GLM}",
     "%{IncludeDir.IMGUI}",
+    "%{IncludeDir.FMOD}",
     "%{IncludeDir.IMGUIZMO}",
     "%{IncludeDir.SPDLOG}",
     "%{IncludeDir.NVRHI}",

@@ -11,6 +11,10 @@
 #include "ignite/asset/asset.hpp"
 #include "ignite/asset/asset_importer.hpp"
 
+#include "ignite/audio/fmod_audio.hpp"
+#include "ignite/audio/fmod_sound.hpp"
+#include "ignite/audio/fmod_dsp.hpp"
+
 #include <inttypes.h>
 
 #include <glm/glm.hpp>
@@ -24,6 +28,17 @@
 
 namespace ignite
 {
+    struct TestAudio
+    {
+        Ref<FmodReverb> reverb;
+        Ref<FmodDistortion> distortion;
+        Ref<FmodSound> sound;
+
+        FMOD::ChannelGroup* reverbGroup;
+    };
+
+    TestAudio testAudio;
+    
     EditorLayer::EditorLayer(const std::string &name)
         : Layer(name)
     {
@@ -57,6 +72,29 @@ namespace ignite
                 OpenProject(projectFilepath);
             }
         }
+
+
+        // Test Audio
+
+        // Create reverb DSB
+        testAudio.reverb = FmodReverb::Create();
+        testAudio.reverb->SetDiffusion(100.0f);
+        testAudio.reverb->SetWetLevel(20.0f);
+        testAudio.reverb->SetDecayTime(5000.0f);
+
+        // Create distortion DSB
+        testAudio.distortion = FmodDistortion::Create();
+        testAudio.distortion->SetDistortionLevel(1.0f);
+
+        // Create rever group
+        testAudio.reverbGroup = FmodAudio::CreateChannelGroup("ReverbGroup");
+        testAudio.reverbGroup->setMode(FMOD_CHANNELCONTROL_DSP_TAIL);
+        testAudio.reverbGroup->addDSP(0, testAudio.reverb->GetFmodDsp()); // add dsp
+
+        // create sound
+        testAudio.sound = FmodSound::Create("music", "C:/Users/Evangelion Manuhutu/Downloads/Music/test.mp3");
+        testAudio.sound->AddToChannelGroup(testAudio.reverbGroup);
+        testAudio.sound->Play();
     }
 
     void EditorLayer::OnDetach()
@@ -68,7 +106,7 @@ namespace ignite
     void EditorLayer::OnUpdate(f32 deltaTime)
     {
         Layer::OnUpdate(deltaTime);
-
+        
         AssetImporter::SyncMainThread(m_CommandList, m_Device);
 
         if (!m_ActiveScene)

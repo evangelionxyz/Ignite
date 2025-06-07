@@ -16,6 +16,7 @@ IncludeDir["NVRHI_VULKAN_HPP"] = "%{THIRDPARTY_DIR}/NVRHI/thirdparty/Vulkan-Head
 IncludeDir["SHADERMAKE"] = "%{THIRDPARTY_DIR}/ShaderMake/ShaderMake/include"
 IncludeDir["ASSIMP"] = "%{THIRDPARTY_DIR}/ASSIMP/include"
 IncludeDir["YAMLCPP"] = "%{THIRDPARTY_DIR}/YAML/include"
+IncludeDir["FMOD"] = "%{THIRDPARTY_DIR}/FMOD/include"
 
 --library dirs
 LibraryDir = {}
@@ -28,6 +29,8 @@ Library["winmm"]      = "winmm.lib"
 Library["winversion"] = "version.lib"
 Library["bcrypt"]     = "bcrypt.lib"
 Library["vulkan"]     = "%{LibraryDir.VULKAN_SDK}/vulkan-1.lib"
+
+Library["FMOD"]                        = "%{THIRDPARTY_DIR}/FMOD/lib/windows/x64/fmod_vc.lib"
 
 Library["ShaderC_Debug"]               = "%{LibraryDir.VULKAN_SDK}/shaderc_sharedd.lib"
 Library["SPIRV_Cross_Debug"]           = "%{LibraryDir.VULKAN_SDK}/spirv-cross-cored.lib"

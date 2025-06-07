@@ -4,6 +4,7 @@
 #include "input/app_event.hpp"
 #include "ignite/imgui/imgui_layer.hpp"
 #include "ignite/graphics/renderer.hpp"
+#include "ignite/audio/fmod_audio.hpp"
 
 #include <nvrhi/utils.h>
 
@@ -50,6 +51,8 @@ namespace ignite
             m_ImGuiLayer = CreateScope<ImGuiLayer>(GetDeviceManager());
             m_ImGuiLayer->Init();
         }
+
+        FmodAudio::Init();
     }
 
     Application *Application::GetInstance()
@@ -103,6 +106,8 @@ namespace ignite
 
             const f64 currTime = glfwGetTime();
             m_DeltaTime = static_cast<float>(currTime - m_PreviousTime);
+
+            FmodAudio::Update(m_DeltaTime);
 
             // update window title
             if (m_AverageFrameTime > 0)
@@ -191,6 +196,8 @@ namespace ignite
         // destroy device
         deviceManager->Destroy();
         m_Window->Destroy();
+
+        FmodAudio::Shutdown();
     }
 
     void Application::OnEvent(Event &e)

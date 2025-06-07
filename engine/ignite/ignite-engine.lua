@@ -17,6 +17,7 @@ includedirs {
     "%{IncludeDir.GLFW}",
     "%{IncludeDir.BOX2D}",
     "%{IncludeDir.ENTT}",
+    "%{IncludeDir.FMOD}",
     "%{IncludeDir.GLM}",
     "%{IncludeDir.IMGUI}",
     "%{IncludeDir.IMGUIZMO}",
@@ -95,6 +96,7 @@ filter "system:windows"
         "%{Library.winversion}",
         "%{Library.bcrypt}",
         "%{Library.vulkan}",
+        "%{Library.FMOD}",
     }
     defines {
         "PLATFORM_WINDOWS",
@@ -104,6 +106,11 @@ filter "system:windows"
         "IGNITE_WITH_VULKAN",
         "_CRT_SECURE_NO_WARNINGS"
     }
+
+    postbuildcommands {
+        '{COPYFILE} "%{THIRDPARTY_DIR}/FMOD/lib/windows/x64/fmod.dll" "%{cfg.targetdir}"'    
+    }
+
     filter "configurations:Debug"
         runtime "Debug"
         symbols "on"
