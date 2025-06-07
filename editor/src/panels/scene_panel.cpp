@@ -965,11 +965,11 @@ namespace ignite
                 if (entity.GetParentUUID() != UUID(0))
                 {
                     Entity parent = SceneManager::GetEntity(m_Scene, entity.GetParentUUID());
-                    Transform &ptc = parent.GetTransform();
-                    glm::vec4 localTranslation = glm::inverse(ptc.GetWorldMatrix()) * glm::vec4(translation, 1.0f);
+                    const Transform &parentTr = parent.GetTransform();
+                    glm::vec4 localTranslation = glm::inverse(parentTr.GetWorldMatrix()) * glm::vec4(translation, 1.0f);
                     tr.localTranslation = localTranslation;
-                    tr.localRotation = glm::inverse(ptc.rotation) * glm::quat(rotation);
-                    tr.localScale = scale / ptc.scale;
+                    tr.localRotation = glm::inverse(parentTr.rotation) * glm::quat(rotation);
+                    tr.localScale = scale / parentTr.scale;
                 }
                 else
                 {
