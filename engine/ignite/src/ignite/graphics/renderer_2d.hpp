@@ -50,8 +50,8 @@ namespace ignite
         BatchRender<Vertex2DQuad> quadBatch;
         std::unordered_map<GPipeline, nvrhi::BindingSetHandle> quadBindingSets;
         nvrhi::BufferHandle quadOutlineVertexBuffer;
-        VertexOutline *quadVertexOutlineBase = nullptr;
-        VertexOutline *quadVertexOutlinePtr = nullptr;
+        Vertex2DQuadOutline *quadVertexOutlineBase = nullptr;
+        Vertex2DQuadOutline *quadVertexOutlinePtr = nullptr;
 
         BatchRender<Vertex2DLine> lineBatch;
         nvrhi::BindingSetHandle lineBindingSet;

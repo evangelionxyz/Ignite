@@ -39,5 +39,6 @@ namespace ignite
         Ref<GraphicsPipeline> m_MeshPipeline;
 
         Ref<GraphicsPipeline> m_OutlineQuadPipeline;
+        Ref<GraphicsPipeline> m_OutlineMeshPipeline;
     };
 }

@@ -133,7 +133,8 @@ namespace ignite
         m_BindingLayouts[GPipeline::QUAD2D] = device->createBindingLayout(Vertex2DQuad::GetBindingLayoutDesc());
         m_BindingLayouts[GPipeline::LINE] = device->createBindingLayout(Vertex2DLine::GetBindingLayoutDesc());
         m_BindingLayouts[GPipeline::ENVIRONMENT] = device->createBindingLayout(Environment::GetBindingLayoutDesc());
-        m_BindingLayouts[GPipeline::OUTLINE] = device->createBindingLayout(VertexOutline::GetBindingLayoutDesc());
+        m_BindingLayouts[GPipeline::QUAD2D_OUTLINE] = device->createBindingLayout(Vertex2DQuadOutline::GetBindingLayoutDesc());
+        m_BindingLayouts[GPipeline::MESH_OUTLINE] = device->createBindingLayout(VertexMeshOutline::GetBindingLayoutDesc());
 
 
         // Create camera constant buffer

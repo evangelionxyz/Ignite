@@ -27,7 +27,8 @@ namespace ignite
         ENVIRONMENT, 
         QUAD2D, 
         LINE, 
-        OUTLINE
+        QUAD2D_OUTLINE,
+        MESH_OUTLINE
     };
 
     class ShaderLibrary

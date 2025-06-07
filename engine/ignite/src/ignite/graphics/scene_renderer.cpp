@@ -111,8 +111,10 @@ namespace ignite
                 .Build();
         }
 
-        // Outline Quad Pipeline (second pass) - only renders where stencil != 1
+        
         {
+            // Outline Quad Pipeline (second pass) - only renders where stencil != 1
+
             params.enableBlend = true;
             params.depthWrite = false; // Don't overwrite depth from the first pass
             params.depthTest = true; // Use existing depth buffer
@@ -132,16 +134,27 @@ namespace ignite
             params.stencilReadMask = 0xFF; // READ from stencil
             params.stencilRefValue = 1; // Compare against value 1
 
-            auto attributes = VertexOutline::GetAttributes();
+            auto quadAttributes = Vertex2DQuadOutline::GetAttributes();
             GraphicsPiplineCreateInfo pci;
-            pci.attributes = attributes.data();
-            pci.attributeCount = static_cast<uint32_t>(attributes.size());
+            pci.attributes = quadAttributes.data();
+            pci.attributeCount = static_cast<uint32_t>(quadAttributes.size());
 
             auto shaderContext = Renderer::GetShaderLibrary().Get("outline");
 
-            m_OutlineQuadPipeline = GraphicsPipeline::Create(params, &pci, Renderer::GetBindingLayout(GPipeline::OUTLINE));
+            m_OutlineQuadPipeline = GraphicsPipeline::Create(params, &pci, Renderer::GetBindingLayout(GPipeline::QUAD2D_OUTLINE));
             m_OutlineQuadPipeline->AddShader(shaderContext[nvrhi::ShaderType::Vertex].handle, nvrhi::ShaderType::Vertex)
                 .AddShader(shaderContext[nvrhi::ShaderType::Pixel].handle, nvrhi::ShaderType::Pixel)
+                .Build();
+
+            // Mesh pipeline
+
+            auto meshAttributes = VertexMeshOutline::GetAttributes();
+            pci.attributes = meshAttributes.data();
+            pci.attributeCount = static_cast<uint32_t>(meshAttributes.size());
+
+            m_OutlineMeshPipeline = GraphicsPipeline::Create(params, &pci, Renderer::GetBindingLayout(GPipeline::MESH_OUTLINE));
+            m_OutlineMeshPipeline->AddShader("mesh.outline.vertex.hlsl", nvrhi::ShaderType::Vertex)
+                .AddShader(shaderContext[nvrhi::ShaderType::Pixel].handle, nvrhi::ShaderType::Pixel) // use same outline pixel shader
                 .Build();
         }
         
@@ -157,6 +170,7 @@ namespace ignite
         m_MeshPipeline->CreatePipeline(framebuffer);
 
         m_OutlineQuadPipeline->CreatePipeline(framebuffer);
+        m_OutlineMeshPipeline->CreatePipeline(framebuffer);
     }
 
     void SceneRenderer::Render(Scene *scene, Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer)
@@ -167,95 +181,109 @@ namespace ignite
         CameraBuffer cameraBuffer = { camera->GetViewProjectionMatrix(), glm::vec4(camera->position, 1.0f) };
         commandList->writeBuffer(Renderer::GetCameraBufferHandle(), &cameraBuffer, sizeof(cameraBuffer));
         
+        // First pass: Main Scene
+        m_Environment->Render(commandList, framebuffer, m_EnvironmentPipeline);
+
+        Renderer2D::Begin(commandList, framebuffer);
+
+        for (entt::entity e : scene->entities | std::views::values)
         {
-            // First pass: Main Scene
-            m_Environment->Render(commandList, framebuffer, m_EnvironmentPipeline);
+            Entity entity = { e, scene };
+            auto &tr = entity.GetTransform();
 
-            Renderer2D::Begin(commandList, framebuffer);
+            if (!tr.visible)
+                continue;
 
-            for (entt::entity e : scene->entities | std::views::values)
+            if (entity.HasComponent<MeshRenderer>())
             {
-                Entity entity = { e, scene };
-                auto &tr = entity.GetTransform();
+                MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
 
-                if (!tr.visible)
-                    continue;
+                // write material constant buffer
+                commandList->writeBuffer(meshRenderer.mesh->materialBufferHandle, &meshRenderer.material.data, sizeof(meshRenderer.material.data));
+                commandList->writeBuffer(meshRenderer.mesh->objectBufferHandle, &meshRenderer.meshBuffer, sizeof(meshRenderer.meshBuffer));
 
-                if (entity.HasComponent<MeshRenderer>())
-                {
-                    MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
+                // render
+                auto meshGraphicsState = nvrhi::GraphicsState();
+                meshGraphicsState.pipeline = m_MeshPipeline->GetHandle();
+                meshGraphicsState.framebuffer = framebuffer;
+                meshGraphicsState.addBindingSet(meshRenderer.mesh->bindingSets[GPipeline::MESH]);
+                meshGraphicsState.viewport = nvrhi::ViewportState().addViewportAndScissorRect(framebuffer->getFramebufferInfo().getViewport());
+                meshGraphicsState.addVertexBuffer({ meshRenderer.mesh->vertexBuffer, 0, 0 });
+                meshGraphicsState.indexBuffer = { meshRenderer.mesh->indexBuffer, nvrhi::Format::R32_UINT };
 
-                    // write material constant buffer
-                    commandList->writeBuffer(meshRenderer.mesh->materialBufferHandle, &meshRenderer.material.data, sizeof(meshRenderer.material.data));
-                    commandList->writeBuffer(meshRenderer.mesh->objectBufferHandle, &meshRenderer.meshBuffer, sizeof(meshRenderer.meshBuffer));
+                commandList->setGraphicsState(meshGraphicsState);
 
-                    // render
-                    auto meshGraphicsState = nvrhi::GraphicsState();
-                    meshGraphicsState.pipeline = m_MeshPipeline->GetHandle();
-                    meshGraphicsState.framebuffer = framebuffer;
-                    meshGraphicsState.viewport = nvrhi::ViewportState().addViewportAndScissorRect(framebuffer->getFramebufferInfo().getViewport());
-                    meshGraphicsState.addVertexBuffer({ meshRenderer.mesh->vertexBuffer, 0, 0 });
-                    meshGraphicsState.indexBuffer = { meshRenderer.mesh->indexBuffer, nvrhi::Format::R32_UINT };
+                nvrhi::DrawArguments args;
+                args.setVertexCount(static_cast<uint32_t>(meshRenderer.mesh->indices.size()));
+                args.instanceCount = 1;
 
-                    if (meshRenderer.mesh->bindingSet != nullptr)
-                    {
-                        meshGraphicsState.addBindingSet(meshRenderer.mesh->bindingSet);
-                    }
-
-                    commandList->setGraphicsState(meshGraphicsState);
-
-                    nvrhi::DrawArguments args;
-                    args.setVertexCount(static_cast<uint32_t>(meshRenderer.mesh->indices.size()));
-                    args.instanceCount = 1;
-
-                    commandList->drawIndexed(args);
-                }
-
-                if (entity.HasComponent<Sprite2D>())
-                {
-                    auto &sprite = entity.GetComponent<Sprite2D>();
-                    Renderer2D::DrawQuad(tr.GetWorldMatrix(), sprite.color, sprite.texture, sprite.tilingFactor, static_cast<u32>(e));
-                }
+                commandList->drawIndexed(args);
             }
 
-            Renderer2D::Flush(m_BatchQuadPipeline, m_BatchLinePipeline);
-            Renderer2D::End();
+            if (entity.HasComponent<Sprite2D>())
+            {
+                auto &sprite = entity.GetComponent<Sprite2D>();
+                Renderer2D::DrawQuad(tr.GetWorldMatrix(), sprite.color, sprite.texture, sprite.tilingFactor, static_cast<u32>(e));
+            }
         }
 
-        
+        Renderer2D::Flush(m_BatchQuadPipeline, m_BatchLinePipeline);
+        Renderer2D::End();
     }
 
     void SceneRenderer::RenderOutline(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const std::vector<Entity>& selectedEntities)
     {
+        Renderer2D::BeginOutline();
+        for (Entity entity : selectedEntities)
         {
-            // Second pass: Outlining
-            Renderer2D::BeginOutline();
-            for (Entity entity : selectedEntities)
+            auto &tr = entity.GetTransform();
+
+            if (!tr.visible)
+                continue;
+
+            float baseThickness = 0.05f;
+            float distance = glm::distance(camera->position, tr.translation);
+            float thicknessFactor = glm::clamp(baseThickness * glm::sqrt(distance), baseThickness, 0.5f);
+
+            glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), tr.scale + thicknessFactor);
+            glm::vec3 offsetTranslation = camera->GetForwardDirection() * 0.001f;
+            glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), tr.translation + offsetTranslation);
+
+            if (entity.HasComponent<MeshRenderer>())
             {
-                auto &tr = entity.GetTransform();
+                MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
 
-                if (!tr.visible)
-                    continue;
+                meshRenderer.meshBuffer.transformation = translationMatrix * glm::mat4(tr.rotation) * scaleMatrix;
+                commandList->writeBuffer(meshRenderer.mesh->objectBufferHandle, &meshRenderer.meshBuffer, sizeof(meshRenderer.meshBuffer));
 
-                float baseThickness = 0.05f;
-                float distance = glm::distance(camera->position, tr.translation);
-                float thicknessFactor = glm::clamp(baseThickness * glm::sqrt(distance), baseThickness, 0.5f);
+                // render
+                auto meshGraphicsState = nvrhi::GraphicsState();
+                meshGraphicsState.pipeline = m_OutlineMeshPipeline->GetHandle();
+                meshGraphicsState.framebuffer = framebuffer;
+                meshGraphicsState.addBindingSet(meshRenderer.mesh->bindingSets[GPipeline::MESH_OUTLINE]);
+                meshGraphicsState.viewport = nvrhi::ViewportState().addViewportAndScissorRect(framebuffer->getFramebufferInfo().getViewport());
+                meshGraphicsState.addVertexBuffer({ meshRenderer.mesh->outlineVertexBuffer, 0, 0 });
+                meshGraphicsState.indexBuffer = { meshRenderer.mesh->indexBuffer, nvrhi::Format::R32_UINT };
 
-                glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), tr.scale + thicknessFactor);
-                glm::vec3 offsetTranslation = camera->GetForwardDirection() * 0.001f;
-                glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), tr.translation + offsetTranslation);
-                
-                if (entity.HasComponent<Sprite2D>())
-                {
-                    auto &sprite = entity.GetComponent<Sprite2D>();
-                    glm::mat4 transform = translationMatrix * glm::mat4(tr.rotation) * scaleMatrix;
-                    Renderer2D::DrawQuadOutline(transform);
-                }
+                commandList->setGraphicsState(meshGraphicsState);
+
+                nvrhi::DrawArguments args;
+                args.setVertexCount(static_cast<uint32_t>(meshRenderer.mesh->indices.size()));
+                args.instanceCount = 1;
+
+                commandList->drawIndexed(args);
             }
 
-            Renderer2D::FlushOutline(m_OutlineQuadPipeline);
-            Renderer2D::End();
+            if (entity.HasComponent<Sprite2D>())
+            {
+                auto &sprite = entity.GetComponent<Sprite2D>();
+                glm::mat4 transform = translationMatrix * glm::mat4(tr.rotation) * scaleMatrix;
+                Renderer2D::DrawQuadOutline(transform);
+            }
         }
+
+        Renderer2D::FlushOutline(m_OutlineQuadPipeline);
+        Renderer2D::End();
     }
 
     void SceneRenderer::CreateEnvironment()

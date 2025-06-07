@@ -165,8 +165,13 @@ namespace ignite
         meshRenderer.mesh->CreateConstantBuffers(device);
 
         // m_CreateInfo.commandList->open();
-        commandList->writeBuffer(meshRenderer.mesh->vertexBuffer, meshRenderer.mesh->vertices.data(), sizeof(VertexMesh) * meshRenderer.mesh->vertices.size());
         commandList->writeBuffer(meshRenderer.mesh->indexBuffer, meshRenderer.mesh->indices.data(), sizeof(uint32_t) * meshRenderer.mesh->indices.size());
+
+        // default
+        commandList->writeBuffer(meshRenderer.mesh->vertexBuffer, meshRenderer.mesh->vertices.data(), sizeof(VertexMesh) * meshRenderer.mesh->vertices.size());
+        
+        // outline
+        commandList->writeBuffer(meshRenderer.mesh->outlineVertexBuffer, meshRenderer.mesh->outlineVertices.data(), sizeof(VertexMeshOutline) * meshRenderer.mesh->outlineVertices.size());
 
         // write textures
         if (meshRenderer.material.ShouldWriteTexture())
@@ -189,8 +194,18 @@ namespace ignite
         desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, scene->sceneRenderer->GetEnvironment()->GetHDRTexture()));
         desc.addItem(nvrhi::BindingSetItem::Sampler(0, meshRenderer.material.sampler));
 
-        meshRenderer.mesh->bindingSet = device->createBindingSet(desc, Renderer::GetBindingLayout(GPipeline::MESH));
-        LOG_ASSERT(meshRenderer.mesh->bindingSet, "Failed to create binding set");
+        meshRenderer.mesh->bindingSets[GPipeline::MESH] = device->createBindingSet(desc, Renderer::GetBindingLayout(GPipeline::MESH));
+        LOG_ASSERT(meshRenderer.mesh->bindingSets[GPipeline::MESH], "Failed to create binding set");
+
+        {
+            // Outline
+
+            desc = nvrhi::BindingSetDesc();
+            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, Renderer::GetCameraBufferHandle()));
+            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, meshRenderer.mesh->objectBufferHandle));
+            meshRenderer.mesh->bindingSets[GPipeline::MESH_OUTLINE] = device->createBindingSet(desc, Renderer::GetBindingLayout(GPipeline::MESH_OUTLINE));
+            LOG_ASSERT(meshRenderer.mesh->bindingSets[GPipeline::MESH_OUTLINE], "Failed to create binding set");
+        }
 
         commandList->close();
         device->executeCommandList(commandList);

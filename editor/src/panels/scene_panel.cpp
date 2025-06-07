@@ -613,6 +613,10 @@ namespace ignite
                                         meshRenderer.mesh->vertexBuffer = mesh->vertexBuffer;
                                         meshRenderer.mesh->aabb = mesh->aabb;
 
+                                        // outline
+                                        meshRenderer.mesh->outlineVertexBuffer = mesh->outlineVertexBuffer;
+                                        meshRenderer.mesh->outlineVertices = mesh->outlineVertices;
+
                                         meshRenderer.material = mesh->material;
 
                                         SceneManager::WriteMeshBuffer(scene, meshRenderer);

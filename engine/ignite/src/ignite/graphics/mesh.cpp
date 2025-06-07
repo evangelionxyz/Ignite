@@ -57,6 +57,18 @@ namespace ignite {
         vertexBuffer = device->createBuffer(vbDesc);
         LOG_ASSERT(vertexBuffer, "[Mesh] Failed to create Vertex Buffer");
 
+        // Outline
+        {
+            vbDesc = nvrhi::BufferDesc();
+            vbDesc.isVertexBuffer = true;
+            vbDesc.byteSize = sizeof(VertexMeshOutline) * outlineVertices.size();
+            vbDesc.initialState = nvrhi::ResourceStates::VertexBuffer;
+            vbDesc.keepInitialState = true;
+            vbDesc.debugName = "[Mesh] vertex buffer";
+            outlineVertexBuffer = device->createBuffer(vbDesc);
+            LOG_ASSERT(outlineVertexBuffer, "[Mesh] Failed to create Vertex Buffer");
+        }
+
         // create index buffer
         nvrhi::BufferDesc ibDesc = nvrhi::BufferDesc();
         ibDesc.isIndexBuffer = true;
@@ -134,6 +146,7 @@ namespace ignite {
     {
         // vertices;
         VertexMesh vertex;
+        mesh->outlineVertices.resize(assimpMesh->mNumVertices);
         mesh->vertices.resize(assimpMesh->mNumVertices);
 
         mesh->aabb.min = glm::vec3(FLT_MAX);
@@ -182,6 +195,19 @@ namespace ignite {
             ProcessBoneWeights<T>(assimpMesh, mesh, skeleton);
         }
 
+        // Copy vertices to outline vertices
+        for (size_t i = 0; i < mesh->vertices.size(); ++i)
+        {
+            VertexMesh mVertex = mesh->vertices[i];
+            mesh->outlineVertices[i].position = mVertex.position;
+
+            for (int w = 0; w < VERTEX_MAX_BONES; ++w)
+            {
+                mesh->outlineVertices[i].boneIDs[w] = mVertex.boneIDs[w];
+                mesh->outlineVertices[i].weights[w] = mVertex.weights[w];
+            }
+        }
+
         mesh->CreateBuffers();
     }
 
@@ -213,7 +239,7 @@ namespace ignite {
 
             uint32_t boneId = it->second;
 
-            // Each vertex can be affected by multimple bones
+            // Each vertex can be affected by multiple bones
             for (uint32_t weightIndex = 0; weightIndex < bone->mNumWeights; ++weightIndex)
             {
                 uint32_t vertexId = bone->mWeights[weightIndex].mVertexId;
@@ -232,7 +258,7 @@ namespace ignite {
             }
         }
 
-        // Normalize weights to ensure the sume to 1.0
+        // Normalize weights to ensure the sum to 1.0
         for (auto &vertex : mesh->vertices)
         {
             float totalWeight = 0.0f;
@@ -302,7 +328,7 @@ namespace ignite {
             skeleton->joints.push_back(joint);
         }
 
-        // process childe (use parent id if this node is not a joint)
+        // process child (use parent id if this node is not a joint)
         i32 childParentId = isJoint ? currentJointId : parentJointId;
         for (uint32_t i = 0; i < node->mNumChildren; ++i)
         {
@@ -567,6 +593,18 @@ namespace ignite {
 
         vertexBuffer = device->createBuffer(vbDesc);
         LOG_ASSERT(vertexBuffer, "[Mesh] Failed to create Vertex Buffer");
+
+        // Outline
+        {
+            vbDesc = nvrhi::BufferDesc();
+            vbDesc.isVertexBuffer = true;
+            vbDesc.byteSize = sizeof(VertexMeshOutline) * outlineVertices.size();
+            vbDesc.initialState = nvrhi::ResourceStates::VertexBuffer;
+            vbDesc.keepInitialState = true;
+            vbDesc.debugName = "[Mesh] vertex buffer";
+            outlineVertexBuffer = device->createBuffer(vbDesc);
+            LOG_ASSERT(outlineVertexBuffer, "[Mesh] Failed to create Vertex Buffer");
+        }
 
         // create index buffer
         nvrhi::BufferDesc ibDesc = nvrhi::BufferDesc();

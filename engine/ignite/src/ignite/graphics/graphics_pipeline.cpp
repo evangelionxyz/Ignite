@@ -25,9 +25,7 @@ namespace ignite {
 
     GraphicsPipeline& GraphicsPipeline::AddShader(nvrhi::ShaderHandle& handle, nvrhi::ShaderType type)
     {
-        m_NeedsToCompileShader = false;
         m_Shaders[type] = handle;
-
         return *this;
     }
 

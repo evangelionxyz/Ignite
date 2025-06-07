@@ -52,8 +52,8 @@ namespace ignite
         }
 
         {
-            size_t vertAllocSize = s_r2d->quadBatch.maxVertices * sizeof(VertexOutline);
-            s_r2d->quadVertexOutlineBase = new VertexOutline[vertAllocSize];
+            size_t vertAllocSize = s_r2d->quadBatch.maxVertices * sizeof(Vertex2DQuadOutline);
+            s_r2d->quadVertexOutlineBase = new Vertex2DQuadOutline[vertAllocSize];
 
             const auto desc = nvrhi::BufferDesc()
                 .setByteSize(vertAllocSize)
@@ -101,8 +101,8 @@ namespace ignite
         {
             nvrhi::BindingSetDesc bindingSetDesc;
             bindingSetDesc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, Renderer::GetCameraBufferHandle()));
-            s_r2d->quadBindingSets[GPipeline::OUTLINE] = device->createBindingSet(bindingSetDesc, Renderer::GetBindingLayout(GPipeline::OUTLINE));
-            LOG_ASSERT(s_r2d->quadBindingSets[GPipeline::OUTLINE], "[Renderer 2D] Failed to create binding set");
+            s_r2d->quadBindingSets[GPipeline::QUAD2D_OUTLINE] = device->createBindingSet(bindingSetDesc, Renderer::GetBindingLayout(GPipeline::QUAD2D_OUTLINE));
+            LOG_ASSERT(s_r2d->quadBindingSets[GPipeline::QUAD2D_OUTLINE], "[Renderer 2D] Failed to create binding set");
         }
 
 
@@ -245,7 +245,7 @@ namespace ignite
             const auto graphicsState = nvrhi::GraphicsState()
                 .setPipeline(quadPipeline->GetHandle())
                 .setFramebuffer(renderFramebuffer)
-                .addBindingSet(s_r2d->quadBindingSets[GPipeline::OUTLINE])
+                .addBindingSet(s_r2d->quadBindingSets[GPipeline::QUAD2D_OUTLINE])
                 .setViewport(nvrhi::ViewportState().addViewportAndScissorRect(viewport))
                 .addVertexBuffer(nvrhi::VertexBufferBinding{ s_r2d->quadOutlineVertexBuffer, 0, 0 })
                 .setIndexBuffer({ s_r2d->quadBatch.indexBuffer, nvrhi::Format::R32_UINT });

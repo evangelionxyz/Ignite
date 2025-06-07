@@ -3,6 +3,8 @@
 #include "vertex_data.hpp"
 #include "material.hpp"
 
+#include "renderer.hpp"
+
 #include "ignite/asset/asset.hpp"
 #include "ignite/core/uuid.hpp"
 #include "ignite/math/aabb.hpp"
@@ -68,6 +70,7 @@ namespace ignite {
     {
     public:
         std::vector<VertexMesh> vertices;
+        std::vector<VertexMeshOutline> outlineVertices;
         std::vector<uint32_t> indices;
         Material material;
 
@@ -77,6 +80,8 @@ namespace ignite {
         std::string name;
 
         nvrhi::BufferHandle vertexBuffer;
+        nvrhi::BufferHandle outlineVertexBuffer;
+
         nvrhi::BufferHandle indexBuffer;
         nvrhi::BindingSetHandle bindingSet;
 
@@ -102,20 +107,23 @@ namespace ignite {
     {
     public:
         std::vector<VertexMesh> vertices;
+        std::vector<VertexMeshOutline> outlineVertices;
         std::vector<uint32_t> indices;
 
         Ref<Shader> vertexShader;
         Ref<Shader> pixelShader;
 
         nvrhi::BufferHandle vertexBuffer;
+        nvrhi::BufferHandle outlineVertexBuffer;
+
         nvrhi::BufferHandle indexBuffer;
-        nvrhi::BindingSetHandle bindingSet;
+        std::unordered_map<GPipeline, nvrhi::BindingSetHandle> bindingSets;
 
         nvrhi::BufferHandle objectBufferHandle;
         nvrhi::BufferHandle materialBufferHandle;
 
         std::vector<BoneInfo> boneInfo; // Bone weights and indices
-        std::unordered_map<std::string, uint32_t> boneMapping; // Maps bone namse to indices
+        std::unordered_map<std::string, uint32_t> boneMapping; // Maps bone name to indices
 
         AABB aabb;
 
@@ -130,11 +138,15 @@ namespace ignite {
 
             vertexBuffer = other.vertexBuffer;
             indexBuffer = other.indexBuffer;
-            bindingSet = other.bindingSet;
+            bindingSets = other.bindingSets;
 
             boneInfo = other.boneInfo;
             boneMapping = other.boneMapping;
             aabb = other.aabb;
+
+            // outline
+            outlineVertexBuffer = other.outlineVertexBuffer;
+            outlineVertices = other.outlineVertices;
 
             CreateBuffers();
         }
