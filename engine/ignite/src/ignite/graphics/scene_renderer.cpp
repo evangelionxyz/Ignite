@@ -249,7 +249,6 @@ namespace ignite
 
     void SceneRenderer::RenderOutline(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const std::vector<Entity>& selectedEntities)
     {
-        Renderer2D::Begin(commandList, framebuffer);
         for (Entity entity : selectedEntities)
         {
             auto &tr = entity.GetTransform();
@@ -282,16 +281,7 @@ namespace ignite
 
                 commandList->drawIndexed(args);
             }
-
-            if (entity.HasComponent<Sprite2D>())
-            {
-                auto &sprite = entity.GetComponent<Sprite2D>();
-                Renderer2D::DrawRect(glm::scale(tr.GetWorldMatrix(), tr.scale * 1.05f), { 1.0f, 0.5f, 0.0f, 1.0f });
-            }
         }
-
-        Renderer2D::Flush(m_BatchQuadPipeline, m_BatchLinePipeline);
-        Renderer2D::End();
 
 
         for (Entity entity : selectedEntities)
