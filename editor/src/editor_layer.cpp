@@ -340,9 +340,7 @@ namespace ignite
 
     void EditorLayer::OnGuiRender()
     {
-        constexpr f32 TITLE_BAR_HEIGHT = 60.0f;
-
-        constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse
+        constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar
             | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
         const ImGuiViewport *viewport = ImGui::GetMainViewport();
@@ -350,53 +348,73 @@ namespace ignite
         ImGui::SetNextWindowSize(viewport->Size);
         ImGui::SetNextWindowViewport(viewport->ID);
 
-        f32 totalTitlebarHeight = viewport->Pos.y + TITLE_BAR_HEIGHT;
-
         ImGui::Begin("##main_dockspace", nullptr, windowFlags);
         ImGuiWindow *window = ImGui::GetCurrentWindow();
         window->DC.LayoutType = ImGuiLayoutType_Horizontal;
         window->DC.NavLayerCurrent = ImGuiNavLayer_Menu;
         ImDrawList *drawList = ImGui::GetWindowDrawList();
-        const ImVec2 minPos = viewport->Pos;
-        const ImVec2 maxPos = ImVec2(viewport->Pos.x + viewport->Size.x, totalTitlebarHeight);
-        drawList->AddRectFilled(minPos, maxPos, IM_COL32(30, 30, 30, 255));
 
-        // =========== Menubar ===========
-        const glm::vec2 menuBarButtonSize = { 45.0f, 20.0f };
-        const auto decorateBt = UIButtonDecorate()
-            .Fill( { 0.32f, 0.0f, 0.0f, 1.0f }, { 0.62f, 0.0f, 0.0f, 1.0f })
-            .Outline( { 0.62f, 0.0f, 0.0f, 1.0f }, { 0.92f, 0.0f, 0.0f, 1.0f });
-
-        // ===== MENUBAR BUTTONS ==== 
-        UI::DrawHorizontalButtonList(menuBarButtonSize,
-            { 
-                UIButton("File", decorateBt, []() { ImGui::OpenPopup("MenuBar_File"); }),
-                UIButton("Edit", decorateBt, []() { ImGui::OpenPopup("MenuBar_Edit"); }),
-                UIButton("View", decorateBt, []() {  ImGui::OpenPopup("MenuBar_View"); })
-            },
-            2.0f, // GAP
-            { 12.0f, 2.0f }, // Padding
-            { 0.0f, 0.0f } // Margin
-        );
-        
-        // ==== TOOLBAR BUTTONS ====
-
-        bool sceneStatePlaying = m_Data.sceneState == State::ScenePlay;
-        
-        glm::vec4 toolbarColor = glm::vec4{ 0.32f, 0.0f, 0.0f, 1.0f };
-        glm::vec4 toolbarHoverColor = glm::vec4{ 0.62f, 0.0f, 0.0f, 1.0f };
-        glm::vec4 toolbarOutlineColor = glm::vec4 { 0.62f, 0.0f, 0.0f, 1.0f };
-        glm::vec4 toolbarOutlineHoverColor = glm::vec4{ 0.92f, 0.0f, 0.0f, 1.0f };
-
-        if (sceneStatePlaying)
+        if (ImGui::BeginMenuBar())
         {
-            toolbarColor = glm::vec4 { 0.0f, 0.32f, 0.0f, 1.0f };
-            toolbarHoverColor = glm::vec4 { 0.0f, 0.62f, 0.0f, 1.0f };
-            toolbarOutlineColor = glm::vec4 { 0.0f, 0.62f, 0.0f, 1.0f };
-            toolbarOutlineHoverColor = glm::vec4 { 0.00f, 92.0f, 0.0f, 1.0f };
+
+            if (ImGui::BeginMenu("File"))
+            {
+                if (ImGui::MenuItem("New Scene", nullptr, false, m_ActiveProject != nullptr))
+                {
+                    NewScene();
+                }
+                else if (ImGui::MenuItem("Open Scene", nullptr, false, m_ActiveProject != nullptr))
+                {
+                    OpenScene();
+                }
+                if (ImGui::MenuItem("Save Scene", nullptr, false, m_ActiveProject != nullptr))
+                {
+                    SaveScene();
+                }
+                else if (ImGui::MenuItem("Save Scene As", nullptr, false, m_ActiveProject != nullptr))
+                {
+                    SaveSceneAs();
+                }
+
+                ImGui::Separator();
+
+                if (ImGui::MenuItem("New Project"))
+                {
+                    m_Data.popupNewProjectModal = true;
+                }
+
+                else if (ImGui::MenuItem("Save Project", nullptr, false, m_ActiveProject != nullptr))
+                {
+                    SaveProject();
+                }
+
+                else if (ImGui::MenuItem("Open Project"))
+                {
+                    OpenProject();
+                }
+
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Edit"))
+            {
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("View"))
+            {
+                if (ImGui::MenuItem("Asset Registry", nullptr, false, m_ActiveProject != nullptr))
+                {
+                    m_Data.assetRegistryWindow = true;
+                }
+
+                ImGui::EndMenu();
+            }
+
+            ImGui::EndMenuBar();
         }
 
-
+#if 0
         if (UI::DrawButton(UIButton(sceneStatePlaying ? "Stop" : "Play",
             UIButtonDecorate()
             .Fill(toolbarColor, toolbarHoverColor)
@@ -421,49 +439,7 @@ namespace ignite
 #endif
             }
         }
-
-        if (UI::DrawButton(UIButton("Simulate", decorateBt), menuBarButtonSize, {12.0f, 2.0f }, Margin(3.0f, 0.0f)))
-        {
-        }
-
-        if (ImGui::BeginPopup("MenuBar_File"))
-        {
-            if (ImGui::MenuItem("New Scene", nullptr, false, m_ActiveProject != nullptr))
-            {
-                NewScene();
-            }
-            else if (ImGui::MenuItem("Open Scene",nullptr, false, m_ActiveProject != nullptr))
-            {
-                OpenScene();
-            }
-            if (ImGui::MenuItem("Save Scene",nullptr, false, m_ActiveProject != nullptr))
-            {
-                SaveScene();
-            }
-            else if (ImGui::MenuItem("Save Scene As",nullptr, false, m_ActiveProject != nullptr))
-            {
-                SaveSceneAs();
-            }
-            
-            ImGui::Separator();
-
-            if (ImGui::MenuItem("New Project"))
-            {
-                m_Data.popupNewProjectModal = true;
-            }
-
-            else if (ImGui::MenuItem("Save Project",nullptr, false, m_ActiveProject != nullptr))
-            {
-                SaveProject();
-            }
-
-            else if (ImGui::MenuItem("Open Project"))
-            {
-                OpenProject();
-            }
-
-            ImGui::EndPopup();
-        }
+#endif
 
         if (m_Data.popupNewProjectModal)
         {
@@ -551,19 +527,8 @@ namespace ignite
             ImGui::EndPopup();
         }
 
-        if (ImGui::BeginPopup("MenuBar_View"))
-        {
-            if (ImGui::MenuItem("Asset Registry", nullptr, false, m_ActiveProject != nullptr))
-            {
-                m_Data.assetRegistryWindow = true;
-            }
-
-            ImGui::EndPopup();
-        }
-
 
         // dockspace
-        ImGui::SetCursorScreenPos({viewport->Pos.x, totalTitlebarHeight});
         ImGui::DockSpace(ImGui::GetID("main_dockspace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
         {
             // scene dockspace

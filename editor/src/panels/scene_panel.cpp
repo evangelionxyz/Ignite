@@ -304,6 +304,8 @@ namespace ignite
         if (m_SelectedEntity.IsValid())
         {
             // Main Component
+
+            auto &comps = m_Scene->registeredComps[m_SelectedEntity];
             
             // ID Component
             ID &idComp = m_SelectedEntity.GetComponent<ID>();
@@ -315,6 +317,118 @@ namespace ignite
             }
 
             ImGui::SameLine();
+
+            if (ImGui::Button("Add Component", { ImGui::GetContentRegionAvail().x, 25.0f }))
+            {
+                ImGui::OpenPopupOnItemClick("add_component_context");
+            }
+
+            // add component context
+            if (ImGui::BeginPopupContextItem("add_component_context", ImGuiPopupFlags_NoOpenOverExistingPopup))
+            {
+                static char buffer[256] = { 0 };
+                static std::string compNameResult;
+                static std::set<std::pair<std::string, CompType>> filteredCompName;
+
+                ImGui::InputTextWithHint("##component_name", "Component", buffer, sizeof(buffer) + 1, ImGuiInputTextFlags_EscapeClearsAll | ImGuiInputTextFlags_NoHorizontalScroll);
+
+                compNameResult = std::string(buffer);
+
+                filteredCompName.clear();
+
+                if (!compNameResult.empty())
+                {
+                    std::string search = stringutils::ToLower(compNameResult);
+                    for (const auto &[strName, type] : s_ComponentsName)
+                    {
+                        bool isExists = false;
+                        for (IComponent *comp : comps)
+                        {
+                            if (comp->GetType() == type)
+                            {
+                                isExists = true;
+                                break;
+                            }
+                        }
+                        if (isExists)
+                            continue;
+
+                        std::string nameLower = stringutils::ToLower(strName);
+                        if (nameLower.find(search) != std::string::npos)
+                        {
+                            filteredCompName.insert({ strName, type });
+                        }
+                    }
+                }
+
+                static std::function<void(Entity, CompType)> addCompFunc = [=](Entity entity, CompType type)
+                    {
+                        switch (type)
+                        {
+                        case CompType_Sprite2D:
+                        {
+                            entity.AddComponent<Sprite2D>();
+                            break;
+                        }
+                        case CompType_Rigidbody2D:
+                        {
+                            entity.AddComponent<Rigidbody2D>();
+                            break;
+                        }
+                        case CompType_BoxCollider2D:
+                        {
+                            entity.AddComponent<BoxCollider2D>();
+                            break;
+                        }
+                        case CompType_MeshRenderer:
+                        {
+                            entity.AddComponent<MeshRenderer>();
+                            break;
+                        }
+                        case CompType_SkinnedMesh:
+                        {
+                            entity.AddComponent<SkinnedMesh>();
+                            break;
+                        }
+                        }
+                    };
+
+                if (compNameResult.empty())
+                {
+                    for (const auto &[strName, type] : s_ComponentsName)
+                    {
+                        bool isExists = false;
+                        for (IComponent *comp : comps)
+                        {
+                            if (comp->GetType() == type)
+                            {
+                                isExists = true;
+                                break;
+                            }
+                        }
+                        if (isExists)
+                        {
+                            continue;
+                        }
+
+                        if (ImGui::Selectable(strName.c_str()))
+                        {
+                            addCompFunc(Entity{ m_SelectedEntity, m_Scene }, type);
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+                }
+
+                for (const auto &[strName, type] : filteredCompName)
+                {
+                    if (ImGui::Selectable(strName.c_str()))
+                    {
+                        addCompFunc(Entity{ m_SelectedEntity, m_Scene }, type);
+                        ImGui::CloseCurrentPopup();
+                    }
+                }
+                ImGui::EndPopup();
+            }
     
             // transform component
             RenderComponent<Transform>("Transform", m_SelectedEntity, [this]()
@@ -338,7 +452,6 @@ namespace ignite
 
             }, false); // false: not allowed to remove the component
 
-            auto &comps = m_Scene->registeredComps[m_SelectedEntity];
             for (IComponent *comp : comps)
             {
                 switch (comp->GetType())
@@ -694,118 +807,6 @@ namespace ignite
                 }
                 }
             }
-
-            if (ImGui::Button("Add Component", { ImGui::GetContentRegionAvail().x, 25.0f }))
-            {
-                ImGui::OpenPopupOnItemClick("add_component_context");
-            }
-
-            // add component context
-            if (ImGui::BeginPopupContextItem("add_component_context", ImGuiPopupFlags_NoOpenOverExistingPopup))
-            {
-                static char buffer[256] = { 0 };
-                static std::string compNameResult;
-                static std::set<std::pair<std::string, CompType>> filteredCompName;
-
-                ImGui::InputTextWithHint("##component_name", "Component", buffer, sizeof(buffer) + 1, ImGuiInputTextFlags_EscapeClearsAll | ImGuiInputTextFlags_NoHorizontalScroll);
-                
-                compNameResult = std::string(buffer);
-
-                filteredCompName.clear();
-
-                if (!compNameResult.empty())
-                {
-                    std::string search = stringutils::ToLower(compNameResult);
-                    for (const auto& [strName, type] : s_ComponentsName)
-                    {
-                        bool isExists = false;
-                        for (IComponent *comp : comps)
-                        {
-                            if (comp->GetType() == type)
-                            {
-                                isExists = true;
-                                break;
-                            }
-                        }
-                        if (isExists)
-                            continue;
-
-                        std::string nameLower = stringutils::ToLower(strName);
-                        if (nameLower.find(search) != std::string::npos)
-                        {
-                            filteredCompName.insert({strName, type});
-                        }
-                    }
-                }
-
-                static std::function<void(Entity, CompType)> addCompFunc = [=](Entity entity, CompType type)
-                {
-                    switch (type)
-                    {
-                        case CompType_Sprite2D:
-                        {
-                            entity.AddComponent<Sprite2D>();
-                            break;
-                        }
-                        case CompType_Rigidbody2D:
-                        {
-                            entity.AddComponent<Rigidbody2D>();
-                            break;
-                        }
-                        case CompType_BoxCollider2D:
-                        {
-                            entity.AddComponent<BoxCollider2D>();
-                            break;
-                        }
-                        case CompType_MeshRenderer:
-                        {
-                            entity.AddComponent<MeshRenderer>();
-                            break;
-                        }
-                        case CompType_SkinnedMesh:
-                        {
-                            entity.AddComponent<SkinnedMesh>();
-                            break;
-                        }
-                    }
-                };
-
-                if (compNameResult.empty())
-                {
-                    for (const auto& [strName, type] : s_ComponentsName)
-                    {
-                        bool isExists = false;
-                        for (IComponent *comp : comps)
-                        {
-                            if (comp->GetType() == type)
-                            {
-                                isExists = true;
-                                break;
-                            }
-                        }
-                        if (isExists)
-                        {
-                            continue;
-                        }
-
-                        if (ImGui::Selectable(strName.c_str()))
-                        {
-                            addCompFunc(Entity {m_SelectedEntity, m_Scene}, type);
-                            ImGui::CloseCurrentPopup();
-                        }
-                    }
-                }
-
-                for (const auto &[strName, type] : filteredCompName)
-                {
-                    if (ImGui::Selectable(strName.c_str()))
-                    {
-                        addCompFunc(Entity {m_SelectedEntity, m_Scene}, type);
-                        ImGui::CloseCurrentPopup();
-                    }
-                }
-                ImGui::EndPopup();
-            }
         }
 
         ImGui::End();
@@ -813,7 +814,12 @@ namespace ignite
 
     void ScenePanel::RenderViewport()
     {
-        constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+        ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+
+        if (m_Scene && m_Scene->IsDirty())
+        {
+            windowFlags |= ImGuiWindowFlags_UnsavedDocument;
+        }
 
         ImGui::Begin("Viewport", nullptr, windowFlags);
 
