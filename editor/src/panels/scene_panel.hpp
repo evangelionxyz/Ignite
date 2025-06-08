@@ -81,6 +81,7 @@ namespace ignite
         struct Data
         {
             bool settingsWindow = true;
+            bool isGizmoManipulating = false;
             bool isGizmoBeingUse = false;
         } m_Data;
 
@@ -97,6 +98,8 @@ namespace ignite
 
         static UUID m_TrackingSelectedEntity;
 
+        std::unordered_map<UUID, Transform> m_InitialTransforms;
+
         struct CameraData
         {
             f32 moveSpeed = 6.0f;
@@ -111,6 +114,6 @@ namespace ignite
             glm::vec2 mousePos = glm::vec2(0.0f);
         } m_ViewportData;
 
-        
+        std::unordered_map<std::string, Ref<Texture>> m_Icons;
     };
 }

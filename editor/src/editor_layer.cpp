@@ -15,16 +15,10 @@
 #include "ignite/audio/fmod_sound.hpp"
 #include "ignite/audio/fmod_dsp.hpp"
 
-#include <cinttypes>
-
 #include <glm/glm.hpp>
 #include <nvrhi/utils.h>
-
-#ifdef _WIN32
-#   include <dwmapi.h>
-#   include <ShellScalingApi.h>
-#endif
 #include <ranges>
+#include <cinttypes>
 
 namespace ignite
 {
@@ -414,33 +408,6 @@ namespace ignite
             ImGui::EndMenuBar();
         }
 
-#if 0
-        if (UI::DrawButton(UIButton(sceneStatePlaying ? "Stop" : "Play",
-            UIButtonDecorate()
-            .Fill(toolbarColor, toolbarHoverColor)
-            .Outline(toolbarOutlineColor, toolbarOutlineHoverColor)), menuBarButtonSize, { 12.0f, 2.0f }, Margin(40.0f, 3.0f, 0.0f, 3.0f)))
-        {
-            if (sceneStatePlaying)
-            {
-                OnSceneStop();
-#if _WIN32
-                HWND hwnd = glfwGetWin32Window(Application::GetInstance()->GetDeviceManager()->GetWindow());
-                COLORREF rgbRed = 0x00E86071;
-                DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
-#endif
-            }
-            else
-            {
-                OnScenePlay();
-#if _WIN32
-                HWND hwnd = glfwGetWin32Window(Application::GetInstance()->GetDeviceManager()->GetWindow());
-                COLORREF rgbRed = 0x000000AB;
-                DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
-#endif
-            }
-        }
-#endif
-
         if (m_Data.popupNewProjectModal)
         {
             ImGui::OpenPopup("New Project");
@@ -735,6 +702,12 @@ namespace ignite
             OnSceneStop();
 
         m_Data.sceneState = State::SceneSimulate;
+
+        // copy initial components to new scene
+        m_ActiveScene = SceneManager::Copy(m_EditorScene);
+        m_ActiveScene->OnStart();
+
+        m_ScenePanel->SetActiveScene(m_ActiveScene.get());
     }
 
     void EditorLayer::SettingsUI()

@@ -14,6 +14,5 @@ float4 main(PS_INPUT input) : SV_Target
 {
     float4 texColor = texture0.Sample(sampler0, input.uv);
     float4 color = float4(SRGBToLinear(input.col.rgb), input.col.a);
-    float4 out_col = color * texColor;
-    return out_col;
+    return color * texColor;
 }

@@ -17,7 +17,7 @@ namespace ignite {
 
         Rect viewRect;
         float snapValue = 0.25f;
-        bool isSnapping = false;
+        bool isSnapping = true;
     };
 
     class Gizmo
@@ -29,6 +29,9 @@ namespace ignite {
 
         void SetOperation(ImGuizmo::OPERATION op);
         void SetMode(ImGuizmo::MODE mode);
+
+        ImGuizmo::MODE GetMode() { return m_Mode; }
+        ImGuizmo::OPERATION GetOperation() { return m_Operation; }
 
         void Manipulate(glm::mat4 &inOutMatrix);
         void DrawGrid(float gridSize = 10.0f, const glm::mat4 &gridMatrix = glm::mat4(1.0f));

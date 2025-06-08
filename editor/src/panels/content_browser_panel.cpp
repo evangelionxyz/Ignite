@@ -13,14 +13,16 @@ namespace ignite {
 
         TextureCreateInfo createInfo;
         createInfo.format = nvrhi::Format::RGBA8_UNORM;
-        m_Icon = Texture::Create("resources/ui/ic_folder.png", createInfo);
+        m_Icons["folder"] = Texture::Create("resources/ui/ic_folder.png", createInfo);
+        m_Icons["unknown"] = Texture::Create("resources/ui/ic_file.png", createInfo);
 
         nvrhi::IDevice *device = Application::GetRenderDevice();
-
         nvrhi::CommandListHandle commandList = device->createCommandList();
-
         commandList->open();
-        m_Icon->Write(commandList);
+        for (auto &[name, icon] : m_Icons)
+        {
+            icon->Write(commandList);
+        }
         commandList->close();
         
         device->executeCommandList(commandList);
@@ -180,6 +182,10 @@ namespace ignite {
                 std::string filenameStr = item.generic_string();
                 ImGui::PushID(filenameStr.c_str());
 
+                std::filesystem::path path = m_CurrentDirectory / item;
+                bool isDirectory = std::filesystem::is_directory(path);
+
+
                 // float thumbnailHeight = m_ThumbnailSize * (thumbnail->GetHeight() / thumbnail->GetWidth());
                 const float thumbnailHeight = static_cast<float>(m_ThumbnailSize) * (320.0f / 540.0f);
                 const float diff = static_cast<float>(m_ThumbnailSize) - thumbnailHeight;
@@ -187,16 +193,16 @@ namespace ignite {
 
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 
-                ImTextureID iconId = reinterpret_cast<ImTextureID>(m_Icon->GetHandle().Get());
+                Ref<Texture> icon = isDirectory ? m_Icons["folder"] : m_Icons["unknown"];
+                ImTextureID iconId = reinterpret_cast<ImTextureID>( icon->GetHandle().Get());
                 ImGui::ImageButton(item.string().c_str(), iconId, { static_cast<float>(m_ThumbnailSize), static_cast<float>(m_ThumbnailSize) });
 
                 if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                 {
-                    std::filesystem::path openPath = m_CurrentDirectory / item;
-                    if (std::filesystem::is_directory(openPath))
+                    if (isDirectory)
                     {
                         m_BackwardPathStack.push(m_CurrentDirectory);
-                        m_CurrentDirectory = openPath;
+                        m_CurrentDirectory = path;
                     }
                 }
 

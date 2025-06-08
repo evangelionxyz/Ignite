@@ -127,13 +127,13 @@ namespace ignite
         {
         }
 
-        Transform(const glm::vec3 &_translation, const glm::quat &_rot, const glm::vec3 _size)
+        Transform(const glm::vec3 &_translation, const glm::quat &_rotation, const glm::vec3 _scale)
             : translation(_translation)
-            , rotation(_rot)
-            , scale(_size)
+            , rotation(_rotation)
+            , scale(_scale)
             , localTranslation(_translation)
-            , localRotation(_rot)
-            , localScale(_size)
+            , localRotation(_rotation)
+            , localScale(_scale)
         {
         }
 

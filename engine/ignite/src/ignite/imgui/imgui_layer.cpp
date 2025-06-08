@@ -180,7 +180,7 @@ namespace ignite
         style.TouchExtraPadding = ImVec2{ 0.0f, 0.0f };
         style.WindowTitleAlign = ImVec2 { 0.5f, 0.5f };
         style.WindowBorderHoverPadding = 10.0f;
-        style.WindowBorderSize = 1;
+        style.WindowBorderSize = 0;
         style.ChildBorderSize = 1;
         style.PopupBorderSize = 1;
 

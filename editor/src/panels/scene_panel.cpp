@@ -12,7 +12,13 @@
 #include "editor_layer.hpp"
 #include "ignite/graphics/mesh.hpp"
 #include "ignite/animation/animation_system.hpp"
+#include "../states.hpp"
 #include "entt/entt.hpp"
+
+#ifdef _WIN32
+#   include <dwmapi.h>
+#   include <ShellScalingApi.h>
+#endif
 
 #include <set>
 #include <unordered_map>
@@ -38,6 +44,24 @@ namespace ignite
 
         m_ViewportCamera->UpdateViewMatrix();
         m_ViewportCamera->UpdateProjectionMatrix();
+
+
+        // Load icons
+        TextureCreateInfo createInfo;
+        createInfo.format = nvrhi::Format::RGBA8_UNORM;
+        m_Icons["simulate"] = Texture::Create("resources/ui/ic_simulate.png", createInfo);
+        m_Icons["play"] = Texture::Create("resources/ui/ic_play.png", createInfo);
+        m_Icons["stop"] = Texture::Create("resources/ui/ic_stop.png", createInfo);
+
+        nvrhi::IDevice *device = app->GetRenderDevice();
+        nvrhi::CommandListHandle commandList = device->createCommandList();
+        commandList->open();
+        for (auto &[name, icon] : m_Icons)
+        {
+            icon->Write(commandList);
+        }
+        commandList->close();
+        device->executeCommandList(commandList);
     }
 
     void ScenePanel::SetActiveScene(Scene *scene, bool reset)
@@ -320,114 +344,7 @@ namespace ignite
 
             if (ImGui::Button("Add Component", { ImGui::GetContentRegionAvail().x, 25.0f }))
             {
-                ImGui::OpenPopupOnItemClick("add_component_context");
-            }
-
-            // add component context
-            if (ImGui::BeginPopupContextItem("add_component_context", ImGuiPopupFlags_NoOpenOverExistingPopup))
-            {
-                static char buffer[256] = { 0 };
-                static std::string compNameResult;
-                static std::set<std::pair<std::string, CompType>> filteredCompName;
-
-                ImGui::InputTextWithHint("##component_name", "Component", buffer, sizeof(buffer) + 1, ImGuiInputTextFlags_EscapeClearsAll | ImGuiInputTextFlags_NoHorizontalScroll);
-
-                compNameResult = std::string(buffer);
-
-                filteredCompName.clear();
-
-                if (!compNameResult.empty())
-                {
-                    std::string search = stringutils::ToLower(compNameResult);
-                    for (const auto &[strName, type] : s_ComponentsName)
-                    {
-                        bool isExists = false;
-                        for (IComponent *comp : comps)
-                        {
-                            if (comp->GetType() == type)
-                            {
-                                isExists = true;
-                                break;
-                            }
-                        }
-                        if (isExists)
-                            continue;
-
-                        std::string nameLower = stringutils::ToLower(strName);
-                        if (nameLower.find(search) != std::string::npos)
-                        {
-                            filteredCompName.insert({ strName, type });
-                        }
-                    }
-                }
-
-                static std::function<void(Entity, CompType)> addCompFunc = [=](Entity entity, CompType type)
-                    {
-                        switch (type)
-                        {
-                        case CompType_Sprite2D:
-                        {
-                            entity.AddComponent<Sprite2D>();
-                            break;
-                        }
-                        case CompType_Rigidbody2D:
-                        {
-                            entity.AddComponent<Rigidbody2D>();
-                            break;
-                        }
-                        case CompType_BoxCollider2D:
-                        {
-                            entity.AddComponent<BoxCollider2D>();
-                            break;
-                        }
-                        case CompType_MeshRenderer:
-                        {
-                            entity.AddComponent<MeshRenderer>();
-                            break;
-                        }
-                        case CompType_SkinnedMesh:
-                        {
-                            entity.AddComponent<SkinnedMesh>();
-                            break;
-                        }
-                        }
-                    };
-
-                if (compNameResult.empty())
-                {
-                    for (const auto &[strName, type] : s_ComponentsName)
-                    {
-                        bool isExists = false;
-                        for (IComponent *comp : comps)
-                        {
-                            if (comp->GetType() == type)
-                            {
-                                isExists = true;
-                                break;
-                            }
-                        }
-                        if (isExists)
-                        {
-                            continue;
-                        }
-
-                        if (ImGui::Selectable(strName.c_str()))
-                        {
-                            addCompFunc(Entity{ m_SelectedEntity, m_Scene }, type);
-                            ImGui::CloseCurrentPopup();
-                        }
-                    }
-                }
-
-                for (const auto &[strName, type] : filteredCompName)
-                {
-                    if (ImGui::Selectable(strName.c_str()))
-                    {
-                        addCompFunc(Entity{ m_SelectedEntity, m_Scene }, type);
-                        ImGui::CloseCurrentPopup();
-                    }
-                }
-                ImGui::EndPopup();
+                ImGui::OpenPopup("##add_component_context");
             }
     
             // transform component
@@ -454,6 +371,8 @@ namespace ignite
 
             for (IComponent *comp : comps)
             {
+                ImGui::PushID(&*comp);
+
                 switch (comp->GetType())
                 {
                 case CompType_Sprite2D:
@@ -503,8 +422,8 @@ namespace ignite
                             }
                         }
 
-                        ImGui::ColorEdit4("Color", &c->color.x);
                         ImGui::DragFloat2("Tiling", &c->tilingFactor.x, 0.025f);
+                        ImGui::ColorEdit4("Color", &c->color.x);
                     });
 
                     break;
@@ -806,6 +725,114 @@ namespace ignite
                     break;
                 }
                 }
+
+                ImGui::PopID();
+            }
+
+            if (ImGui::BeginPopup("##add_component_context", ImGuiWindowFlags_NoDecoration))
+            {
+                static char buffer[256] = { 0 };
+                static std::string compNameResult;
+                static std::set<std::pair<std::string, CompType>> filteredCompName;
+
+                ImGui::InputTextWithHint("##component_name", "Component", buffer, sizeof(buffer) + 1, ImGuiInputTextFlags_EscapeClearsAll | ImGuiInputTextFlags_NoHorizontalScroll);
+
+                compNameResult = std::string(buffer);
+
+                filteredCompName.clear();
+
+                if (!compNameResult.empty())
+                {
+                    std::string search = stringutils::ToLower(compNameResult);
+                    for (const auto &[strName, type] : s_ComponentsName)
+                    {
+                        bool isExists = false;
+                        for (IComponent *comp : comps)
+                        {
+                            if (comp->GetType() == type)
+                            {
+                                isExists = true;
+                                break;
+                            }
+                        }
+                        if (isExists)
+                            continue;
+
+                        std::string nameLower = stringutils::ToLower(strName);
+                        if (nameLower.find(search) != std::string::npos)
+                        {
+                            filteredCompName.insert({ strName, type });
+                        }
+                    }
+                }
+
+                static std::function<void(Entity, CompType)> addCompFunc = [=](Entity entity, CompType type)
+                    {
+                        switch (type)
+                        {
+                        case CompType_Sprite2D:
+                        {
+                            entity.AddComponent<Sprite2D>();
+                            break;
+                        }
+                        case CompType_Rigidbody2D:
+                        {
+                            entity.AddComponent<Rigidbody2D>();
+                            break;
+                        }
+                        case CompType_BoxCollider2D:
+                        {
+                            entity.AddComponent<BoxCollider2D>();
+                            break;
+                        }
+                        case CompType_MeshRenderer:
+                        {
+                            entity.AddComponent<MeshRenderer>();
+                            break;
+                        }
+                        case CompType_SkinnedMesh:
+                        {
+                            entity.AddComponent<SkinnedMesh>();
+                            break;
+                        }
+                        }
+                    };
+
+                if (compNameResult.empty())
+                {
+                    for (const auto &[strName, type] : s_ComponentsName)
+                    {
+                        bool isExists = false;
+                        for (IComponent *comp : comps)
+                        {
+                            if (comp->GetType() == type)
+                            {
+                                isExists = true;
+                                break;
+                            }
+                        }
+                        if (isExists)
+                        {
+                            continue;
+                        }
+
+                        if (ImGui::Selectable(strName.c_str()))
+                        {
+                            addCompFunc(Entity{ m_SelectedEntity, m_Scene }, type);
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+                }
+
+                for (const auto &[strName, type] : filteredCompName)
+                {
+                    if (ImGui::Selectable(strName.c_str()))
+                    {
+                        addCompFunc(Entity{ m_SelectedEntity, m_Scene }, type);
+                        ImGui::CloseCurrentPopup();
+                    }
+                }
+                ImGui::EndPopup();
             }
         }
 
@@ -894,48 +921,68 @@ namespace ignite
 
         m_Gizmo.SetInfo(gizmoInfo);
 
-        m_Data.isGizmoBeingUse = false;
+        // Start manipulation: Fired only on the first frame of interaction
+        bool isManipulatingNow = m_Gizmo.IsManipulating();
+
+        if (isManipulatingNow && !m_Data.isGizmoManipulating)
+        {
+            m_InitialTransforms.clear();
+            for (Entity entity : m_SelectedEntities)
+            {
+                // Store the original transform of each selected entity
+                m_InitialTransforms[entity.GetUUID()] = entity.GetTransform();
+            }
+        }
+        // Set the master flag for the current frame
+        m_Data.isGizmoManipulating = isManipulatingNow;
+        m_Data.isGizmoBeingUse = isManipulatingNow || m_Gizmo.IsHovered();
 
         if (m_SelectedEntities.size() > 1)
         {
-            // Step 1: Compute shared pivot
+            // Step 1: Compute shared pivot (center of all selected entities)
             glm::vec3 pivot(0.0f);
             for (Entity entity : m_SelectedEntities)
+            {
                 pivot += entity.GetTransform().translation;
+            }
             pivot /= static_cast<float>(m_SelectedEntities.size());
      
-            // Step 2: create gizmo transform
+            // Step 2: create a transform matrix for the gizmo at the pivot point
             glm::mat4 gizmoTransform = glm::translate(glm::mat4(1.0f), pivot);
-            glm::mat4 manipulatedTransform = gizmoTransform;
+            glm::mat4 manipulatedTransform = gizmoTransform; // This will be modified by the gizmo
      
-            // Step 3: Render gizmo once
+            // Step 3: Manipulate the matrix
             m_Gizmo.Manipulate(manipulatedTransform);
-            if (m_Gizmo.IsManipulating())
+
+            if (m_Data.isGizmoManipulating)
             {
+                // THis delta is now the TOTAL change from the moment of manipulation began
                 glm::mat4 gizmoDelta = glm::inverse(gizmoTransform) * manipulatedTransform;
 
-                // Extract delta scale from the gizmo delta transform
+                // Decompose the total delta
                 glm::vec3 deltaTranslation, deltaScale, deltaRotation;
                 Math::DecomposeTransformEuler(gizmoDelta , deltaTranslation, deltaRotation, deltaScale);
                 
                 for (Entity entity : m_SelectedEntities)
                 {
+                    // Get the live transform component to apply changes to it
                     Transform &tr = entity.GetTransform();
      
-                    glm::mat4 worldMatrix = tr.GetWorldMatrix();
-     
-                    // 1. Move to pivot space
+                    // Get the ORIGINAL transform we stored at the beginning of the manipulation
+                    const Transform &initialTransform = m_InitialTransforms.at(entity.GetUUID());
+                    glm::mat4 initialWorldMatrix = initialTransform.GetWorldMatrix();
+
+                    // Apply Translation and Rotation around the shared pivot
                     glm::mat4 toPivot = glm::translate(glm::mat4(1.0f), -pivot);
                     glm::mat4 fromPivot = glm::translate(glm::mat4(1.0f), pivot);
-     
-                    // 2. Apply delta transform around pivot
-                    glm::mat4 noScale = Math::RemoveScale(gizmoDelta);
-                    glm::mat4 newWorldMatrix = fromPivot * noScale * toPivot * worldMatrix;
-     
-                    // 3. decompose
-                    glm::vec3 translation, scale, rotation;
-                    Math::DecomposeTransformEuler(newWorldMatrix, translation, rotation, scale);
+                    glm::mat4 noScaleDelta = Math::RemoveScale(gizmoDelta);
+
+                    // Apply the total delta to the ORIGINAL world matrix
+                    glm::mat4 newWorldMatrix = fromPivot * noScaleDelta * toPivot * tr.GetWorldMatrix();
+                    glm::vec3 newTranslation, newRotationEuler, newScale;
+                    Math::DecomposeTransformEuler(newWorldMatrix, newTranslation, newRotationEuler, newScale);
                     
+                    // ----- Apply Scale and Update Local Transform -----
                     if (entity.GetParentUUID() != UUID(0))
                     {
                         Entity parent = SceneManager::GetEntity(m_Scene, entity.GetParentUUID());
@@ -945,16 +992,19 @@ namespace ignite
 
                         glm::vec3 localTranslation, localEuler, localScale;
                         Math::DecomposeTransformEuler(localMatrix, localTranslation, localEuler, localScale);
-            
                         tr.localTranslation = localTranslation;
                         tr.localRotation = glm::quat(localEuler);
-                        tr.localScale = deltaScale /  parentTr.scale;
+
+                        // Apply the total scale delta to the ORIGINAL local scale
+                        tr.localScale = initialTransform.localScale * deltaScale;
                     }
                     else
                     {
-                        tr.localTranslation = translation;
-                        tr.localRotation = glm::quat(rotation);
-                        tr.localScale = deltaScale;
+                        tr.localTranslation = newTranslation;
+                        tr.localRotation = glm::quat(newRotationEuler);
+
+                        // Apply the total scale delta to the ORIGINAL local scale
+                        tr.localScale = initialTransform.localScale * deltaScale;
                     }
                     tr.dirty = true;
                 }
@@ -991,8 +1041,84 @@ namespace ignite
             }
         }
 
-        m_Data.isGizmoBeingUse = m_Gizmo.IsManipulating() || m_Gizmo.IsHovered();
+        // m_Data.isGizmoBeingUse = m_Gizmo.IsManipulating() || m_Gizmo.IsHovered();
 
+        ImGui::End();
+
+        // TOOLBAR: 
+        ImGui::SetNextWindowPos(canvasPos, ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.8f);
+        ImGui::Begin("Toolbar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 12.0f, 5.0f });
+
+        const ImVec2 buttonSize = { 20.0f, 20.0f };
+        auto mode = m_Gizmo.GetMode();
+        std::string gizmoModeStr = mode == ImGuizmo::MODE::LOCAL ? "LOCAL" : "WORLD";
+        if (ImGui::Button(gizmoModeStr.c_str(), buttonSize))
+        {
+            m_Gizmo.SetMode(mode == ImGuizmo::MODE::LOCAL ? ImGuizmo::MODE::WORLD : ImGuizmo::MODE::LOCAL);
+        }
+
+        auto sceneState = m_Editor->GetState().sceneState;
+        const bool isScenePlaying = sceneState == ignite::State::ScenePlay;
+        Ref<Texture> scenePlayStopTex = isScenePlaying ? m_Icons["stop"] : m_Icons["play"];
+        ImTextureID scenePlayStopID = reinterpret_cast<ImTextureID>(scenePlayStopTex->GetHandle().Get());
+
+        ImGui::SameLine();
+        ImGui::Image(scenePlayStopID, buttonSize);
+        if (ImGui::IsItemClicked())
+        {
+            if (isScenePlaying)
+            {
+                m_Editor->OnSceneStop();
+#if _WIN32
+                HWND hwnd = glfwGetWin32Window(Application::GetInstance()->GetDeviceManager()->GetWindow());
+                COLORREF rgbRed = 0x00E86071;
+                DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
+#endif
+            }
+            else
+            {
+                m_Editor->OnScenePlay();
+#if _WIN32
+                HWND hwnd = glfwGetWin32Window(Application::GetInstance()->GetDeviceManager()->GetWindow());
+                COLORREF rgbRed = 0x000000AB;
+                DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
+#endif
+            }
+        }
+
+        const bool isSceneSimulate = sceneState == ignite::State::SceneSimulate;
+        Ref<Texture> sceneSimulateTex = isSceneSimulate ? m_Icons["stop"] : m_Icons["simulate"];
+        ImTextureID sceneSimulateID = reinterpret_cast<ImTextureID>(sceneSimulateTex->GetHandle().Get());
+
+        ImGui::SameLine();
+        ImGui::Image(sceneSimulateID, buttonSize);
+        if (ImGui::IsItemClicked())
+        {
+            if (isSceneSimulate)
+            {
+                m_Editor->OnSceneStop();
+#if _WIN32
+                HWND hwnd = glfwGetWin32Window(Application::GetInstance()->GetDeviceManager()->GetWindow());
+                COLORREF rgbRed = 0x00E86071;
+                DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
+#endif
+            }
+            else
+            {
+                m_Editor->OnSceneSimulate();
+#if _WIN32
+                HWND hwnd = glfwGetWin32Window(Application::GetInstance()->GetDeviceManager()->GetWindow());
+                COLORREF rgbRed = 0x000000AB;
+                DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
+#endif
+            }
+        }
+
+        ImGui::PopStyleVar(1);
+        
         ImGui::End();
     }
 
