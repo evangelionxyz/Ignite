@@ -54,6 +54,7 @@ namespace ignite {
             depthStencilState.stencilRefValue = m_Params.stencilRefValue;
 
             nvrhi::RasterState rasterState;
+
             rasterState.cullMode = m_Params.cullMode;
             rasterState.fillMode = m_Params.fillMode;
             rasterState.setFrontCounterClockwise(false);

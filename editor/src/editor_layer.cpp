@@ -267,10 +267,19 @@ namespace ignite
         m_ScenePanel->GetRT()->ClearColorAttachmentUint(m_CommandList, 1, static_cast<uint32_t>(-1));
 
         f32 farDepth = 1.0f; // LessOrEqual
-        m_CommandList->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), nvrhi::AllSubresources, true, farDepth, true, 1);
+        m_CommandList->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), 
+            nvrhi::AllSubresources, 
+            true, // clear depth ?
+            farDepth, // depth
+            true, // clear stencil?
+            0 // stencil
+        );
         
         if (m_ActiveScene)
         {
+            CameraBuffer cameraBuffer = { m_ScenePanel->GetViewportCamera()->GetViewProjectionMatrix(), glm::vec4(m_ScenePanel->GetViewportCamera()->position, 1.0f) };
+            m_CommandList->writeBuffer(Renderer::GetCameraBufferHandle(), &cameraBuffer, sizeof(cameraBuffer));
+
             m_SceneRenderer.CreatePipelines(viewportFramebuffer);
             m_SceneRenderer.Render(m_ActiveScene.get(), m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer);
             m_SceneRenderer.RenderOutline(m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer, m_ScenePanel->GetSelectedEntities());

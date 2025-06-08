@@ -22,20 +22,9 @@ namespace ignite
         params.enableBlend = true;
         params.depthWrite = true;
         params.depthTest = true;
+        params.enableDepthStencil = false;
         params.fillMode = nvrhi::RasterFillMode::Solid;
         params.cullMode = nvrhi::RasterCullMode::Front;
-
-        params.enableDepthStencil = true;
-
-        // Fail = Keep, Pass = Replace
-        params.frontFaceStencilDesc.failOp = nvrhi::StencilOp::Keep;      // Stencil test fails
-        params.frontFaceStencilDesc.depthFailOp = nvrhi::StencilOp::Keep; // Depth test fails
-        params.frontFaceStencilDesc.passOp = nvrhi::StencilOp::Replace;   // Both tests pass - Write to stencil
-        params.frontFaceStencilDesc.stencilFunc = nvrhi::ComparisonFunc::Always; // Always pass stencil test
-
-        params.stencilWriteMask = 0xFF;
-        params.stencilReadMask = 0xFF;
-        params.stencilRefValue = 1; // Write value 1 where object is rendered
 
         // Mesh pipeline
         {
@@ -52,6 +41,8 @@ namespace ignite
 
         // Environment Pipeline
         {
+            params.enableDepthStencil = false;
+
             params.cullMode = nvrhi::RasterCullMode::Front;
             params.comparison = nvrhi::ComparisonFunc::Always;
 
@@ -110,11 +101,41 @@ namespace ignite
                 .AddShader(shaderContext[nvrhi::ShaderType::Pixel].handle, nvrhi::ShaderType::Pixel)
                 .Build();
         }
-
         
         {
-            // Outline Quad Pipeline (second pass) - only renders where stencil != 1
+            params.enableBlend = true;
+            params.depthWrite = true;
+            params.depthTest = true;
+            params.fillMode = nvrhi::RasterFillMode::Solid;
+            params.cullMode = nvrhi::RasterCullMode::Front;
+            params.primitiveType = nvrhi::PrimitiveType::TriangleList;
+            params.comparison = nvrhi::ComparisonFunc::LessOrEqual;
 
+
+            params.enableDepthStencil = true;
+
+            params.frontFaceStencilDesc.passOp = nvrhi::StencilOp::Replace;   // Both tests pass - Write to stencil
+            params.frontFaceStencilDesc.stencilFunc = nvrhi::ComparisonFunc::Always; // Always pass stencil test
+            params.backFaceStencilDesc.passOp = nvrhi::StencilOp::Replace;   // Both tests pass - Write to stencil
+            params.backFaceStencilDesc.stencilFunc = nvrhi::ComparisonFunc::Always; // Always pass stencil test
+            params.stencilWriteMask = 0xFF;
+            params.stencilRefValue = 1; // Write value 1 where object is rendered
+
+            {
+                // Mesh pipeline
+
+                auto attributes = VertexMesh::GetAttributes();
+                GraphicsPiplineCreateInfo pci;
+                pci.attributes = attributes.data();
+                pci.attributeCount = static_cast<uint32_t>(attributes.size());
+
+                m_OutlineMeshPipelineA = GraphicsPipeline::Create(params, &pci, Renderer::GetBindingLayout(GPipeline::MESH));
+                m_OutlineMeshPipelineA->AddShader("default_mesh.vertex.hlsl", nvrhi::ShaderType::Vertex)
+                    .AddShader("default_mesh.pixel.hlsl", nvrhi::ShaderType::Pixel)
+                    .Build();
+            }
+
+            // Outline Pipeline (second pass) - only renders where stencil != 1
             params.enableBlend = true;
             params.depthWrite = false; // Don't overwrite depth from the first pass
             params.depthTest = true; // Use existing depth buffer
@@ -123,43 +144,41 @@ namespace ignite
             params.cullMode = nvrhi::RasterCullMode::Front;
             params.comparison = nvrhi::ComparisonFunc::LessOrEqual;
 
-            params.enableDepthStencil = true;
-
-            params.frontFaceStencilDesc.failOp = nvrhi::StencilOp::Keep;
-            params.frontFaceStencilDesc.depthFailOp = nvrhi::StencilOp::Keep;
-            params.frontFaceStencilDesc.passOp = nvrhi::StencilOp::Keep;       // Don't modify stencil
+            params.frontFaceStencilDesc.passOp = nvrhi::StencilOp::Keep; // Don't modify stencil
             params.frontFaceStencilDesc.stencilFunc = nvrhi::ComparisonFunc::NotEqual; // Only render where stencil != 1
+
+            params.backFaceStencilDesc.passOp = nvrhi::StencilOp::Keep; // Don't modify stencil
+            params.backFaceStencilDesc.stencilFunc = nvrhi::ComparisonFunc::NotEqual; // Only render where stencil != 1
             
             params.stencilWriteMask = 0x00; // Don't write to stencil
-            params.stencilReadMask = 0xFF; // READ from stencil
             params.stencilRefValue = 1; // Compare against value 1
 
-            auto quadAttributes = Vertex2DQuadOutline::GetAttributes();
-            GraphicsPiplineCreateInfo pci;
-            pci.attributes = quadAttributes.data();
-            pci.attributeCount = static_cast<uint32_t>(quadAttributes.size());
+            {
+                // Mesh pipeline
+                auto meshAttributes = VertexMeshOutline::GetAttributes();
+                GraphicsPiplineCreateInfo pci;
+                pci.attributes = meshAttributes.data();
+                pci.attributeCount = static_cast<uint32_t>(meshAttributes.size());
 
-            auto shaderContext = Renderer::GetShaderLibrary().Get("outline");
-
-            m_OutlineQuadPipeline = GraphicsPipeline::Create(params, &pci, Renderer::GetBindingLayout(GPipeline::QUAD2D_OUTLINE));
-            m_OutlineQuadPipeline->AddShader(shaderContext[nvrhi::ShaderType::Vertex].handle, nvrhi::ShaderType::Vertex)
-                .AddShader(shaderContext[nvrhi::ShaderType::Pixel].handle, nvrhi::ShaderType::Pixel)
-                .Build();
-
-            // Mesh pipeline
-
-            auto meshAttributes = VertexMeshOutline::GetAttributes();
-            pci.attributes = meshAttributes.data();
-            pci.attributeCount = static_cast<uint32_t>(meshAttributes.size());
-
-            m_OutlineMeshPipeline = GraphicsPipeline::Create(params, &pci, Renderer::GetBindingLayout(GPipeline::MESH_OUTLINE));
-            m_OutlineMeshPipeline->AddShader("mesh.outline.vertex.hlsl", nvrhi::ShaderType::Vertex)
-                .AddShader(shaderContext[nvrhi::ShaderType::Pixel].handle, nvrhi::ShaderType::Pixel) // use same outline pixel shader
-                .Build();
+                m_OutlineMeshPipelineB = GraphicsPipeline::Create(params, &pci, Renderer::GetBindingLayout(GPipeline::MESH_OUTLINE));
+                m_OutlineMeshPipelineB->AddShader("mesh.outline.vertex.hlsl", nvrhi::ShaderType::Vertex)
+                    .AddShader("outline.pixel.hlsl", nvrhi::ShaderType::Pixel) // use same outline pixel shader
+                    .Build();
+            }
         }
         
         // Create Environment
         CreateEnvironment();
+    }
+
+    void SceneRenderer::CreateRenderTarget()
+    {
+
+    }
+
+    void SceneRenderer::ResizeRenderTarget(uint32_t width, uint32_t height)
+    {
+
     }
 
     void SceneRenderer::CreatePipelines(nvrhi::IFramebuffer *framebuffer) const
@@ -169,19 +188,16 @@ namespace ignite
         m_EnvironmentPipeline->CreatePipeline(framebuffer);
         m_MeshPipeline->CreatePipeline(framebuffer);
 
-        m_OutlineQuadPipeline->CreatePipeline(framebuffer);
-        m_OutlineMeshPipeline->CreatePipeline(framebuffer);
+        m_OutlineMeshPipelineA->CreatePipeline(framebuffer);
+        m_OutlineMeshPipelineB->CreatePipeline(framebuffer);
+
     }
 
     void SceneRenderer::Render(Scene *scene, Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer)
     {
         if (scene->sceneRenderer == nullptr)
             scene->sceneRenderer = this;
-
-        CameraBuffer cameraBuffer = { camera->GetViewProjectionMatrix(), glm::vec4(camera->position, 1.0f) };
-        commandList->writeBuffer(Renderer::GetCameraBufferHandle(), &cameraBuffer, sizeof(cameraBuffer));
-        
-        // First pass: Main Scene
+ 
         m_Environment->Render(commandList, framebuffer, m_EnvironmentPipeline);
 
         Renderer2D::Begin(commandList, framebuffer);
@@ -233,7 +249,7 @@ namespace ignite
 
     void SceneRenderer::RenderOutline(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const std::vector<Entity>& selectedEntities)
     {
-        Renderer2D::BeginOutline();
+        Renderer2D::Begin(commandList, framebuffer);
         for (Entity entity : selectedEntities)
         {
             auto &tr = entity.GetTransform();
@@ -241,28 +257,21 @@ namespace ignite
             if (!tr.visible)
                 continue;
 
-            float baseThickness = 0.05f;
-            float distance = glm::distance(camera->position, tr.translation);
-            float thicknessFactor = glm::clamp(baseThickness * glm::sqrt(distance), baseThickness, 0.5f);
-
-            glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), tr.scale + thicknessFactor);
-            glm::vec3 offsetTranslation = camera->GetForwardDirection() * 0.001f;
-            glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), tr.translation + offsetTranslation);
-
             if (entity.HasComponent<MeshRenderer>())
             {
                 MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
 
-                meshRenderer.meshBuffer.transformation = translationMatrix * glm::mat4(tr.rotation) * scaleMatrix;
+                // write material constant buffer
+                commandList->writeBuffer(meshRenderer.mesh->materialBufferHandle, &meshRenderer.material.data, sizeof(meshRenderer.material.data));
                 commandList->writeBuffer(meshRenderer.mesh->objectBufferHandle, &meshRenderer.meshBuffer, sizeof(meshRenderer.meshBuffer));
 
                 // render
                 auto meshGraphicsState = nvrhi::GraphicsState();
-                meshGraphicsState.pipeline = m_OutlineMeshPipeline->GetHandle();
+                meshGraphicsState.pipeline = m_OutlineMeshPipelineA->GetHandle();
                 meshGraphicsState.framebuffer = framebuffer;
-                meshGraphicsState.addBindingSet(meshRenderer.mesh->bindingSets[GPipeline::MESH_OUTLINE]);
+                meshGraphicsState.addBindingSet(meshRenderer.mesh->bindingSets[GPipeline::MESH]);
                 meshGraphicsState.viewport = nvrhi::ViewportState().addViewportAndScissorRect(framebuffer->getFramebufferInfo().getViewport());
-                meshGraphicsState.addVertexBuffer({ meshRenderer.mesh->outlineVertexBuffer, 0, 0 });
+                meshGraphicsState.addVertexBuffer({ meshRenderer.mesh->vertexBuffer, 0, 0 });
                 meshGraphicsState.indexBuffer = { meshRenderer.mesh->indexBuffer, nvrhi::Format::R32_UINT };
 
                 commandList->setGraphicsState(meshGraphicsState);
@@ -277,13 +286,54 @@ namespace ignite
             if (entity.HasComponent<Sprite2D>())
             {
                 auto &sprite = entity.GetComponent<Sprite2D>();
-                glm::mat4 transform = translationMatrix * glm::mat4(tr.rotation) * scaleMatrix;
-                Renderer2D::DrawQuadOutline(transform);
+                Renderer2D::DrawRect(glm::scale(tr.GetWorldMatrix(), tr.scale * 1.05f), { 1.0f, 0.5f, 0.0f, 1.0f });
             }
         }
 
-        Renderer2D::FlushOutline(m_OutlineQuadPipeline);
+        Renderer2D::Flush(m_BatchQuadPipeline, m_BatchLinePipeline);
         Renderer2D::End();
+
+
+        for (Entity entity : selectedEntities)
+        {
+            auto &tr = entity.GetTransform();
+
+            if (!tr.visible)
+                continue;
+
+            float baseThickness = 0.01f;
+            float distance = glm::distance(camera->position, tr.translation);
+            float thicknessFactor = glm::clamp(baseThickness * distance, baseThickness, 0.1f);
+            glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), tr.scale + thicknessFactor);
+
+            glm::vec3 offsetTranslation = camera->GetForwardDirection() * 0.001f;
+            glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), tr.translation + offsetTranslation);
+
+            if (entity.HasComponent<MeshRenderer>())
+            {
+                MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
+
+                meshRenderer.meshBuffer.transformation = translationMatrix * glm::mat4(tr.rotation) * scaleMatrix;
+                commandList->writeBuffer(meshRenderer.mesh->objectBufferHandle, &meshRenderer.meshBuffer, sizeof(meshRenderer.meshBuffer));
+
+                // render
+                auto meshGraphicsState = nvrhi::GraphicsState();
+                meshGraphicsState.pipeline = m_OutlineMeshPipelineB->GetHandle();
+                meshGraphicsState.framebuffer = framebuffer;
+                meshGraphicsState.addBindingSet(meshRenderer.mesh->bindingSets[GPipeline::MESH_OUTLINE]);
+                meshGraphicsState.viewport = nvrhi::ViewportState().addViewportAndScissorRect(framebuffer->getFramebufferInfo().getViewport());
+                meshGraphicsState.addVertexBuffer({ meshRenderer.mesh->outlineVertexBuffer, 0, 0 });
+                meshGraphicsState.indexBuffer = { meshRenderer.mesh->indexBuffer, nvrhi::Format::R32_UINT };
+
+                commandList->setGraphicsState(meshGraphicsState);
+
+                nvrhi::DrawArguments args;
+                args.setVertexCount(static_cast<uint32_t>(meshRenderer.mesh->indices.size()));
+                args.instanceCount = 1;
+
+                commandList->drawIndexed(args);
+            }
+        }
     }
 
     void SceneRenderer::CreateEnvironment()

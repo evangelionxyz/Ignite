@@ -232,30 +232,4 @@ namespace ignite
                 .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1)); // model
         }
     };
-
-    struct Vertex2DQuadOutline
-    {
-        glm::vec3 position;
-
-        static std::array<nvrhi::VertexAttributeDesc, 1> GetAttributes()
-        {
-            return
-            {
-                nvrhi::VertexAttributeDesc()
-                    .setName("POSITION")
-                    .setBufferIndex(0)
-                    .setFormat(nvrhi::Format::RGB32_FLOAT)
-                    .setOffset(offsetof(Vertex2DQuadOutline, position))
-                    .setElementStride(sizeof(Vertex2DQuadOutline))
-            };
-        }
-
-        static nvrhi::BindingLayoutDesc GetBindingLayoutDesc()
-        {
-            nvrhi::BindingLayoutDesc desc;
-            desc.setVisibility(nvrhi::ShaderType::All);
-            desc.addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0));
-            return desc;
-        }
-    };
 }

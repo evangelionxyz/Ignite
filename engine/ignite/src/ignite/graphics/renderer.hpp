@@ -27,7 +27,6 @@ namespace ignite
         ENVIRONMENT, 
         QUAD2D, 
         LINE, 
-        QUAD2D_OUTLINE,
         MESH_OUTLINE
     };
 

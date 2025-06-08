@@ -17,6 +17,10 @@ namespace ignite
     {
     public:
         void Init();
+
+        void CreateRenderTarget();
+        void ResizeRenderTarget(uint32_t width, uint32_t height);
+
         void CreatePipelines(nvrhi::IFramebuffer *framebuffer) const;
         void Render(Scene *scene, Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer);
         void RenderOutline(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const std::vector<Entity>& selectedEntities);
@@ -38,7 +42,6 @@ namespace ignite
         Ref<GraphicsPipeline> m_EnvironmentPipeline;
         Ref<GraphicsPipeline> m_MeshPipeline;
 
-        Ref<GraphicsPipeline> m_OutlineQuadPipeline;
-        Ref<GraphicsPipeline> m_OutlineMeshPipeline;
+        Ref<GraphicsPipeline> m_OutlineMeshPipelineA, m_OutlineMeshPipelineB;
     };
 }
