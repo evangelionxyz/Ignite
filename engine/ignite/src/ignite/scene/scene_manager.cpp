@@ -162,8 +162,6 @@ namespace ignite
 
         commandList->open();
 
-        meshRenderer.mesh->CreateConstantBuffers(device);
-
         // m_CreateInfo.commandList->open();
         commandList->writeBuffer(meshRenderer.mesh->indexBuffer, meshRenderer.mesh->indices.data(), sizeof(uint32_t) * meshRenderer.mesh->indices.size());
 
@@ -304,7 +302,7 @@ namespace ignite
 
             for (auto &vertex : mr.mesh->vertices)
             {
-                vertex.entityID = static_cast<u32>(newEntity);
+                vertex.entityID = newEntity;
             }
 
             SceneManager::WriteMeshBuffer(scene, mr);

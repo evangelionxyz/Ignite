@@ -525,11 +525,16 @@ namespace ignite
                     RenderComponent<MeshRenderer>("Mesh Renderer", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
                     {
                         MeshRenderer *c = comp->As<MeshRenderer>();
-                        ImGui::Text("Mesh: %s", c->name.c_str());
-                        ImGui::ColorEdit4("Base Color", &c->material.data.baseColor.x);
-                        ImGui::DragFloat("Metallic", &c->material.data.metallic, 0.025f);
-                        ImGui::DragFloat("Roughness", &c->material.data.roughness, 0.025f);
-                        ImGui::DragFloat("Emissive", &c->material.data.emissive, 0.025f);
+                        
+                        ImGui::Text("Mesh [%d]: %s", c->meshIndex, c->name.c_str());
+
+                        if (c->meshIndex != -1)
+                        {
+                            ImGui::ColorEdit4("Base Color", &c->material.data.baseColor.x);
+                            ImGui::DragFloat("Metallic", &c->material.data.metallic, 0.025f);
+                            ImGui::DragFloat("Roughness", &c->material.data.roughness, 0.025f);
+                            ImGui::DragFloat("Emissive", &c->material.data.emissive, 0.025f);
+                        }
                     });
                     break;
                 }
@@ -628,28 +633,25 @@ namespace ignite
 
                                         MeshRenderer &meshRenderer = nodeEntity.AddComponent<MeshRenderer>();
 
+                                        meshRenderer.meshIndex = meshIdx;
                                         meshRenderer.name = mesh->name;
                                         meshRenderer.root = m_SelectedEntity.GetUUID();
 
                                         for (auto &vertex : mesh->vertices)
                                         {
-                                            entt::entity e = static_cast<entt::entity>(nodeEntity);
-                                            vertex.entityID = entt::to_integral(e);
+                                            vertex.entityID = nodeEntity;
                                         }
 
                                         meshRenderer.mesh = CreateRef<EntityMesh>();
-
                                         meshRenderer.mesh->vertices = mesh->vertices;
                                         meshRenderer.mesh->indices = mesh->indices;
-                                        meshRenderer.mesh->indexBuffer = mesh->indexBuffer;
-                                        meshRenderer.mesh->vertexBuffer = mesh->vertexBuffer;
                                         meshRenderer.mesh->aabb = mesh->aabb;
 
                                         // outline
-                                        meshRenderer.mesh->outlineVertexBuffer = mesh->outlineVertexBuffer;
                                         meshRenderer.mesh->outlineVertices = mesh->outlineVertices;
-
                                         meshRenderer.material = mesh->material;
+
+                                        meshRenderer.mesh->CreateBuffers();
 
                                         SceneManager::WriteMeshBuffer(scene, meshRenderer);
                                     }

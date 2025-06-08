@@ -79,14 +79,14 @@ namespace ignite {
         
         std::string name;
 
+        // do not copy the buffer
         nvrhi::BufferHandle vertexBuffer;
         nvrhi::BufferHandle outlineVertexBuffer;
-
         nvrhi::BufferHandle indexBuffer;
-        nvrhi::BindingSetHandle bindingSet;
-
         nvrhi::BufferHandle objectBuffer;
         nvrhi::BufferHandle materialBuffer;
+        
+        nvrhi::BindingSetHandle bindingSet;
 
         glm::mat4 localTransform;
         glm::mat4 worldTransform;
@@ -99,7 +99,6 @@ namespace ignite {
 
         AABB aabb;
         
-        void CreateConstantBuffers(nvrhi::IDevice *device);
         void CreateBuffers();
     };
 
@@ -113,14 +112,13 @@ namespace ignite {
         Ref<Shader> vertexShader;
         Ref<Shader> pixelShader;
 
+        // do not copy the buffer
         nvrhi::BufferHandle vertexBuffer;
         nvrhi::BufferHandle outlineVertexBuffer;
-
         nvrhi::BufferHandle indexBuffer;
-        std::unordered_map<GPipeline, nvrhi::BindingSetHandle> bindingSets;
-
         nvrhi::BufferHandle objectBufferHandle;
         nvrhi::BufferHandle materialBufferHandle;
+        std::unordered_map<GPipeline, nvrhi::BindingSetHandle> bindingSets;
 
         std::vector<BoneInfo> boneInfo; // Bone weights and indices
         std::unordered_map<std::string, uint32_t> boneMapping; // Maps bone name to indices
@@ -136,22 +134,16 @@ namespace ignite {
             vertexShader = other.vertexShader;
             pixelShader = other.pixelShader;
 
-            vertexBuffer = other.vertexBuffer;
-            indexBuffer = other.indexBuffer;
-            bindingSets = other.bindingSets;
-
             boneInfo = other.boneInfo;
             boneMapping = other.boneMapping;
             aabb = other.aabb;
 
             // outline
-            outlineVertexBuffer = other.outlineVertexBuffer;
             outlineVertices = other.outlineVertices;
 
             CreateBuffers();
         }
 
-        void CreateConstantBuffers(nvrhi::IDevice *device);
         void CreateBuffers();
     };
     

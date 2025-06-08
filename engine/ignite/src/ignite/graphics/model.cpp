@@ -41,12 +41,6 @@ namespace ignite {
         MeshLoader::ProcessNode(scene, scene->mRootNode, filepath.generic_string(), meshes, nodes, skeleton, -1);
         MeshLoader::CalculateWorldTransforms(nodes, meshes);
 
-        for (auto &mesh : meshes)
-        {
-            // create buffers
-            mesh->CreateConstantBuffers(m_CreateInfo.device);
-        }
-
         MeshLoader::ClearTextureCache();
     }
 

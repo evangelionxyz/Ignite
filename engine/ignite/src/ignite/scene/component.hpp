@@ -217,6 +217,10 @@ namespace ignite
     public:
         std::string name;
         Ref<EntityMesh> mesh;
+
+        AssetHandle meshSource = AssetHandle(0); // actual .glb, .gltf, .fbx file
+        int meshIndex = -1; // submesh index
+
         UUID root = UUID(0);
 
         ObjectBuffer meshBuffer;
@@ -228,6 +232,9 @@ namespace ignite
         MeshRenderer() = default;
         MeshRenderer(const MeshRenderer &other)
         {
+            if (!other.mesh)
+                return;
+
             name = other.name;
             mesh = CreateRef<EntityMesh>(*other.mesh.get());
 
@@ -236,6 +243,8 @@ namespace ignite
             fillMode = other.fillMode;
 
             meshBuffer = other.meshBuffer;
+            meshSource = other.meshSource;
+            meshIndex = other.meshIndex;
         }
 
         static CompType StaticType() { return CompType_MeshRenderer; }

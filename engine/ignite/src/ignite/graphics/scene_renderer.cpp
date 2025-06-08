@@ -213,6 +213,10 @@ namespace ignite
             if (entity.HasComponent<MeshRenderer>())
             {
                 MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
+                
+                // not loaded mesh
+                if (meshRenderer.meshIndex == -1)
+                    continue;
 
                 // write material constant buffer
                 commandList->writeBuffer(meshRenderer.mesh->materialBufferHandle, &meshRenderer.material.data, sizeof(meshRenderer.material.data));
@@ -260,6 +264,10 @@ namespace ignite
             {
                 MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
 
+                // not loaded mesh
+                if (meshRenderer.meshIndex == -1)
+                    continue;
+
                 // write material constant buffer
                 commandList->writeBuffer(meshRenderer.mesh->materialBufferHandle, &meshRenderer.material.data, sizeof(meshRenderer.material.data));
                 commandList->writeBuffer(meshRenderer.mesh->objectBufferHandle, &meshRenderer.meshBuffer, sizeof(meshRenderer.meshBuffer));
@@ -302,6 +310,10 @@ namespace ignite
             if (entity.HasComponent<MeshRenderer>())
             {
                 MeshRenderer &meshRenderer = entity.GetComponent<MeshRenderer>();
+
+                // not loaded mesh
+                if (meshRenderer.meshIndex == -1)
+                    continue;
 
                 meshRenderer.meshBuffer.transformation = translationMatrix * glm::mat4(tr.rotation) * scaleMatrix;
                 commandList->writeBuffer(meshRenderer.mesh->objectBufferHandle, &meshRenderer.meshBuffer, sizeof(meshRenderer.meshBuffer));

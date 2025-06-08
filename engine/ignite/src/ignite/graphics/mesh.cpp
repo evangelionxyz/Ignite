@@ -20,27 +20,6 @@ namespace ignite {
 
     static std::unordered_map<std::string, nvrhi::TextureHandle> textureCache;
 
-    void Mesh::CreateConstantBuffers(nvrhi::IDevice *device)
-    {
-        // create buffers
-        auto constantBufferDesc = nvrhi::BufferDesc()
-            .setIsConstantBuffer(true)
-            .setIsVolatile(true)
-            .setMaxVersions(16)
-            .setInitialState(nvrhi::ResourceStates::ConstantBuffer);
-
-        // create per mesh constant buffers
-        constantBufferDesc.setDebugName("Mesh constant buffer");
-        constantBufferDesc.setByteSize(sizeof(ObjectBuffer));
-        objectBuffer = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(objectBuffer, "[Model] Failed to create object constant buffer");
-
-        constantBufferDesc.setDebugName("Material constant buffer");
-        constantBufferDesc.setByteSize(sizeof(MaterialData));
-        materialBuffer = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(materialBuffer, "[Model] Failed to create material constant buffer");
-    }
-
     // Mesh class
     void Mesh::CreateBuffers()
     {
@@ -79,6 +58,24 @@ namespace ignite {
 
         indexBuffer = device->createBuffer(ibDesc);
         LOG_ASSERT(indexBuffer, "[Mesh] Failed to create Index Buffer");
+
+        // constant buffer
+        auto constantBufferDesc = nvrhi::BufferDesc()
+            .setIsConstantBuffer(true)
+            .setIsVolatile(true)
+            .setMaxVersions(16)
+            .setInitialState(nvrhi::ResourceStates::ConstantBuffer);
+
+        // create per mesh constant buffers
+        constantBufferDesc.setDebugName("Mesh constant buffer");
+        constantBufferDesc.setByteSize(sizeof(ObjectBuffer));
+        objectBuffer = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(objectBuffer, "[Model] Failed to create object constant buffer");
+
+        constantBufferDesc.setDebugName("Material constant buffer");
+        constantBufferDesc.setByteSize(sizeof(MaterialData));
+        materialBuffer = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(materialBuffer, "[Model] Failed to create material constant buffer");
     }
 
     // Mesh loader
@@ -557,26 +554,6 @@ namespace ignite {
         textureCache.clear();
     }
 
-    void EntityMesh::CreateConstantBuffers(nvrhi::IDevice *device)
-    {
-        // create buffers
-        auto constantBufferDesc = nvrhi::BufferDesc()
-            .setIsConstantBuffer(true)
-            .setIsVolatile(true)
-            .setMaxVersions(16)
-            .setInitialState(nvrhi::ResourceStates::ConstantBuffer);
-
-        // create per mesh constant buffers
-        constantBufferDesc.setDebugName("Mesh constant buffer");
-        constantBufferDesc.setByteSize(sizeof(ObjectBuffer));
-        objectBufferHandle = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(objectBufferHandle, "[Model] Failed to create object constant buffer");
-
-        constantBufferDesc.setDebugName("Material constant buffer");
-        constantBufferDesc.setByteSize(sizeof(MaterialData));
-        materialBufferHandle = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(materialBufferHandle, "[Model] Failed to create material constant buffer");
-    }
 
     // Entity Mesh class
     void EntityMesh::CreateBuffers()
@@ -616,6 +593,24 @@ namespace ignite {
 
         indexBuffer = device->createBuffer(ibDesc);
         LOG_ASSERT(indexBuffer, "[Mesh] Failed to create Index Buffer");
+
+        // Constant buffer
+        auto constantBufferDesc = nvrhi::BufferDesc()
+            .setIsConstantBuffer(true)
+            .setIsVolatile(true)
+            .setMaxVersions(16)
+            .setInitialState(nvrhi::ResourceStates::ConstantBuffer);
+
+        // create per mesh constant buffers
+        constantBufferDesc.setDebugName("Mesh constant buffer");
+        constantBufferDesc.setByteSize(sizeof(ObjectBuffer));
+        objectBufferHandle = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(objectBufferHandle, "[Model] Failed to create object constant buffer");
+
+        constantBufferDesc.setDebugName("Material constant buffer");
+        constantBufferDesc.setByteSize(sizeof(MaterialData));
+        materialBufferHandle = device->createBuffer(constantBufferDesc);
+        LOG_ASSERT(materialBufferHandle, "[Model] Failed to create material constant buffer");
     }
 
 }
