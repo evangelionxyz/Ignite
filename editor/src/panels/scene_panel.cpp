@@ -117,16 +117,15 @@ namespace ignite
     {
         ImGui::Begin("Hierarchy");
       
-        static ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar;
-        ImGui::BeginChild("scene_hierarchy", { ImGui::GetContentRegionAvail().x, 20.0f }, 0, windowFlags);
-        ImGui::Button(m_Scene->name.c_str(), ImGui::GetContentRegionAvail());
+        ImGui::Button(m_Scene->name.c_str(), { ImGui::GetContentRegionAvail().x, 0.0f });
+
         // target drop
         if (ImGui::BeginDragDropTarget())
         {
             if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("ENTITY_SOURCE_ITEM"))
             {
                 LOG_ASSERT(payload->DataSize == sizeof(Entity), "WRONG ITEM, that should be an entity");
-                Entity src { *static_cast<entt::entity *>(payload->Data), m_Scene };
+                Entity src{ *static_cast<entt::entity *>(payload->Data), m_Scene };
                 ID &idComp = src.GetComponent<ID>();
 
                 // check if src entity has parent
@@ -144,9 +143,6 @@ namespace ignite
             ImGui::EndDragDropTarget();
         }
 
-        ImGui::EndChild();
-
-        ImGui::BeginChild("entity_hierachy", ImGui::GetContentRegionAvail(), 0, windowFlags);
         ImGui::Text("Entity count: %zu", m_Scene->entities.size());
 
         ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_ScrollX;
@@ -176,8 +172,6 @@ namespace ignite
 
             ImGui::EndTable();
         }
-
-        ImGui::EndChild();
 
         ImGui::End();
     }
@@ -526,14 +520,13 @@ namespace ignite
                     {
                         MeshRenderer *c = comp->As<MeshRenderer>();
                         
-                        ImGui::Text("Mesh [%d]: %s", c->meshIndex, c->name.c_str());
-
+                        ImGui::Text("Mesh [%d]: %s", c->meshIndex, c->mesh ? c->mesh->name.c_str() : "<null>");
                         if (c->meshIndex != -1)
                         {
-                            ImGui::ColorEdit4("Base Color", &c->material.data.baseColor.x);
-                            ImGui::DragFloat("Metallic", &c->material.data.metallic, 0.025f);
-                            ImGui::DragFloat("Roughness", &c->material.data.roughness, 0.025f);
-                            ImGui::DragFloat("Emissive", &c->material.data.emissive, 0.025f);
+                            ImGui::ColorEdit4("Base Color", &c->mesh->material.data.baseColor.x);
+                            ImGui::DragFloat("Metallic", &c->mesh->material.data.metallic, 0.025f, 0.0f, 1.0f);
+                            ImGui::DragFloat("Roughness", &c->mesh->material.data.roughness, 0.025f, 0.0f, 1.0f);
+                            ImGui::DragFloat("Emissive", &c->mesh->material.data.emissive, 0.025f, 0.0f, 1.0f);
                         }
                     });
                     break;
@@ -585,7 +578,7 @@ namespace ignite
                                 std::vector<NodeInfo> nodes;
 
                                 MeshLoader::ProcessNode(assimpScene, assimpScene->mRootNode, filepath.generic_string(), meshes, nodes, c->skeleton, -1);
-                                MeshLoader::CalculateWorldTransforms(nodes, meshes);
+                                MeshLoader::CalculateWorldTransforms(nodes);
 
                                 // First pass: create all node entities
                                 for (auto &node : nodes)
@@ -632,25 +625,15 @@ namespace ignite
                                         const auto &mesh = meshes[meshIdx];
 
                                         MeshRenderer &meshRenderer = nodeEntity.AddComponent<MeshRenderer>();
-
                                         meshRenderer.meshIndex = meshIdx;
-                                        meshRenderer.name = mesh->name;
                                         meshRenderer.root = m_SelectedEntity.GetUUID();
 
-                                        for (auto &vertex : mesh->vertices)
+                                        for (auto &vertex : mesh->data.vertices)
                                         {
                                             vertex.entityID = nodeEntity;
                                         }
 
-                                        meshRenderer.mesh = CreateRef<EntityMesh>();
-                                        meshRenderer.mesh->vertices = mesh->vertices;
-                                        meshRenderer.mesh->indices = mesh->indices;
-                                        meshRenderer.mesh->aabb = mesh->aabb;
-
-                                        // outline
-                                        meshRenderer.mesh->outlineVertices = mesh->outlineVertices;
-                                        meshRenderer.material = mesh->material;
-
+                                        meshRenderer.mesh = mesh;
                                         meshRenderer.mesh->CreateBuffers();
 
                                         SceneManager::WriteMeshBuffer(scene, meshRenderer);
@@ -659,14 +642,19 @@ namespace ignite
                                     // Extract skeleton joints into entity
                                     for (size_t i = 0; i < c->skeleton->joints.size(); ++i)
                                     {
-                                        if (const std::string &name = c->skeleton->joints[i].name; scene->nameToUUID.contains(name))
+                                        const std::string &name = c->skeleton->joints[i].name;
+                                        for (auto [uuid, e] : m_Scene->entities)
                                         {
-                                            UUID uuid = scene->nameToUUID[name];
-                                            c->skeleton->jointEntityMap[static_cast<i32>(i)] = uuid;
-
-                                            Entity entity = SceneManager::GetEntity(scene, uuid);
-                                            entity.GetComponent<ID>().type = EntityType_Joint;
+                                            Entity entity = { e, m_Scene };
+                                            if (entity.GetName() == name)
+                                            {
+                                                c->skeleton->jointEntityMap[static_cast<i32>(i)] = uuid;
+                                                Entity entity = SceneManager::GetEntity(scene, uuid);
+                                                entity.GetComponent<ID>().type = EntityType_Joint;
+                                                break;
+                                            }
                                         }
+                                        
                                     }
                                 }
 

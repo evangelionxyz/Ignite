@@ -215,16 +215,13 @@ namespace ignite
     class MeshRenderer : public IComponent
     {
     public:
-        std::string name;
-        Ref<EntityMesh> mesh;
-
+        Ref<Mesh> mesh;
         AssetHandle meshSource = AssetHandle(0); // actual .glb, .gltf, .fbx file
         int meshIndex = -1; // submesh index
 
         UUID root = UUID(0);
 
         ObjectBuffer meshBuffer;
-        Material material;
 
         nvrhi::RasterCullMode cullMode = nvrhi::RasterCullMode::Front;
         nvrhi::RasterFillMode fillMode = nvrhi::RasterFillMode::Solid;
@@ -235,10 +232,7 @@ namespace ignite
             if (!other.mesh)
                 return;
 
-            name = other.name;
-            mesh = CreateRef<EntityMesh>(*other.mesh.get());
-
-            material = other.material;
+            mesh = CreateRef<Mesh>(*other.mesh.get());
             cullMode = other.cullMode;
             fillMode = other.fillMode;
 

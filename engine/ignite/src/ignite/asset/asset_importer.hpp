@@ -1,7 +1,6 @@
 #pragma once
 
 #include "asset.hpp"
-#include "ignite/graphics/model.hpp"
 
 #include <future>
 #include <vector>
@@ -20,6 +19,8 @@ namespace ignite {
         static Ref<Asset> Import(AssetHandle handle, const AssetMetaData &metadata);
     };
 
+#if 0
+
     class ModelImporter : public AssetImporter
     {
     public:
@@ -32,6 +33,7 @@ namespace ignite {
         static Ref<Model> LoadModel(Ref<Model> *outModels, const std::string &filepath, const ModelCreateInfo &createInfo, const Ref<Environment> &env, const Ref<GraphicsPipeline> &pipeline);
         static std::vector<std::future<Ref<Model>>> m_ModelFutures;
     };
+#endif
 
     class EnvironmentImporter : public AssetImporter
     {

@@ -47,7 +47,6 @@ namespace ignite
         entt::registry *registry = nullptr;
 
         std::unordered_map<UUID, entt::entity> entities; // uuid to entity
-        std::unordered_map<std::string, UUID> nameToUUID;
         
         EntityComponents registeredComps;
         StringCounterMap entityNamesMapCounter;

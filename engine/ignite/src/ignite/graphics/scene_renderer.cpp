@@ -219,7 +219,7 @@ namespace ignite
                     continue;
 
                 // write material constant buffer
-                commandList->writeBuffer(meshRenderer.mesh->materialBufferHandle, &meshRenderer.material.data, sizeof(meshRenderer.material.data));
+                commandList->writeBuffer(meshRenderer.mesh->materialBufferHandle, &meshRenderer.mesh->material.data, sizeof(meshRenderer.mesh->material.data));
                 commandList->writeBuffer(meshRenderer.mesh->objectBufferHandle, &meshRenderer.meshBuffer, sizeof(meshRenderer.meshBuffer));
 
                 // render
@@ -234,7 +234,7 @@ namespace ignite
                 commandList->setGraphicsState(meshGraphicsState);
 
                 nvrhi::DrawArguments args;
-                args.setVertexCount(static_cast<uint32_t>(meshRenderer.mesh->indices.size()));
+                args.setVertexCount(static_cast<uint32_t>(meshRenderer.mesh->data.indices.size()));
                 args.instanceCount = 1;
 
                 commandList->drawIndexed(args);
@@ -269,7 +269,7 @@ namespace ignite
                     continue;
 
                 // write material constant buffer
-                commandList->writeBuffer(meshRenderer.mesh->materialBufferHandle, &meshRenderer.material.data, sizeof(meshRenderer.material.data));
+                commandList->writeBuffer(meshRenderer.mesh->materialBufferHandle, &meshRenderer.mesh->material.data, sizeof(meshRenderer.mesh->material.data));
                 commandList->writeBuffer(meshRenderer.mesh->objectBufferHandle, &meshRenderer.meshBuffer, sizeof(meshRenderer.meshBuffer));
 
                 // render
@@ -284,7 +284,7 @@ namespace ignite
                 commandList->setGraphicsState(meshGraphicsState);
 
                 nvrhi::DrawArguments args;
-                args.setVertexCount(static_cast<uint32_t>(meshRenderer.mesh->indices.size()));
+                args.setVertexCount(static_cast<uint32_t>(meshRenderer.mesh->data.indices.size()));
                 args.instanceCount = 1;
 
                 commandList->drawIndexed(args);
@@ -330,7 +330,7 @@ namespace ignite
                 commandList->setGraphicsState(meshGraphicsState);
 
                 nvrhi::DrawArguments args;
-                args.setVertexCount(static_cast<uint32_t>(meshRenderer.mesh->indices.size()));
+                args.setVertexCount(static_cast<uint32_t>(meshRenderer.mesh->data.indices.size()));
                 args.instanceCount = 1;
 
                 commandList->drawIndexed(args);

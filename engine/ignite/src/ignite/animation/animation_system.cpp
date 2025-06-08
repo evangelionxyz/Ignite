@@ -1,35 +1,16 @@
 #include "animation_system.hpp"
 
 #include "ignite/core/logger.hpp"
-#include "ignite/graphics/model.hpp"
 #include "ignite/scene/entity.hpp"
 #include "ignite/scene/scene_manager.hpp"
 
 namespace ignite {
-
-    void AnimationSystem::PlayAnimation(const Ref<Model> &model, int animIndex)
-    {
-        LOG_ASSERT(model , "[Animationl] model is null!");
-        if (animIndex < model->animations.size())
-        {
-            model->animations[animIndex]->isPlaying = true;
-            model->activeAnimIndex = animIndex;
-        }
-    }
 
     void AnimationSystem::PlayAnimation(const std::vector<Ref<SkeletalAnimation>> &animations, int animIndex /*= 0*/)
     {
         if (animIndex < animations.size())
         {
             animations[animIndex]->isPlaying = true;
-        }
-    }
-
-    void AnimationSystem::UpdateAnimation(const Ref<Model> &model, float timeInSeconds)
-    {
-        if (UpdateSkeleton(model->skeleton, model->GetActiveAnimation(), timeInSeconds))
-        {
-            model->boneTransforms = GetFinalJointTransforms(model->skeleton);
         }
     }
 

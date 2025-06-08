@@ -92,7 +92,6 @@ namespace ignite
         entity.AddComponent<Transform>(Transform({0.0f, 0.0f, 0.0f}));
 
         scene->entities[uuid] = entity;
-        scene->nameToUUID[uniqueName] = uuid;
         
         // scene->entityNames.push_back(uniqueName);
         
@@ -163,18 +162,18 @@ namespace ignite
         commandList->open();
 
         // m_CreateInfo.commandList->open();
-        commandList->writeBuffer(meshRenderer.mesh->indexBuffer, meshRenderer.mesh->indices.data(), sizeof(uint32_t) * meshRenderer.mesh->indices.size());
+        commandList->writeBuffer(meshRenderer.mesh->indexBuffer, meshRenderer.mesh->data.indices.data(), sizeof(uint32_t) * meshRenderer.mesh->data.indices.size());
 
         // default
-        commandList->writeBuffer(meshRenderer.mesh->vertexBuffer, meshRenderer.mesh->vertices.data(), sizeof(VertexMesh) * meshRenderer.mesh->vertices.size());
+        commandList->writeBuffer(meshRenderer.mesh->vertexBuffer, meshRenderer.mesh->data.vertices.data(), sizeof(VertexMesh) * meshRenderer.mesh->data.vertices.size());
         
         // outline
         commandList->writeBuffer(meshRenderer.mesh->outlineVertexBuffer, meshRenderer.mesh->outlineVertices.data(), sizeof(VertexMeshOutline) * meshRenderer.mesh->outlineVertices.size());
 
         // write textures
-        if (meshRenderer.material.ShouldWriteTexture())
+        if (meshRenderer.mesh->material.ShouldWriteTexture())
         {
-            meshRenderer.material.WriteBuffer(commandList);
+            meshRenderer.mesh->material.WriteBuffer(commandList);
         }
 
         auto desc = nvrhi::BindingSetDesc();
@@ -184,13 +183,13 @@ namespace ignite
         desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, scene->sceneRenderer->GetEnvironment()->GetParamsBuffer()));
         desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, meshRenderer.mesh->materialBufferHandle));
 
-        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, meshRenderer.material.textures[aiTextureType_DIFFUSE].handle));
-        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(1, meshRenderer.material.textures[aiTextureType_SPECULAR].handle));
-        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, meshRenderer.material.textures[aiTextureType_EMISSIVE].handle));
-        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, meshRenderer.material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
-        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(4, meshRenderer.material.textures[aiTextureType_NORMALS].handle));
+        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, meshRenderer.mesh->material.textures[aiTextureType_DIFFUSE].handle));
+        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(1, meshRenderer.mesh->material.textures[aiTextureType_SPECULAR].handle));
+        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, meshRenderer.mesh->material.textures[aiTextureType_EMISSIVE].handle));
+        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, meshRenderer.mesh->material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
+        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(4, meshRenderer.mesh->material.textures[aiTextureType_NORMALS].handle));
         desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, scene->sceneRenderer->GetEnvironment()->GetHDRTexture()));
-        desc.addItem(nvrhi::BindingSetItem::Sampler(0, meshRenderer.material.sampler));
+        desc.addItem(nvrhi::BindingSetItem::Sampler(0, meshRenderer.mesh->material.sampler));
 
         meshRenderer.mesh->bindingSets[GPipeline::MESH] = device->createBindingSet(desc, Renderer::GetBindingLayout(GPipeline::MESH));
         LOG_ASSERT(meshRenderer.mesh->bindingSets[GPipeline::MESH], "Failed to create binding set");
@@ -248,9 +247,16 @@ namespace ignite
             DestroyEntity(scene, GetEntity(scene, childId));
         }
 
+        scene->registry->destroy(entity);
         scene->registeredComps.erase(entity);
         scene->physics2D->DestroyBody(entity);
-        scene->registry->destroy(entity);
+        
+        // remove from parent
+        if (idComp.parent != UUID(0))
+        {
+            Entity parent = SceneManager::GetEntity(scene, idComp.parent);
+            parent.GetComponent<ID>().RemoveChild(idComp.uuid);
+        }
 
         auto it = std::ranges::find_if(scene->entities, [entity](auto pair) { return pair.second == entity; });
         if (it != scene->entities.end())
@@ -300,7 +306,7 @@ namespace ignite
         {
             MeshRenderer &mr = newEntity.GetComponent<MeshRenderer>();
 
-            for (auto &vertex : mr.mesh->vertices)
+            for (auto &vertex : mr.mesh->data.vertices)
             {
                 vertex.entityID = newEntity;
             }
@@ -340,17 +346,6 @@ namespace ignite
         }
 
         return newEntity;
-    }
-
-    Entity SceneManager::GetEntity(Scene* scene, const std::string& name)
-    {
-        if (scene->nameToUUID.contains(name))
-        {
-            const UUID uuid = scene->nameToUUID.at(name);
-            return GetEntity(scene, uuid);
-        }
-        
-        return Entity{};
     }
 
     Entity SceneManager::GetEntity(Scene *scene, UUID uuid)

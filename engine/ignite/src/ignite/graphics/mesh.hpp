@@ -66,48 +66,23 @@ namespace ignite {
         glm::mat4 offsetMatrix = glm::mat4(1.0f);
     };
 
+    struct MeshData
+    {
+        std::vector<VertexMesh> vertices;
+        std::vector<uint32_t> indices;
+
+        int materialIndex = -1;
+    };
+
     class Mesh
     {
     public:
-        std::vector<VertexMesh> vertices;
-        std::vector<VertexMeshOutline> outlineVertices;
-        std::vector<uint32_t> indices;
-        Material material;
-
-        Ref<Shader> vertexShader;
-        Ref<Shader> pixelShader;
-        
         std::string name;
 
-        // do not copy the buffer
-        nvrhi::BufferHandle vertexBuffer;
-        nvrhi::BufferHandle outlineVertexBuffer;
-        nvrhi::BufferHandle indexBuffer;
-        nvrhi::BufferHandle objectBuffer;
-        nvrhi::BufferHandle materialBuffer;
-        
-        nvrhi::BindingSetHandle bindingSet;
+        MeshData data;
+        Material material;
 
-        glm::mat4 localTransform;
-        glm::mat4 worldTransform;
-
-        i32 nodeParentID = -1;
-        i32 nodeID = -1; // ID of the bone this mesh is attached to
-
-        std::vector<BoneInfo> boneInfo; // Bone weights and indices
-        std::unordered_map<std::string, uint32_t> boneMapping; // Maps bone names to indices
-
-        AABB aabb;
-        
-        void CreateBuffers();
-    };
-
-    class EntityMesh
-    {
-    public:
-        std::vector<VertexMesh> vertices;
         std::vector<VertexMeshOutline> outlineVertices;
-        std::vector<uint32_t> indices;
 
         Ref<Shader> vertexShader;
         Ref<Shader> pixelShader;
@@ -120,20 +95,22 @@ namespace ignite {
         nvrhi::BufferHandle materialBufferHandle;
         std::unordered_map<GPipeline, nvrhi::BindingSetHandle> bindingSets;
 
+        i32 nodeParentID = -1;
+        i32 nodeID = -1; // ID of the bone this mesh is attached to
+
         std::vector<BoneInfo> boneInfo; // Bone weights and indices
         std::unordered_map<std::string, uint32_t> boneMapping; // Maps bone name to indices
 
         AABB aabb;
 
-        EntityMesh() = default;
-        EntityMesh(const EntityMesh &other)
+        Mesh() = default;
+        Mesh(const Mesh &other)
         {
-            vertices = other.vertices;
-            indices = other.indices;
+            data = other.data;
 
             vertexShader = other.vertexShader;
             pixelShader = other.pixelShader;
-
+            material = other.material;
             boneInfo = other.boneInfo;
             boneMapping = other.boneMapping;
             aabb = other.aabb;
@@ -152,11 +129,8 @@ namespace ignite {
     public:
 
         static void ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &mesh, std::vector<NodeInfo> &nodes, const Ref<Skeleton> &skeleton, i32 parentNodeID);
-        template<typename T>
-        static void LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *mesh, Ref<T> &meshes, const std::string &filepath, const Ref<Skeleton> &skeleton);
-
-        template<typename T>
-        static void ProcessBoneWeights(aiMesh *assimpMesh, Ref<T> &mesh, const Ref<Skeleton> &skeleton);
+        static void LoadSingleMesh(const std::string &filepath, const aiScene *scene, aiMesh *mesh, const uint32_t meshIndex, MeshData &outMeshData, const Ref<Skeleton> &skeleton, AABB &outAABB);
+        static void ProcessBoneWeights(aiMesh *assimpMesh, MeshData &outMeshData, std::vector<BoneInfo> &outBoneInfo, std::unordered_map<std::string, uint32_t> &outBoneMapping, const Ref<Skeleton> &skeleton);
 
         static void ExtractSkeleton(const aiScene *scene, Ref<Skeleton> &skeleton);
         static void ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Ref<Skeleton> &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices);
@@ -164,7 +138,7 @@ namespace ignite {
         static void LoadAnimation(const aiScene *scene, std::vector<Ref<SkeletalAnimation>> &animations);
         static void LoadMaterial(const aiScene *scene, aiMaterial *assimpMaterial, const std::string &filepath, Material &material);
         static void LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type);
-        static void CalculateWorldTransforms(std::vector<NodeInfo> &nodes, std::vector<Ref<Mesh>> &meshes);
+        static void CalculateWorldTransforms(std::vector<NodeInfo> &nodes);
         static void ClearTextureCache();
     };
 }
