@@ -279,7 +279,7 @@ namespace ignite
             m_SceneRenderer.RenderOutline(m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer, m_ScenePanel->GetSelectedEntities());
         }
 
-        // Create staging texture for readback
+        // Create staging texture for read-back
         if (m_Data.isPickingEntity && m_ActiveScene)
         {
             nvrhi::TextureDesc stagingDesc = m_ScenePanel->GetRT()->GetColorAttachment(1)->getDesc();
@@ -323,6 +323,7 @@ namespace ignite
                 if (!found && !m_Data.multiSelect)
                 {
                     m_ScenePanel->SetSelectedEntity(Entity{});
+                    m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::NONE);
                 }
 
                 m_Device->unmapStagingTexture(m_EntityIDStagingTexture);

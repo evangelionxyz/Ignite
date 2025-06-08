@@ -23,7 +23,7 @@ namespace ignite
 
         void CreatePipelines(nvrhi::IFramebuffer *framebuffer) const;
         void Render(Scene *scene, Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer);
-        void RenderOutline(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const std::vector<Entity>& selectedEntities);
+        void RenderOutline(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const std::unordered_map<UUID, Entity> &selectedEntities);
 
         Ref<GraphicsPipeline> &GetBatchQuadPipeline() { return m_BatchQuadPipeline; }
         Ref<GraphicsPipeline> &GetBatchLinePipeline() { return m_BatchLinePipeline; }

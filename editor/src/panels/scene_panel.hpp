@@ -67,7 +67,7 @@ namespace ignite
         Entity SetSelectedEntity(Entity entity);
         Entity GetSelectedEntity();
 
-        const std::vector<Entity> &GetSelectedEntities() { return m_SelectedEntities; }
+        const std::unordered_map<UUID, Entity> &GetSelectedEntities() { return m_SelectedEntities; }
         
         void DuplicateSelectedEntity();
 
@@ -92,13 +92,11 @@ namespace ignite
         Scene *m_Scene = nullptr;
         Gizmo m_Gizmo;
 
-        std::vector<Entity> m_SelectedEntities;
+        std::unordered_map<UUID, Entity> m_SelectedEntities;
 
         Entity m_SelectedEntity{};
 
         static UUID m_TrackingSelectedEntity;
-
-        std::unordered_map<UUID, Transform> m_InitialTransforms;
 
         struct CameraData
         {

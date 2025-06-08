@@ -247,9 +247,9 @@ namespace ignite
         Renderer2D::End();
     }
 
-    void SceneRenderer::RenderOutline(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const std::vector<Entity>& selectedEntities)
+    void SceneRenderer::RenderOutline(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const std::unordered_map<UUID, Entity> &selectedEntities)
     {
-        for (Entity entity : selectedEntities)
+        for (Entity entity : selectedEntities | std::views::values)
         {
             auto &tr = entity.GetTransform();
 
@@ -284,7 +284,7 @@ namespace ignite
         }
 
 
-        for (Entity entity : selectedEntities)
+        for (Entity entity : selectedEntities | std::views::values)
         {
             auto &tr = entity.GetTransform();
 

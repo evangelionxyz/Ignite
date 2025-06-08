@@ -924,13 +924,15 @@ namespace ignite
         // Start manipulation: Fired only on the first frame of interaction
         bool isManipulatingNow = m_Gizmo.IsManipulating();
 
+        static std::unordered_map<UUID, Transform> initialTransforms;
+
         if (isManipulatingNow && !m_Data.isGizmoManipulating)
         {
-            m_InitialTransforms.clear();
-            for (Entity entity : m_SelectedEntities)
+            initialTransforms.clear();
+            for (auto [uuid, entity]: m_SelectedEntities)
             {
                 // Store the original transform of each selected entity
-                m_InitialTransforms[entity.GetUUID()] = entity.GetTransform();
+                initialTransforms[uuid] = entity.GetTransform();
             }
         }
         // Set the master flag for the current frame
@@ -941,7 +943,7 @@ namespace ignite
         {
             // Step 1: Compute shared pivot (center of all selected entities)
             glm::vec3 pivot(0.0f);
-            for (Entity entity : m_SelectedEntities)
+            for (Entity entity : m_SelectedEntities | std::views::values)
             {
                 pivot += entity.GetTransform().translation;
             }
@@ -963,13 +965,13 @@ namespace ignite
                 glm::vec3 deltaTranslation, deltaScale, deltaRotation;
                 Math::DecomposeTransformEuler(gizmoDelta , deltaTranslation, deltaRotation, deltaScale);
                 
-                for (Entity entity : m_SelectedEntities)
+                for (auto [uuid, entity] : m_SelectedEntities)
                 {
                     // Get the live transform component to apply changes to it
                     Transform &tr = entity.GetTransform();
      
                     // Get the ORIGINAL transform we stored at the beginning of the manipulation
-                    const Transform &initialTransform = m_InitialTransforms.at(entity.GetUUID());
+                    const Transform &initialTransform = initialTransforms.at(uuid);
                     glm::mat4 initialWorldMatrix = initialTransform.GetWorldMatrix();
 
                     // Apply Translation and Rotation around the shared pivot
@@ -1040,8 +1042,6 @@ namespace ignite
                 tr.dirty = true;
             }
         }
-
-        // m_Data.isGizmoBeingUse = m_Gizmo.IsManipulating() || m_Gizmo.IsHovered();
 
         ImGui::End();
 
@@ -1445,23 +1445,41 @@ namespace ignite
             return {};
         }
 
-        m_TrackingSelectedEntity = entity.GetUUID();
-
+        // multi select
         if (m_Editor->GetState().multiSelect)
         {
-            m_SelectedEntities.push_back(entity);
+            auto it = m_SelectedEntities.find(entity.GetUUID());
+            if (it != m_SelectedEntities.end())
+            {
+                // deselect
+                it = m_SelectedEntities.erase(it);
+                
+                if (!m_SelectedEntities.empty())
+                {
+                    m_TrackingSelectedEntity = m_SelectedEntities.begin()->first;
+                    return m_SelectedEntity = m_SelectedEntities.begin()->second;
+                }
+            }
+            else
+            {
+                m_SelectedEntities[entity.GetUUID()] = entity;
+            }
         }
-        else
+        else // single select
         {
-            if (m_SelectedEntities.size() > 1)
+            // clear first
+            if (!m_SelectedEntities.empty())
                 m_SelectedEntities.clear();
 
-            if (m_SelectedEntities.empty())
-                m_SelectedEntities.push_back(entity);
-
-            m_SelectedEntities[0] = entity;
+            m_SelectedEntities[entity.GetUUID()] = entity;
         }
 
+        if (m_SelectedEntities.empty())
+        {
+            m_Gizmo.SetOperation(ImGuizmo::OPERATION::NONE);
+        }
+
+        m_TrackingSelectedEntity = entity.GetUUID();
         return m_SelectedEntity = entity;
     }
 
@@ -1472,7 +1490,7 @@ namespace ignite
 
     void ScenePanel::DuplicateSelectedEntity()
     {
-        for (Entity entity : m_SelectedEntities)
+        for (Entity entity : m_SelectedEntities | std::views::values)
         {
             if (entity.IsValid())
             {
