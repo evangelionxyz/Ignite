@@ -9,7 +9,7 @@
 namespace ignite
 {
     class DeviceManager;
-    class Camera;
+    class ICamera;
 
     class TestLayer : public Layer
     {
@@ -26,7 +26,7 @@ namespace ignite
     private:
         DeviceManager *m_DeviceManager;
         nvrhi::IDevice *m_Device;
-        Scope<Camera> m_ViewportCamera;
+        Scope<ICamera> m_ViewportCamera;
 
         Ref<RenderTarget> m_RenderTarget;
 

@@ -14,12 +14,8 @@
 namespace ignite
 {
     class ShaderFactory;
-    class DeviceManager;
     class ScenePanel;
     class ContentBrowserPanel;
-    class Model;
-    class SkeletalAnimation;
-    struct Skeleton;
 
     class EditorLayer final : public Layer
     {

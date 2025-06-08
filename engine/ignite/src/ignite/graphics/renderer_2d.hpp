@@ -4,7 +4,6 @@
 #include "vertex_data.hpp"
 #include "graphics_pipeline.hpp"
 #include "renderer.hpp"
-
 #include "shader.hpp"
 
 #include <unordered_map>
@@ -14,7 +13,6 @@ namespace ignite
     class GraphicsPipeline;
     class DeviceManager;
     class Texture;
-    class Camera;
 
     template<typename VertexType>
     struct BatchRender

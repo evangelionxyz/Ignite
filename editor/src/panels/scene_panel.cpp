@@ -1,7 +1,6 @@
 #include "scene_panel.hpp"
 
 #include "ignite/core/application.hpp"
-#include "ignite/scene/camera.hpp"
 #include "ignite/core/input/event.hpp"
 #include "ignite/core/input/key_event.hpp"
 #include "ignite/core/input/mouse_event.hpp"
@@ -35,15 +34,15 @@ namespace ignite
     {
         Application *app = Application::GetInstance();
 
-        m_ViewportCamera = CreateScope<Camera>("ScenePanel-Editor Camera");
-        // m_ViewportCamera->CreateOrthographic(app->GetCreateInfo().width, app->GetCreateInfo().height, 8.0f, 0.1f, 350.0f);
-        m_ViewportCamera->CreatePerspective(45.0f, app->GetCreateInfo().width, app->GetCreateInfo().height, 0.1f, 350.0f);
-        m_ViewportCamera->position = {3.0f, 2.0f, 3.0f};
-        m_ViewportCamera->yaw = -0.729f;
-        m_ViewportCamera->pitch = 0.410f;
+        m_Camera = EditorCamera("ScenePanel-Editor Camera");
+        // m_Camera.CreateOrthographic(app->GetCreateInfo().width, app->GetCreateInfo().height, 8.0f, 0.1f, 350.0f);
+        m_Camera.CreatePerspective(45.0f, app->GetCreateInfo().width, app->GetCreateInfo().height, 0.1f, 350.0f);
+        m_Camera.position = {3.0f, 2.0f, 3.0f};
+        m_Camera.yaw = -0.729f;
+        m_Camera.pitch = 0.410f;
 
-        m_ViewportCamera->UpdateViewMatrix();
-        m_ViewportCamera->UpdateProjectionMatrix();
+        m_Camera.UpdateViewMatrix();
+        m_Camera.UpdateProjectionMatrix();
 
 
         // Load icons
@@ -872,8 +871,8 @@ namespace ignite
             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
                 m_RenderTarget->Resize(vpWidth, vpHeight);
-                m_ViewportCamera->SetSize(vpWidth, vpHeight);
-                m_ViewportCamera->UpdateProjectionMatrix();
+                m_Camera.SetSize(vpWidth, vpHeight);
+                m_Camera.UpdateProjectionMatrix();
             }
         }
 
@@ -903,9 +902,9 @@ namespace ignite
         }
 
         GizmoInfo gizmoInfo;
-        gizmoInfo.cameraView = m_ViewportCamera->viewMatrix;
-        gizmoInfo.cameraProjection = m_ViewportCamera->projectionMatrix;
-        gizmoInfo.cameraType = m_ViewportCamera->projectionType;
+        gizmoInfo.cameraView = m_Camera.viewMatrix;
+        gizmoInfo.cameraProjection = m_Camera.projectionMatrix;
+        gizmoInfo.cameraType = m_Camera.projectionType;
 
         gizmoInfo.viewRect = m_ViewportData.rect;
 
@@ -1126,7 +1125,7 @@ namespace ignite
         // =================================
         // Camera settings
         static const char *cameraModeStr[2] = { "Orthographic", "Perspective" };
-        const char *currentCameraModeStr = cameraModeStr[static_cast<i32>(m_ViewportCamera->projectionType)];
+        const char *currentCameraModeStr = cameraModeStr[static_cast<i32>(m_Camera.projectionType)];
         if (ImGui::BeginCombo("Mode", currentCameraModeStr))
         {
             for (size_t i = 0; i < std::size(cameraModeStr); ++i)
@@ -1135,22 +1134,22 @@ namespace ignite
                 if (ImGui::Selectable(cameraModeStr[i], isSelected))
                 {
                     currentCameraModeStr = cameraModeStr[i];
-                    m_ViewportCamera->projectionType = static_cast<Camera::Type>(i);
+                    m_Camera.projectionType = static_cast<ICamera::Type>(i);
 
-                    if (m_ViewportCamera->projectionType == Camera::Type::Orthographic)
+                    if (m_Camera.projectionType == ICamera::Type::Orthographic)
                     {
-                        m_CameraData.lastPosition = m_ViewportCamera->position;
+                        m_CameraData.lastPosition = m_Camera.position;
 
-                        m_ViewportCamera->position = { 0.0f, 0.0f, 1.0f };
-                        m_ViewportCamera->zoom = 20.0f;
+                        m_Camera.position = { 0.0f, 0.0f, 1.0f };
+                        m_Camera.zoom = 20.0f;
                     }
                     else
                     {
-                        m_ViewportCamera->position = m_CameraData.lastPosition;
+                        m_Camera.position = m_CameraData.lastPosition;
                     }
 
-                    m_ViewportCamera->UpdateProjectionMatrix();
-                    m_ViewportCamera->UpdateViewMatrix();
+                    m_Camera.UpdateProjectionMatrix();
+                    m_Camera.UpdateViewMatrix();
                 }
 
                 if (isSelected)
@@ -1161,20 +1160,20 @@ namespace ignite
             ImGui::EndCombo();
         }
 
-        ImGui::DragFloat3("Position", &m_ViewportCamera->position[0], 0.025f);
+        ImGui::DragFloat3("Position", &m_Camera.position[0], 0.025f);
 
-        if (m_ViewportCamera->projectionType == Camera::Type::Perspective)
+        if (m_Camera.projectionType == ICamera::Type::Perspective)
         {
-            glm::vec2 yawPitch = { m_ViewportCamera->yaw, m_ViewportCamera->pitch };
+            glm::vec2 yawPitch = { m_Camera.yaw, m_Camera.pitch };
             if (ImGui::DragFloat2("Yaw/Pitch", &yawPitch.x, 0.025f))
             {
-                m_ViewportCamera->yaw = yawPitch.x;
-                m_ViewportCamera->pitch = yawPitch.y;
+                m_Camera.yaw = yawPitch.x;
+                m_Camera.pitch = yawPitch.y;
             }
         }
-        else if (m_ViewportCamera->projectionType == Camera::Type::Orthographic)
+        else if (m_Camera.projectionType == ICamera::Type::Orthographic)
         {
-            ImGui::DragFloat("Zoom", &m_ViewportCamera->zoom, 0.025f);
+            ImGui::DragFloat("Zoom", &m_Camera.zoom, 0.025f);
         }
     }
 
@@ -1238,9 +1237,9 @@ namespace ignite
         {
             const f32 dx = event.GetXOffset(), dy = event.GetYOffset();
 
-            switch (m_ViewportCamera->projectionType)
+            switch (m_Camera.projectionType)
             {
-                case Camera::Type::Perspective:
+                case ICamera::Type::Perspective:
                 {
                     if (Input::IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
                     {
@@ -1249,34 +1248,34 @@ namespace ignite
                     }
                     else
                     {
-                        m_ViewportCamera->position += m_ViewportCamera->GetForwardDirection() * dy * m_CameraData.moveSpeed * 0.5f;
+                        m_Camera.position += m_Camera.GetForwardDirection() * dy * m_CameraData.moveSpeed * 0.5f;
                     }
                     break;
                 }
-                case Camera::Type::Orthographic:
+                case ICamera::Type::Orthographic:
                 default:
                 {
                     const f32 scaleFactor = std::max(m_ViewportData.rect.GetSize().x, m_ViewportData.rect.GetSize().y);
-                    const f32 zoomSqrt = glm::sqrt(m_ViewportCamera->zoom * m_ViewportCamera->zoom);
+                    const f32 zoomSqrt = glm::sqrt(m_Camera.zoom * m_Camera.zoom);
                     const f32 moveSpeed = 50.0f / scaleFactor;
-                    const f32 mulFactor = moveSpeed * m_ViewportCamera->GetAspectRatio() * zoomSqrt;
+                    const f32 mulFactor = moveSpeed * m_Camera.GetAspectRatio() * zoomSqrt;
                     if (Input::IsKeyPressed(KEY_LEFT_SHIFT))
                     {
                         if (Input::IsKeyPressed(KEY_LEFT_CONTROL))
                         {
-                            m_ViewportCamera->position -= m_ViewportCamera->GetRightDirection() * dy * mulFactor;
-                            m_ViewportCamera->position += m_ViewportCamera->GetUpDirection() * dx * mulFactor;
+                            m_Camera.position -= m_Camera.GetRightDirection() * dy * mulFactor;
+                            m_Camera.position += m_Camera.GetUpDirection() * dx * mulFactor;
                         }
                         else
                         {
-                            m_ViewportCamera->position -= m_ViewportCamera->GetRightDirection() * dx * mulFactor;
-                            m_ViewportCamera->position += m_ViewportCamera->GetUpDirection() * dy * mulFactor;
+                            m_Camera.position -= m_Camera.GetRightDirection() * dx * mulFactor;
+                            m_Camera.position += m_Camera.GetUpDirection() * dy * mulFactor;
                         }
                     }
                     else
                     {
-                        m_ViewportCamera->zoom -= dy * zoomSqrt * 0.1f;
-                        m_ViewportCamera->zoom = glm::clamp(m_ViewportCamera->zoom, 1.0f, 100.0f);
+                        m_Camera.zoom -= dy * zoomSqrt * 0.1f;
+                        m_Camera.zoom = glm::clamp(m_Camera.zoom, 1.0f, 100.0f);
                     }
                     break;
                 }
@@ -1286,7 +1285,7 @@ namespace ignite
             {
             }
 
-            m_ViewportCamera->UpdateViewMatrix();
+            m_Camera.UpdateViewMatrix();
         }
 
         return false;
@@ -1322,11 +1321,11 @@ namespace ignite
             const glm::vec2 &camMoveAxis = j->GetLeftAxis();
             const glm::vec2 &l2r2 = j->GetTriggerAxis();
 
-            m_ViewportCamera->yaw += deltaTime * camViewAxis.x;
-            m_ViewportCamera->pitch += deltaTime * camViewAxis.y;
+            m_Camera.yaw += deltaTime * camViewAxis.x;
+            m_Camera.pitch += deltaTime * camViewAxis.y;
 
-            m_ViewportCamera->position += m_ViewportCamera->GetForwardDirection() * deltaTime * m_CameraData.moveSpeed * -camMoveAxis.y;
-            m_ViewportCamera->position += m_ViewportCamera->GetRightDirection() * deltaTime * m_CameraData.moveSpeed * camMoveAxis.x;
+            m_Camera.position += m_Camera.GetForwardDirection() * deltaTime * m_CameraData.moveSpeed * -camMoveAxis.y;
+            m_Camera.position += m_Camera.GetRightDirection() * deltaTime * m_CameraData.moveSpeed * camMoveAxis.x;
 
             // m_CameraData.moveSpeed += l2r2.y * deltaTime * 0.1f + 1.0f;
             // m_CameraData.moveSpeed -= l2r2.x * deltaTime * 0.1f + 1.0f;
@@ -1357,7 +1356,7 @@ namespace ignite
         const f32 y = std::min(m_ViewportData.rect.GetSize().y * 0.01f, 1.8f);
         const f32 xFactor = 0.0366f * (x * x) - 0.1778f * x + 0.3021f;
         const f32 yFactor = 0.0366f * (y * y) - 0.1778f * y + 0.3021f;
-        const f32 yawSign = m_ViewportCamera->GetUpDirection().y < 0 ? -1.0f : 1.0f;
+        const f32 yawSign = m_Camera.GetUpDirection().y < 0 ? -1.0f : 1.0f;
 
         const bool control = Input::IsKeyPressed(Key::LeftControl) || Input::IsKeyPressed(Key::RightControl);
         const bool shift = Input::IsKeyPressed(Key::LeftShift) || Input::IsKeyPressed(Key::RightShift);
@@ -1366,51 +1365,51 @@ namespace ignite
         if (control || shift || mbPressed == false)
             return;
 
-        if (m_ViewportCamera->projectionType == Camera::Type::Orthographic)
+        if (m_Camera.projectionType == ICamera::Type::Orthographic)
         {
             if (Input::IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE))
             {
-                m_ViewportCamera->position.x += -mouseDelta.x * xFactor * m_ViewportCamera->zoom * 0.005f;
-                m_ViewportCamera->position.y += mouseDelta.y * yFactor * m_ViewportCamera->zoom * 0.005f;
+                m_Camera.position.x += -mouseDelta.x * xFactor * m_Camera.zoom * 0.005f;
+                m_Camera.position.y += mouseDelta.y * yFactor * m_Camera.zoom * 0.005f;
             }
         }
 
-        if (m_ViewportCamera->projectionType == Camera::Type::Perspective)
+        if (m_Camera.projectionType == ICamera::Type::Perspective)
         {
             // mouse input
             if (Input::IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
             {
-                m_ViewportCamera->yaw += yawSign * m_CameraData.rotationSpeed * mouseDelta.x * xFactor * 0.03f;
-                m_ViewportCamera->pitch += m_CameraData.rotationSpeed * mouseDelta.y * yFactor * 0.03f;
-                m_ViewportCamera->pitch = glm::clamp(m_ViewportCamera->pitch, -89.0f, 89.0f);
+                m_Camera.yaw += yawSign * m_CameraData.rotationSpeed * mouseDelta.x * xFactor * 0.03f;
+                m_Camera.pitch += m_CameraData.rotationSpeed * mouseDelta.y * yFactor * 0.03f;
+                m_Camera.pitch = glm::clamp(m_Camera.pitch, -89.0f, 89.0f);
             }
             else if (Input::IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE))
             {
-                m_ViewportCamera->position += m_ViewportCamera->GetRightDirection() * mouseDelta.x * xFactor * m_CameraData.moveSpeed * 0.03f;
-                m_ViewportCamera->position += m_ViewportCamera->GetUpDirection() * -mouseDelta.y * yFactor * m_CameraData.moveSpeed * 0.03f;
+                m_Camera.position += m_Camera.GetRightDirection() * mouseDelta.x * xFactor * m_CameraData.moveSpeed * 0.03f;
+                m_Camera.position += m_Camera.GetUpDirection() * -mouseDelta.y * yFactor * m_CameraData.moveSpeed * 0.03f;
             }
 
             // key input
             if (Input::IsKeyPressed(KEY_W))
             {
-                m_ViewportCamera->position += m_ViewportCamera->GetForwardDirection() * deltaTime * m_CameraData.moveSpeed;
+                m_Camera.position += m_Camera.GetForwardDirection() * deltaTime * m_CameraData.moveSpeed;
             }
             else if (Input::IsKeyPressed(KEY_S))
             {
-                m_ViewportCamera->position -= m_ViewportCamera->GetForwardDirection() * deltaTime * m_CameraData.moveSpeed;
+                m_Camera.position -= m_Camera.GetForwardDirection() * deltaTime * m_CameraData.moveSpeed;
             }
             
             if (Input::IsKeyPressed(KEY_A))
             {
-                m_ViewportCamera->position -= m_ViewportCamera->GetRightDirection() * deltaTime * m_CameraData.moveSpeed;
+                m_Camera.position -= m_Camera.GetRightDirection() * deltaTime * m_CameraData.moveSpeed;
             }
             else if (Input::IsKeyPressed(KEY_D))
             {
-                m_ViewportCamera->position += m_ViewportCamera->GetRightDirection() * deltaTime * m_CameraData.moveSpeed;
+                m_Camera.position += m_Camera.GetRightDirection() * deltaTime * m_CameraData.moveSpeed;
             }
         }
 
-        m_ViewportCamera->UpdateViewMatrix();
+        m_Camera.UpdateViewMatrix();
     }
 
     void ScenePanel::DestroyEntity(Entity entity)

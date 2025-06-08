@@ -9,6 +9,7 @@ namespace ignite
     {
         CompType_Invalid = 0,
         CompType_ID = 1,
+        CompType_Camera,
         CompType_Transform,
         CompType_Sprite2D,
         CompType_SkinnedMesh,

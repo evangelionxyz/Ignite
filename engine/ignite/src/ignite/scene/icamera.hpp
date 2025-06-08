@@ -12,7 +12,7 @@
 
 namespace ignite
 {
-  class Camera
+  class ICamera
   {
   public:
     enum class Type
@@ -20,8 +20,7 @@ namespace ignite
       Orthographic, Perspective
     };
 
-    Camera() = default;
-    Camera(const std::string &name);
+    ICamera();
 
     void CreateOrthographic(f32 width, f32 height, f32 zoom, f32 nearClip, f32 farClip);
     void CreatePerspective(f32 fov, f32 width, f32 height, f32 nearClip, f32 farClip);
@@ -30,8 +29,6 @@ namespace ignite
     void UpdateViewMatrix();
 
     void SetSize(f32 w, f32 h);
-
-    const std::string &GetName() const { return m_Name; }
     glm::vec2 GetSize();
     glm::mat4 GetViewProjectionMatrix() const { return projectionMatrix * viewMatrix; }
 
@@ -51,6 +48,5 @@ namespace ignite
 
   protected:
     f32 m_AspectRatio = 1.0f;
-    std::string m_Name;
   };
 }

@@ -11,7 +11,6 @@
 
 namespace ignite {
 
-    class Camera;
     class GraphicsPipeline;
 
     struct EnvironmentParams

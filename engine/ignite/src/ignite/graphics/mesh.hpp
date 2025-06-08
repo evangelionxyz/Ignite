@@ -22,7 +22,6 @@ namespace ignite {
 #define ASSIMP_IMPORTER_FLAGS (aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices)
 
     class Shader;
-    class Camera;
     class Environment;
     class GraphicsPipeline;
     class Scene;

@@ -1,11 +1,9 @@
  #include "scene.hpp"
 
-#include <ranges>
 
 #include <entt/entt.hpp>
 
 #include "ignite/graphics/mesh.hpp"
-#include "camera.hpp"
 #include "ignite/graphics/renderer.hpp"
 #include "ignite/graphics/renderer_2d.hpp"
 #include "ignite/graphics/environment.hpp"
@@ -13,11 +11,10 @@
 #include "ignite/math/math.hpp"
 #include "scene_manager.hpp"
 #include "entity.hpp"
-
-
 #include "ignite/core/application.hpp"
-
 #include "ignite/animation/animation_system.hpp"
+
+#include <ranges>
 
 namespace ignite
 {

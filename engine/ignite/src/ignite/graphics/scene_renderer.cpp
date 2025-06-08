@@ -6,7 +6,7 @@
 #include "environment.hpp"
 
 #include "ignite/scene/scene.hpp"
-#include "ignite/scene/camera.hpp"
+#include "ignite/scene/icamera.hpp"
 #include "ignite/scene/entity.hpp"
 #include "ignite/scene/component.hpp"
 
@@ -193,7 +193,7 @@ namespace ignite
 
     }
 
-    void SceneRenderer::Render(Scene *scene, Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer)
+    void SceneRenderer::Render(Scene *scene, ICamera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer)
     {
         if (scene->sceneRenderer == nullptr)
             scene->sceneRenderer = this;
@@ -251,7 +251,7 @@ namespace ignite
         Renderer2D::End();
     }
 
-    void SceneRenderer::RenderOutline(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const std::unordered_map<UUID, Entity> &selectedEntities)
+    void SceneRenderer::RenderOutline(ICamera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const std::unordered_map<UUID, Entity> &selectedEntities)
     {
         for (Entity entity : selectedEntities | std::views::values)
         {

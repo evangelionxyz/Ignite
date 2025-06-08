@@ -7,7 +7,6 @@
 #include "ignite/core/application.hpp"
 #include "ignite/core/device/device_manager.hpp"
 #include "graphics_pipeline.hpp"
-#include "ignite/scene/camera.hpp"
 
 #include "texture.hpp"
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ignite/scene/camera.hpp"
+#include "ignite/scene/icamera.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>

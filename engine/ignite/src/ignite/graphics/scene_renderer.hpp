@@ -11,7 +11,7 @@
 namespace ignite
 {
     class Scene;
-    class Camera;
+    class ICamera;
 
     class SceneRenderer
     {
@@ -22,8 +22,8 @@ namespace ignite
         void ResizeRenderTarget(uint32_t width, uint32_t height);
 
         void CreatePipelines(nvrhi::IFramebuffer *framebuffer) const;
-        void Render(Scene *scene, Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer);
-        void RenderOutline(Camera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const std::unordered_map<UUID, Entity> &selectedEntities);
+        void Render(Scene *scene, ICamera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer);
+        void RenderOutline(ICamera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const std::unordered_map<UUID, Entity> &selectedEntities);
 
         Ref<GraphicsPipeline> &GetBatchQuadPipeline() { return m_BatchQuadPipeline; }
         Ref<GraphicsPipeline> &GetBatchLinePipeline() { return m_BatchLinePipeline; }

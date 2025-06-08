@@ -1,6 +1,5 @@
 #include "environment.hpp"
 #include "ignite/core/logger.hpp"
-#include "ignite/scene/camera.hpp"
 #include "vertex_data.hpp"
 
 #include "ignite/core/application.hpp"

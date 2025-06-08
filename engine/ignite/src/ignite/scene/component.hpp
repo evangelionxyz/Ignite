@@ -9,6 +9,7 @@
 #include "ignite/graphics/mesh.hpp"
 #include "ignite/graphics/vertex_data.hpp"
 #include "ignite/animation/skeletal_animation.hpp"
+#include "scene_camera.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -21,9 +22,10 @@ namespace ignite
 
     static std::unordered_map<std::string, CompType> s_ComponentsName =
     {
+        { "Camera", CompType_Camera },
         { "Rigid Body 2D", CompType_Rigidbody2D },
-        { "Sprite 2D", CompType_Sprite2D},
         { "Box Collider 2D", CompType_BoxCollider2D },
+        { "Sprite 2D", CompType_Sprite2D},
         { "Mesh Renderer", CompType_MeshRenderer },
         { "Skinned Mesh", CompType_SkinnedMesh},
     };
@@ -99,6 +101,12 @@ namespace ignite
 
         static CompType StaticType() { return CompType_ID; }
         virtual CompType GetType() override { return StaticType(); }
+    };
+
+    class Camera : public IComponent
+    {
+    public:
+        SceneCamera camera;
     };
 
     class Transform : public IComponent

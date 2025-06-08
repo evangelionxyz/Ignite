@@ -3,7 +3,7 @@
 #include <imgui.h>
 #include <ImGuizmo.h>
 
-#include "ignite/scene/camera.hpp"
+#include "ignite/scene/icamera.hpp"
 
 #include "ignite/math/math.hpp"
 
@@ -13,7 +13,7 @@ namespace ignite {
     {
         glm::mat4 cameraView;
         glm::mat4 cameraProjection;
-        Camera::Type cameraType;
+        ICamera::Type cameraType;
 
         Rect viewRect;
         float snapValue = 0.25f;

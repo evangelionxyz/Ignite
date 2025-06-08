@@ -7,17 +7,17 @@
 #include "ignite/core/uuid.hpp"
 #include "ignite/core/base.hpp"
 #include "ignite/core/types.hpp"
+#include "ignite/imgui/gizmo.hpp"
+
+#include "../editor_camera.hpp"
 
 #include <string>
 #include <glm/fwd.hpp>
 #include <nvrhi/nvrhi.h>
 
-#include "ignite/imgui/gizmo.hpp"
-
 namespace ignite
 {
     class Scene;
-    class Camera;
     class Event;
     class MouseScrolledEvent;
     class MouseMovedEvent;
@@ -48,7 +48,7 @@ namespace ignite
 
         bool IsGizmoBeingUse() const { return m_Data.isGizmoBeingUse; }
         
-        Camera *GetViewportCamera() const { return m_ViewportCamera.get(); }
+        EditorCamera &GetViewportCamera() { return m_Camera; }
 
         const glm::vec2 &GetViewportMousePos() const { return m_ViewportData.mousePos; }
 
@@ -85,7 +85,7 @@ namespace ignite
             bool isGizmoBeingUse = false;
         } m_Data;
 
-        Scope<Camera> m_ViewportCamera;
+        EditorCamera m_Camera;
         Ref<RenderTarget> m_RenderTarget;
         EditorLayer *m_Editor;
 

@@ -9,7 +9,6 @@
 #include "ignite/math/math.hpp"
 #include "ignite/core/logger.hpp"
 #include "ignite/core/application.hpp"
-#include "ignite/scene/camera.hpp"
 #include "ignite/graphics/environment.hpp"
 #include "ignite/graphics/graphics_pipeline.hpp"
 
