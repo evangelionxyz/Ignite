@@ -432,6 +432,8 @@ namespace ignite {
 
                     LOG_ASSERT(meshMaterial->textures[type].buffer.Data, "[Material] Failed to load texture");
 
+                    meshMaterial->textures[type].width = width;
+                    meshMaterial->textures[type].height = height;
                     meshMaterial->textures[type].buffer.Size = width * height * 4;
                     meshMaterial->textures[type].rowPitch = width * 4;
 
@@ -443,6 +445,7 @@ namespace ignite {
                         .setFormat(nvrhi::Format::RGBA8_UNORM)
                         .setInitialState(nvrhi::ResourceStates::ShaderResource)
                         .setKeepInitialState(true)
+                        .setMipLevels(meshMaterial->mipLevels)
                         .setDebugName("Material embedded Texture");
 
                     meshMaterial->textures[type].handle = device->createTexture(textureDesc);
