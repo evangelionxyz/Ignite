@@ -26,7 +26,6 @@
 
 namespace ignite
 {
-
     UUID ScenePanel::m_TrackingSelectedEntity = UUID(0);
 
     ScenePanel::ScenePanel(const char *windowTitle, EditorLayer *editor)
@@ -65,13 +64,8 @@ namespace ignite
 
     void ScenePanel::SetActiveScene(Scene *scene, bool reset)
     {
-        if (reset)
-        {
-            m_SelectedEntities.clear();
-        }
-
         m_Scene = scene;
-        m_SelectedEntity = SceneManager::GetEntity(m_Scene, m_TrackingSelectedEntity);
+        m_SelectedEntities.clear();
     }
 
     void ScenePanel::CreateRenderTarget(nvrhi::IDevice *device)
@@ -145,6 +139,7 @@ namespace ignite
         ImGui::Text("Entity count: %zu", m_Scene->entities.size());
 
         ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_ScrollX;
+
         if (ImGui::BeginTable("entity_hierarchy_table", 3, tableFlags))
         {
             // setup table 3 columns
@@ -155,14 +150,22 @@ namespace ignite
             ImGui::TableSetupColumn("Active", ImGuiTableColumnFlags_WidthFixed, 60.0f);
             ImGui::TableHeadersRow();
 
+            ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, { 0.000f, 0.245f, 0.409f, 1.000f });
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, { 0.000f, 0.000f, 0.000f, 0.620f });
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, { 0.000f, 0.243f, 0.408f, 1.000f });
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 2.0f, 0.0f });
+
+            // Render root entity
             m_Scene->registry->view<ID>().each([&](entt::entity e, ID &id)
             {
-                RenderEntityNode(Entity{ e, m_Scene }, id.uuid, 0);
+                if (id.parent == UUID(0))
+                    RenderEntityNode(Entity{ e, m_Scene }, id.uuid);
             });
-            ImGui::PopStyleVar();
 
-            // show right click entity create context
+            ImGui::PopStyleVar();
+            ImGui::PopStyleColor(3);
+
+            // Context menu for creating entities
             if (ImGui::BeginPopupContextWindow("create_entity_context", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
             {
                 ShowEntityContextMenu();
@@ -200,23 +203,25 @@ namespace ignite
         return entity;
     }
 
-    void ScenePanel::RenderEntityNode(Entity entity, UUID uuid, i32 index)
+    void ScenePanel::RenderEntityNode(Entity entity, UUID uuid)
     {
         if (!entity.IsValid())
             return;
 
         ID &idComp = entity.GetComponent<ID>();
-        if (idComp.parent && index == 0)
-            return;
-
-        ImGuiTreeNodeFlags flags = (m_SelectedEntity == entity ? ImGuiTreeNodeFlags_Selected : 0) | (!idComp.HasChild() ? ImGuiTreeNodeFlags_Leaf : 0)
+        ImGuiTreeNodeFlags flags = (GetSelectedEntity() == entity ? ImGuiTreeNodeFlags_Selected : 0) | (!idComp.HasChild() ? ImGuiTreeNodeFlags_Leaf : 0)
             | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow
             | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_SpanFullWidth;
 
         void *imguiPushId = (void*)(uint64_t)(uint32_t)entity;
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
+
+        ImGui::PushStyleColor(ImGuiCol_Header, { 0.000f, 0.305f, 0.453f, 1.000f });
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, { 0.435f, 0.287f, 0.000f, 1.000f });
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, { 0.780f, 0.520f, 0.000f, 1.000f });
         bool opened = ImGui::TreeNodeEx(imguiPushId, flags, idComp.name.c_str());
+        ImGui::PopStyleColor(3);
 
         bool isDeleting = false;
 
@@ -304,7 +309,7 @@ namespace ignite
                 for (UUID uuid : entity.GetComponent<ID>().children)
                 {
                     Entity childEntity = SceneManager::GetEntity(m_Scene, uuid);
-                    RenderEntityNode(childEntity, uuid, index + 1);
+                    RenderEntityNode(childEntity, uuid);
                 }
             }
 
@@ -318,19 +323,20 @@ namespace ignite
 
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_FramePadding;
 
-        if (m_SelectedEntity.IsValid())
+        Entity selectedEntity = GetSelectedEntity();
+        if (selectedEntity.IsValid())
         {
             // Main Component
 
-            auto &comps = m_Scene->registeredComps[m_SelectedEntity];
-            
+            auto &comps = m_Scene->registeredComps[selectedEntity];
+
             // ID Component
-            ID &idComp = m_SelectedEntity.GetComponent<ID>();
+            ID &idComp = selectedEntity.GetComponent<ID>();
             char buffer[255] = {};
             strncpy(buffer, idComp.name.c_str(), sizeof(buffer) - 1);
             if (ImGui::InputText("##label", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue))
             {
-                SceneManager::RenameEntity(m_Scene, m_SelectedEntity, std::string(buffer));
+                SceneManager::RenameEntity(m_Scene, selectedEntity, std::string(buffer));
             }
 
             ImGui::SameLine();
@@ -339,11 +345,11 @@ namespace ignite
             {
                 ImGui::OpenPopup("##add_component_context");
             }
-    
+
             // transform component
-            RenderComponent<Transform>("Transform", m_SelectedEntity, [this]()
+            RenderComponent<Transform>("Transform", selectedEntity, [&]()
             {
-                Transform &comp = m_SelectedEntity.GetComponent<Transform>();
+                Transform &comp = selectedEntity.GetComponent<Transform>();
                 if (ImGui::DragFloat3("Translation", &comp.localTranslation.x, 0.025f))
                 {
                     comp.dirty = true;
@@ -370,7 +376,7 @@ namespace ignite
                 {
                 case CompType_Sprite2D:
                 {
-                    RenderComponent<Sprite2D>("Sprite 2D", m_SelectedEntity, [entity = m_SelectedEntity, comp]()
+                    RenderComponent<Sprite2D>("Sprite 2D", selectedEntity, [&]()
                     {
                         Sprite2D *c = comp->As<Sprite2D>();
 
@@ -423,7 +429,7 @@ namespace ignite
                 }
                 case CompType_Rigidbody2D:
                 {
-                    RenderComponent<Rigidbody2D>("Rigid Body 2D", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
+                    RenderComponent<Rigidbody2D>("Rigid Body 2D", selectedEntity, [&]()
                     {
                         Rigidbody2D *c = comp->As<Rigidbody2D>();
                         
@@ -449,7 +455,7 @@ namespace ignite
                             ImGui::EndCombo();
                         }
     
-                        if (scene->IsPlaying())
+                        if (m_Scene->IsPlaying())
                         {
                             if (ImGui::DragFloat2("Linear Vel", &c->linearVelocity.x, 0.025f))
                                 b2Body_SetLinearVelocity(c->bodyId, {c->linearVelocity.x, c->linearVelocity.y});
@@ -500,7 +506,7 @@ namespace ignite
                 }
                 case CompType_BoxCollider2D:
                 {
-                    RenderComponent<BoxCollider2D>("Box Collider 2D", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
+                    RenderComponent<BoxCollider2D>("Box Collider 2D", selectedEntity, [&]()
                     {
                         BoxCollider2D *c = comp->As<BoxCollider2D>();
                         ImGui::DragFloat2("Size", &c->size.x, 0.025f, 0.0f, FLT_MAX);
@@ -515,7 +521,7 @@ namespace ignite
                 }
                 case CompType_MeshRenderer:
                 {
-                    RenderComponent<MeshRenderer>("Mesh Renderer", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene]()
+                    RenderComponent<MeshRenderer>("Mesh Renderer", selectedEntity, [&]()
                     {
                         MeshRenderer *c = comp->As<MeshRenderer>();
                         
@@ -532,7 +538,7 @@ namespace ignite
                 }
                 case CompType_SkinnedMesh:
                 {
-                    RenderComponent<SkinnedMesh>("Skinned Mesh", m_SelectedEntity, [entity = m_SelectedEntity, comp, scene = m_Scene, this]()
+                    RenderComponent<SkinnedMesh>("Skinned Mesh", selectedEntity, [&]()
                     {
                         SkinnedMesh *c = comp->As<SkinnedMesh>();
 
@@ -584,7 +590,7 @@ namespace ignite
                                 {
                                     if (node.uuid == UUID(0) || node.parentID != -1) // not yet created
                                     {
-                                        Entity entity = SceneManager::CreateEntity(scene, node.name, EntityType_Node);
+                                        Entity entity = SceneManager::CreateEntity(m_Scene, node.name, EntityType_Node);
                                         node.uuid = entity.GetUUID();
 
                                         Transform &tr = entity.GetComponent<Transform>();
@@ -600,22 +606,22 @@ namespace ignite
                                 // Second pass: establish hierarchy and add meshes
                                 for (auto &node : nodes)
                                 {
-                                    Entity nodeEntity = SceneManager::GetEntity(scene, node.uuid);
+                                    Entity nodeEntity = SceneManager::GetEntity(m_Scene, node.uuid);
 
                                     if (node.parentID == -1)
                                     {
                                         // Attach the node to root node
-                                        ID &id = m_SelectedEntity.GetComponent<ID>();
+                                        ID &id = selectedEntity.GetComponent<ID>();
                                         id.name = filepath.stem().string();
 
-                                        SceneManager::AddChild(scene, m_SelectedEntity, nodeEntity);
+                                        SceneManager::AddChild(m_Scene, selectedEntity, nodeEntity);
                                     }
                                     else
                                     {
                                         // Attach to parent if not root
                                         const auto &parentNode = nodes[node.parentID];
-                                        Entity parentEntity = SceneManager::GetEntity(scene, parentNode.uuid);
-                                        SceneManager::AddChild(scene, parentEntity, nodeEntity);
+                                        Entity parentEntity = SceneManager::GetEntity(m_Scene, parentNode.uuid);
+                                        SceneManager::AddChild(m_Scene, parentEntity, nodeEntity);
                                     }
 
                                     // Attach mesh entities to this node
@@ -625,17 +631,11 @@ namespace ignite
 
                                         MeshRenderer &meshRenderer = nodeEntity.AddComponent<MeshRenderer>();
                                         meshRenderer.meshIndex = meshIdx;
-                                        meshRenderer.root = m_SelectedEntity.GetUUID();
-
-                                        for (auto &vertex : mesh->data.vertices)
-                                        {
-                                            vertex.entityID = nodeEntity;
-                                        }
-
+                                        meshRenderer.root = selectedEntity.GetUUID();
                                         meshRenderer.mesh = mesh;
                                         meshRenderer.mesh->CreateBuffers();
 
-                                        SceneManager::WriteMeshBuffer(scene, meshRenderer);
+                                        SceneManager::WriteMeshBuffer(m_Scene, meshRenderer, static_cast<uint32_t>(nodeEntity));
                                     }
 
                                     // Extract skeleton joints into entity
@@ -648,7 +648,7 @@ namespace ignite
                                             if (entity.GetName() == name)
                                             {
                                                 c->skeleton->jointEntityMap[static_cast<i32>(i)] = uuid;
-                                                Entity entity = SceneManager::GetEntity(scene, uuid);
+                                                Entity entity = SceneManager::GetEntity(m_Scene, uuid);
                                                 entity.GetComponent<ID>().type = EntityType_Joint;
                                                 break;
                                             }
@@ -807,7 +807,7 @@ namespace ignite
 
                         if (ImGui::Selectable(strName.c_str()))
                         {
-                            addCompFunc(Entity{ m_SelectedEntity, m_Scene }, type);
+                            addCompFunc(Entity{ selectedEntity, m_Scene }, type);
                             ImGui::CloseCurrentPopup();
                         }
                     }
@@ -817,7 +817,7 @@ namespace ignite
                 {
                     if (ImGui::Selectable(strName.c_str()))
                     {
-                        addCompFunc(Entity{ m_SelectedEntity, m_Scene }, type);
+                        addCompFunc(Entity{ selectedEntity, m_Scene }, type);
                         ImGui::CloseCurrentPopup();
                     }
                 }
@@ -1001,7 +1001,7 @@ namespace ignite
                 }
             }
         }
-        else if (Entity entity = m_SelectedEntity)
+        else if (Entity entity = GetSelectedEntity())
         {
             Transform &tr = entity.GetTransform();
             glm::mat4 transformMatrix = tr.GetWorldMatrix();
@@ -1120,7 +1120,7 @@ namespace ignite
 
     void ScenePanel::CameraSettingsUI()
     {
-        ImGui::Text("Mouse Pos: %.2f, %.2f Entity: (%d)", m_ViewportData.mousePos.x, m_ViewportData.mousePos.y, static_cast<entt::entity>(m_SelectedEntity));
+        ImGui::Text("Mouse Pos: %.2f, %.2f Entity: (%d)", m_ViewportData.mousePos.x, m_ViewportData.mousePos.y, static_cast<entt::entity>(GetSelectedEntity()));
 
         // =================================
         // Camera settings
@@ -1133,7 +1133,6 @@ namespace ignite
                 bool isSelected = strcmp(currentCameraModeStr, cameraModeStr[i]) == 0;
                 if (ImGui::Selectable(cameraModeStr[i], isSelected))
                 {
-                    currentCameraModeStr = cameraModeStr[i];
                     m_Camera.projectionType = static_cast<ICamera::Type>(i);
 
                     if (m_Camera.projectionType == ICamera::Type::Orthographic)
@@ -1415,11 +1414,9 @@ namespace ignite
     void ScenePanel::DestroyEntity(Entity entity)
     {
         SceneManager::DestroyEntity(m_Scene, entity);
-
-        m_SelectedEntity = {entt::null, nullptr};
     }
 
-    void ScenePanel::ClearMultiSelectEntity()
+    void ScenePanel::ClearSelection()
     {
         m_SelectedEntities.clear();
     }
@@ -1430,7 +1427,6 @@ namespace ignite
         {
             m_SelectedEntities.clear();
             m_TrackingSelectedEntity = UUID(0);
-            m_SelectedEntity = {};
             return {};
         }
 
@@ -1446,7 +1442,7 @@ namespace ignite
                 if (!m_SelectedEntities.empty())
                 {
                     m_TrackingSelectedEntity = m_SelectedEntities.begin()->first;
-                    return m_SelectedEntity = m_SelectedEntities.begin()->second;
+                    return m_SelectedEntities.begin()->second;
                 }
             }
             else
@@ -1469,12 +1465,12 @@ namespace ignite
         }
 
         m_TrackingSelectedEntity = entity.GetUUID();
-        return m_SelectedEntity = entity;
+        return entity;
     }
 
     Entity ScenePanel::GetSelectedEntity()
     {
-        return m_SelectedEntity;
+        return m_SelectedEntities.empty() ? Entity{} : m_SelectedEntities.begin()->second;
     }
 
     void ScenePanel::DuplicateSelectedEntity()

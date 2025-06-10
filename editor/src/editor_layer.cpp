@@ -311,7 +311,7 @@ namespace ignite
                 auto view = m_ActiveScene->registry->view<Transform>();
                 for (entt::entity e : view)
                 {
-                    uint32_t eId = entt::to_integral(e);
+                    uint32_t eId = static_cast<uint32_t>(e);
                     if (eId == m_Data.hoveredEntity)
                     {
                         m_ScenePanel->SetSelectedEntity(Entity{ e, m_ActiveScene.get() });
@@ -715,22 +715,41 @@ namespace ignite
     {
         ImGui::Begin("Settings", &m_Data.settingsWindow);
 
-         ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+        if (ImGui::TreeNodeEx("Pipeline"))
+        {
+            m_ScenePanel->CameraSettingsUI();
 
-        // Camera
-         if (ImGui::TreeNodeEx("Camera", treeFlags))
-         {
-             m_ScenePanel->CameraSettingsUI();
+            ImGui::SeparatorText("Pipeline");
 
-             ImGui::TreePop();
-         }
+            // Raster settings
+            static const char *rasterFillStr[2] = { "Solid", "Wireframe" };
+            const char *currentFillMode = rasterFillStr[static_cast<i32>(m_Data.rasterFillMode)];
+            if (ImGui::BeginCombo("Fill", currentFillMode))
+            {
+                for (size_t i = 0; i < std::size(rasterFillStr); ++i)
+                {
+                    bool isSelected = strcmp(currentFillMode, rasterFillStr[i]) == 0;
+                    if (ImGui::Selectable(rasterFillStr[i], isSelected))
+                    {
+                        m_Data.rasterFillMode = static_cast<nvrhi::RasterFillMode>(i);
+                        m_SceneRenderer.SetFillMode(m_Data.rasterFillMode);
+                    }
 
-        ImGui::Separator();
+                    if (isSelected)
+                    {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            ImGui::TreePop();
+        }
 
         if (m_ActiveScene)
         {
             // Environment
-            if (ImGui::TreeNodeEx("Environment", treeFlags))
+            if (ImGui::TreeNodeEx("Environment"))
             {
                 static glm::vec2 sunAngles = { 50, -27.0f }; // pitch (elevation), yaw (azimuth)
 

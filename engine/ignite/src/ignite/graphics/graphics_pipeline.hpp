@@ -43,9 +43,7 @@ namespace ignite {
 
         GraphicsPipeline& AddShader(const std::string& filepath, nvrhi::ShaderType type, bool recompile = false);
         GraphicsPipeline& AddShader(nvrhi::ShaderHandle& handle, nvrhi::ShaderType type);
-
         void Build();
-
         void CreatePipeline(nvrhi::IFramebuffer *framebuffer);
         void ResetHandle();
 

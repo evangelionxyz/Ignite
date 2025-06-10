@@ -21,6 +21,7 @@ namespace ignite
             .setFormat(m_CreateInfo.format)
             .setInitialState(nvrhi::ResourceStates::ShaderResource)
             .setKeepInitialState(true)
+            .setMipLevels(m_CreateInfo.mipLevels)
             .setDebugName("Geometry Texture");
         
         m_Handle = device->createTexture(textureDesc);
@@ -76,7 +77,8 @@ namespace ignite
             .setFormat(m_CreateInfo.format)
             .setInitialState(nvrhi::ResourceStates::ShaderResource)
             .setKeepInitialState(true)
-            .setDebugName("Geometry Texture");
+            .setMipLevels(m_CreateInfo.mipLevels)
+            .setDebugName(filepath.generic_string());
 
         m_Handle = device->createTexture(textureDesc);
         LOG_ASSERT(m_Handle, "Failed to create texture");
@@ -108,13 +110,20 @@ namespace ignite
         {
             // char = 1 byte, 8 bit
             uint8_t *byteData = static_cast<uint8_t *>(m_Data);
-            commandList->writeTexture(m_Handle, 0, 0, byteData, rowPitch);
+
+            for (uint32_t mip = 0; mip < m_CreateInfo.mipLevels; ++mip)
+            {
+                commandList->writeTexture(m_Handle, 0, mip, byteData, rowPitch);
+            }
         }
         else if (m_CreateInfo.format == nvrhi::Format::RGBA32_FLOAT)
         {
             // float = 4 bytes, 32 bit, we need to multiply sizeof(float)
             float *floatData = static_cast<float *>(m_Data);
-            commandList->writeTexture(m_Handle, 0, 0, floatData, rowPitch * sizeof(float), depthPitch * sizeof(float));
+            for (uint32_t mip = 0; mip < m_CreateInfo.mipLevels; ++mip)
+            {
+                commandList->writeTexture(m_Handle, 0, mip, floatData, rowPitch * sizeof(float), depthPitch * sizeof(float));
+            }
         }
 
         if (m_Data && m_WithSTBI)

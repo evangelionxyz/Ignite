@@ -114,12 +114,15 @@ namespace ignite
             }
         }
 
-        static void DownsampleRGBA8(const MipLevelData &src, MipLevelData &dst) {
+        static void DownsampleRGBA8(const MipLevelData &src, MipLevelData &dst)
+        {
             const uint8_t *srcData = src.data.data();
             uint8_t *dstData = dst.data.data();
 
-            for (uint32_t y = 0; y < dst.height; ++y) {
-                for (uint32_t x = 0; x < dst.width; ++x) {
+            for (uint32_t y = 0; y < dst.height; ++y)
+            {
+                for (uint32_t x = 0; x < dst.width; ++x)
+                {
                     uint32_t srcX = x * 2;
                     uint32_t srcY = y * 2;
 
@@ -127,8 +130,10 @@ namespace ignite
                     uint32_t r = 0, g = 0, b = 0, a = 0;
                     uint32_t sampleCount = 0;
 
-                    for (uint32_t dy = 0; dy < 2 && (srcY + dy) < src.height; ++dy) {
-                        for (uint32_t dx = 0; dx < 2 && (srcX + dx) < src.width; ++dx) {
+                    for (uint32_t dy = 0; dy < 2 && (srcY + dy) < src.height; ++dy)
+                    {
+                        for (uint32_t dx = 0; dx < 2 && (srcX + dx) < src.width; ++dx)
+                        {
                             uint32_t srcOffset = (srcY + dy) * src.rowPitch + (srcX + dx) * 4;
                             r += srcData[srcOffset + 0];
                             g += srcData[srcOffset + 1];
@@ -148,20 +153,25 @@ namespace ignite
             }
         }
 
-        static void DownsampleRG8(const MipLevelData &src, MipLevelData &dst) {
+        static void DownsampleRG8(const MipLevelData &src, MipLevelData &dst)
+        {
             const uint8_t *srcData = src.data.data();
             uint8_t *dstData = dst.data.data();
 
-            for (uint32_t y = 0; y < dst.height; ++y) {
-                for (uint32_t x = 0; x < dst.width; ++x) {
+            for (uint32_t y = 0; y < dst.height; ++y)
+            {
+                for (uint32_t x = 0; x < dst.width; ++x)
+                {
                     uint32_t srcX = x * 2;
                     uint32_t srcY = y * 2;
 
                     uint32_t r = 0, g = 0;
                     uint32_t sampleCount = 0;
 
-                    for (uint32_t dy = 0; dy < 2 && (srcY + dy) < src.height; ++dy) {
-                        for (uint32_t dx = 0; dx < 2 && (srcX + dx) < src.width; ++dx) {
+                    for (uint32_t dy = 0; dy < 2 && (srcY + dy) < src.height; ++dy)
+                    {
+                        for (uint32_t dx = 0; dx < 2 && (srcX + dx) < src.width; ++dx)
+                        {
                             uint32_t srcOffset = (srcY + dy) * src.rowPitch + (srcX + dx) * 2;
                             r += srcData[srcOffset + 0];
                             g += srcData[srcOffset + 1];
@@ -176,20 +186,25 @@ namespace ignite
             }
         }
 
-        static void DownsampleR8(const MipLevelData &src, MipLevelData &dst) {
+        static void DownsampleR8(const MipLevelData &src, MipLevelData &dst)
+        {
             const uint8_t *srcData = src.data.data();
             uint8_t *dstData = dst.data.data();
 
-            for (uint32_t y = 0; y < dst.height; ++y) {
-                for (uint32_t x = 0; x < dst.width; ++x) {
+            for (uint32_t y = 0; y < dst.height; ++y)
+            {
+                for (uint32_t x = 0; x < dst.width; ++x)
+                {
                     uint32_t srcX = x * 2;
                     uint32_t srcY = y * 2;
 
                     uint32_t r = 0;
                     uint32_t sampleCount = 0;
 
-                    for (uint32_t dy = 0; dy < 2 && (srcY + dy) < src.height; ++dy) {
-                        for (uint32_t dx = 0; dx < 2 && (srcX + dx) < src.width; ++dx) {
+                    for (uint32_t dy = 0; dy < 2 && (srcY + dy) < src.height; ++dy)
+                    {
+                        for (uint32_t dx = 0; dx < 2 && (srcX + dx) < src.width; ++dx)
+                        {
                             uint32_t srcOffset = (srcY + dy) * src.rowPitch + (srcX + dx);
                             r += srcData[srcOffset];
                             sampleCount++;
@@ -202,22 +217,27 @@ namespace ignite
             }
         }
 
-        static void DownsampleRGBA16_FLOAT(const MipLevelData &src, MipLevelData &dst) {
+        static void DownsampleRGBA16_FLOAT(const MipLevelData &src, MipLevelData &dst)
+        {
             const uint16_t *srcData = reinterpret_cast<const uint16_t *>(src.data.data());
             uint16_t *dstData = reinterpret_cast<uint16_t *>(dst.data.data());
             uint32_t srcRowPitchInPixels = src.rowPitch / 8; // 8 bytes per pixel
             uint32_t dstRowPitchInPixels = dst.rowPitch / 8;
 
-            for (uint32_t y = 0; y < dst.height; ++y) {
-                for (uint32_t x = 0; x < dst.width; ++x) {
+            for (uint32_t y = 0; y < dst.height; ++y)
+            {
+                for (uint32_t x = 0; x < dst.width; ++x)
+                {
                     uint32_t srcX = x * 2;
                     uint32_t srcY = y * 2;
 
                     float r = 0.0f, g = 0.0f, b = 0.0f, a = 0.0f;
                     uint32_t sampleCount = 0;
 
-                    for (uint32_t dy = 0; dy < 2 && (srcY + dy) < src.height; ++dy) {
-                        for (uint32_t dx = 0; dx < 2 && (srcX + dx) < src.width; ++dx) {
+                    for (uint32_t dy = 0; dy < 2 && (srcY + dy) < src.height; ++dy)
+                    {
+                        for (uint32_t dx = 0; dx < 2 && (srcX + dx) < src.width; ++dx)
+                        {
                             uint32_t srcIdx = (srcY + dy) * srcRowPitchInPixels + (srcX + dx) * 4;
                             r += half_to_float(srcData[srcIdx + 0]);
                             g += half_to_float(srcData[srcIdx + 1]);
@@ -236,13 +256,15 @@ namespace ignite
             }
         }
 
-        static void DownsampleRGBA32_FLOAT(const MipLevelData &src, MipLevelData &dst) {
+        static void DownsampleRGBA32_FLOAT(const MipLevelData &src, MipLevelData &dst)
+        {
             const float *srcData = reinterpret_cast<const float *>(src.data.data());
             float *dstData = reinterpret_cast<float *>(dst.data.data());
             uint32_t srcRowPitchInPixels = src.rowPitch / 16; // 16 bytes per pixel
             uint32_t dstRowPitchInPixels = dst.rowPitch / 16;
 
-            for (uint32_t y = 0; y < dst.height; ++y) {
+            for (uint32_t y = 0; y < dst.height; ++y)
+            {
                 for (uint32_t x = 0; x < dst.width; ++x) {
                     uint32_t srcX = x * 2;
                     uint32_t srcY = y * 2;
@@ -250,7 +272,8 @@ namespace ignite
                     float r = 0.0f, g = 0.0f, b = 0.0f, a = 0.0f;
                     uint32_t sampleCount = 0;
 
-                    for (uint32_t dy = 0; dy < 2 && (srcY + dy) < src.height; ++dy) {
+                    for (uint32_t dy = 0; dy < 2 && (srcY + dy) < src.height; ++dy)
+                    {
                         for (uint32_t dx = 0; dx < 2 && (srcX + dx) < src.width; ++dx) {
                             uint32_t srcIdx = (srcY + dy) * srcRowPitchInPixels + (srcX + dx) * 4;
                             r += srcData[srcIdx + 0];
@@ -270,8 +293,8 @@ namespace ignite
             }
         }
 
-        static float half_to_float(uint16_t h) {
-            // Simple implementation - you might want to use a proper library
+        static float half_to_float(uint16_t h)
+        {
             uint32_t sign = (h & 0x8000) << 16;
             uint32_t exponent = (h & 0x7C00) >> 10;
             uint32_t mantissa = h & 0x03FF;
@@ -297,8 +320,8 @@ namespace ignite
             return *reinterpret_cast<float *>(&result);
         }
 
-        static uint16_t float_to_half(float f) {
-            // Simple implementation - you might want to use a proper library
+        static uint16_t float_to_half(float f)
+        {
             uint32_t bits = *reinterpret_cast<uint32_t *>(&f);
             uint32_t sign = (bits & 0x80000000) >> 16;
             uint32_t exponent = (bits & 0x7F800000) >> 23;

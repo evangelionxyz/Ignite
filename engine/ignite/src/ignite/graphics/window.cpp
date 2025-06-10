@@ -116,6 +116,11 @@ namespace ignite
 
         JoystickManager::Init(this);
 
+        if (m_DeviceManager->m_DeviceParams.startMaximized)
+        {
+            glfwMaximizeWindow(m_DeviceManager->m_Window);
+        }
+
         if (m_DeviceManager->m_DeviceParams.startFullscreen)
         {
             glfwSetWindowMonitor(m_DeviceManager->m_Window, glfwGetPrimaryMonitor(),
@@ -149,6 +154,7 @@ namespace ignite
         // DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference, sizeof(cornerPreference));
 #endif
 
+
         result = m_DeviceManager->CreateDevice();
         LOG_ASSERT(result, "Failed to create Device Instance\n");
 
@@ -159,11 +165,7 @@ namespace ignite
         m_DeviceManager->m_WindowVisible = true;
         m_DeviceManager->m_WindowIsInFocus = true;
 
-        m_DeviceManager->ResizeSwapChain();
         m_DeviceManager->CreateBackBuffers();
-
-        if (m_DeviceManager->m_DeviceParams.startMaximized)
-            glfwMaximizeWindow(m_DeviceManager->m_Window);
 
         m_DeviceManager->m_DeviceParams.backBufferWidth = 0;
         m_DeviceManager->m_DeviceParams.backBufferHeight = 0;

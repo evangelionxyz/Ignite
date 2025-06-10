@@ -54,7 +54,7 @@ namespace ignite
 
         void RenderHierarchy();
         Entity ShowEntityContextMenu();
-        void RenderEntityNode(Entity entity, UUID uuid, i32 index = 0);
+        void RenderEntityNode(Entity entity, UUID uuid);
         
         void RenderInspector();
 
@@ -62,7 +62,7 @@ namespace ignite
         void UpdateCameraInput(f32 deltaTime);
         void DestroyEntity(Entity entity);
         
-        void ClearMultiSelectEntity();
+        void ClearSelection();
 
         Entity SetSelectedEntity(Entity entity);
         Entity GetSelectedEntity();
@@ -93,8 +93,6 @@ namespace ignite
         Gizmo m_Gizmo;
 
         std::unordered_map<UUID, Entity> m_SelectedEntities;
-
-        Entity m_SelectedEntity{};
 
         static UUID m_TrackingSelectedEntity;
 

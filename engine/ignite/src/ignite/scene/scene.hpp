@@ -20,7 +20,6 @@ namespace ignite
     class SceneRenderer;
 
     using EntityComponents = std::unordered_map<entt::entity, std::vector<IComponent *>>;
-    using StringCounterMap = std::unordered_map<std::string, i32>;
 
     class Scene : public Asset
     {
@@ -50,8 +49,6 @@ namespace ignite
         std::unordered_map<UUID, entt::entity> entities; // uuid to entity
         
         EntityComponents registeredComps;
-        StringCounterMap entityNamesMapCounter;
-        std::vector<std::string> entityNames;
 
         Scope<Physics2D> physics2D;
 
