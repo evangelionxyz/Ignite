@@ -16,7 +16,10 @@ namespace ignite
         CompType_StaticMesh,
         CompType_MeshRenderer,
         CompType_BoxCollider2D,
-        CompType_Rigidbody2D
+        CompType_Rigidbody2D,
+        CompType_Rigidbody,
+        CompType_BoxCollider,
+        CompType_SphereCollider,
     };
 
     class IComponent

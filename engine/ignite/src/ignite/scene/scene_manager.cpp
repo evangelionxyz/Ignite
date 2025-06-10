@@ -384,7 +384,6 @@ namespace ignite
         auto destRegistry = newScene->registry;
 
         EntityMap entityMap;
-        Entity newEntity = Entity{ };
 
         // create entities for new new scene
         auto view = srcRegistry->view<ID>();
@@ -395,11 +394,10 @@ namespace ignite
             ID &srcIdComp = srcEntity.GetComponent<ID>();
 
             // store src entity component to new entity (destination entity)
-            newEntity = SceneManager::CreateEntity(newScene.get(), srcIdComp.name, srcIdComp.type, srcIdComp.uuid);
-
+            Entity newEntity = SceneManager::CreateEntity(newScene.get(), srcIdComp.name, srcIdComp.type, srcIdComp.uuid);
             ID &newEntityIdComp = newEntity.GetComponent<ID>();
             newEntityIdComp.parent = srcIdComp.parent;
-            newEntityIdComp.children = std::vector<UUID>(srcIdComp.children.begin(), srcIdComp.children.end());
+            newEntityIdComp.children = srcIdComp.children;
 
             entityMap[srcIdComp.uuid] = newEntity;
         }
@@ -407,10 +405,12 @@ namespace ignite
         SceneManager::CopyComponent(AllComponents{}, destRegistry, srcRegistry, entityMap, newScene->registeredComps);
 
         // copy scene extra data
-        newScene->entities = other->entities;
         newScene->handle = other->handle;
         newScene->registeredComps = other->registeredComps;
         newScene->sceneRenderer = other->sceneRenderer;
+
+        // Do not copy entities (it is created when creating entity)
+        // newScene->entities = other->entities; 
 
         auto mrView = destRegistry->view<MeshRenderer>();
         for (entt::entity e : mrView)

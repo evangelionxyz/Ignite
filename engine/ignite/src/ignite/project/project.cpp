@@ -3,7 +3,7 @@
 namespace ignite
 {
     
-    static Project *s_Instance = nullptr;
+    static Project *s_JoltInstance = nullptr;
 
     Project::Project(const ProjectInfo &info)
         : m_Info(info)
@@ -12,7 +12,7 @@ namespace ignite
 
     Project::~Project()
     {
-        s_Instance = nullptr;
+        s_JoltInstance = nullptr;
     }
 
     std::filesystem::path Project::GetAssetRelativeFilepath(const std::filesystem::path &filepath) const
@@ -38,7 +38,7 @@ namespace ignite
 
     Project *Project::GetInstance()
     {
-        return s_Instance;
+        return s_JoltInstance;
     }
 
     Ref<Project> Project::Create(const ProjectInfo &info)
@@ -46,7 +46,7 @@ namespace ignite
         Ref<Project> project = CreateRef<Project>(info);
 
         if (project)
-            s_Instance = project.get();
+            s_JoltInstance = project.get();
 
         // generate things
         

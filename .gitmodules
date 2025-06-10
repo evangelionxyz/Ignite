@@ -19,3 +19,6 @@
 [submodule "thirdparty/NVRHI"]
 	path = thirdparty/NVRHI
 	url = https://github.com/NVIDIA-RTX/NVRHI.git
+[submodule "thirdparty/JOLT"]
+	path = thirdparty/JOLT
+	url = https://github.com/jrouwe/JoltPhysics.git

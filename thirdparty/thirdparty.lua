@@ -17,6 +17,7 @@ IncludeDir["SHADERMAKE"] = "%{THIRDPARTY_DIR}/ShaderMake/ShaderMake/include"
 IncludeDir["ASSIMP"] = "%{THIRDPARTY_DIR}/ASSIMP/include"
 IncludeDir["YAMLCPP"] = "%{THIRDPARTY_DIR}/YAML/include"
 IncludeDir["FMOD"] = "%{THIRDPARTY_DIR}/FMOD/include"
+IncludeDir["JOLT"] = "%{THIRDPARTY_DIR}/JOLT"
 
 --library dirs
 LibraryDir = {}
@@ -53,6 +54,7 @@ group "Third Party"
 include "box2d.lua"
 include "glfw.lua"
 include "spdlog.lua"
+include "jolt.lua"
 include "imgui.lua"
 include "stb.lua"
 include "assimp.lua"

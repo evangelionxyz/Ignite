@@ -5,17 +5,18 @@
 #include "ignite/imgui/imgui_layer.hpp"
 #include "ignite/graphics/renderer.hpp"
 #include "ignite/audio/fmod_audio.hpp"
+#include "ignite/physics/jolt/jolt_physics.hpp"
 
 #include <nvrhi/utils.h>
 
 namespace ignite
 {
-    static Application *s_Instance = nullptr;
+    static Application *s_JoltInstance = nullptr;
 
     Application::Application(const ApplicationCreateInfo &createInfo)
         : m_CreateInfo(createInfo)
     {
-        s_Instance = this;
+        s_JoltInstance = this;
 
         if (m_CreateInfo.cmdLineArgs.count > 1)
         {
@@ -53,12 +54,13 @@ namespace ignite
         }
 
         FmodAudio::Init();
+        JoltPhysics::Init();
     }
 
     Application *Application::GetInstance()
     {
-        LOG_ASSERT(s_Instance, "Application has not been created!");
-        return s_Instance;
+        LOG_ASSERT(s_JoltInstance, "Application has not been created!");
+        return s_JoltInstance;
     }
 
     DeviceManager * Application::GetDeviceManager()
@@ -197,6 +199,7 @@ namespace ignite
         deviceManager->Destroy();
         m_Window->Destroy();
 
+        JoltPhysics::Shutdown();
         FmodAudio::Shutdown();
     }
 

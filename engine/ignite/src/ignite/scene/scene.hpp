@@ -15,6 +15,7 @@ namespace ignite
 {
     class Camera;
     class Physics2D;
+    class JoltScene;
     class Entity;
     class Environment;
     class SceneRenderer;
@@ -51,6 +52,7 @@ namespace ignite
         EntityComponents registeredComps;
 
         Scope<Physics2D> physics2D;
+        Scope<JoltScene> physics;
 
         bool IsPlaying() const { return m_Playing; }
 
@@ -64,6 +66,8 @@ namespace ignite
             AABB aabb;
             glm::mat4 transform;
         };
+
+        glm::vec3 physicsGravity{ 0.0f, -9.8f, 0.0f };
 
         float timeInSeconds = 0.0f;
     

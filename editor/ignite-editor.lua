@@ -24,6 +24,7 @@ includedirs {
     "%{IncludeDir.GLFW}",
     "%{IncludeDir.BOX2D}",
     "%{IncludeDir.ENTT}",
+    "%{IncludeDir.JOLT}",
     "%{IncludeDir.GLM}",
     "%{IncludeDir.IMGUI}",
     "%{IncludeDir.FMOD}",

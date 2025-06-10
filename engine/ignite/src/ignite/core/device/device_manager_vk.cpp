@@ -61,17 +61,17 @@ namespace ignite
         return VK_FALSE;
     }
 
-    static DeviceManager_VK *s_Instance = nullptr;
+    static DeviceManager_VK *s_JoltInstance = nullptr;
 
     DeviceManager *DeviceManager::CreateVK()
     {
-        s_Instance = new DeviceManager_VK();
-        return s_Instance;
+        s_JoltInstance = new DeviceManager_VK();
+        return s_JoltInstance;
     }
 
     DeviceManager_VK *DeviceManager_VK::GetInstance()
     {
-        return s_Instance;
+        return s_JoltInstance;
     }
 
     bool DeviceManager_VK::EnumerateAdapters(std::vector<AdapterInfo> &outAdapters)

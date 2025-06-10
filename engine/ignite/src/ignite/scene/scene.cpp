@@ -1,6 +1,4 @@
  #include "scene.hpp"
-
-
 #include <entt/entt.hpp>
 
 #include "ignite/graphics/mesh.hpp"
@@ -8,6 +6,7 @@
 #include "ignite/graphics/renderer_2d.hpp"
 #include "ignite/graphics/environment.hpp"
 #include "ignite/physics/2d/physics_2d.hpp"
+#include "ignite/physics/jolt/jolt_physics.hpp"
 #include "ignite/math/math.hpp"
 #include "scene_manager.hpp"
 #include "entity.hpp"
@@ -22,7 +21,9 @@ namespace ignite
         : name(_name)
     {
         registry = new entt::registry();
+
         physics2D = CreateScope<Physics2D>(this);
+        physics = CreateScope<JoltScene>(this);
     }
 
     Scene::~Scene()
@@ -38,6 +39,7 @@ namespace ignite
 
         m_Playing = true;
         physics2D->SimulationStart();
+        physics->SimulationStart();
     }
 
     void Scene::OnStop()
@@ -47,6 +49,7 @@ namespace ignite
         m_Playing = false;
         
         physics2D->SimulationStop();
+        physics->SimulationStop();
     }
 
     void Scene::UpdateTransforms(float deltaTime)
@@ -130,7 +133,6 @@ namespace ignite
 
         transform.dirty = false;
 
-        // Recurse for children
         for (const UUID &childUUID : id.children)
         {
             Entity child = SceneManager::GetEntity(this, childUUID);
@@ -152,6 +154,7 @@ namespace ignite
         UpdateTransforms(deltaTime);
 
         physics2D->Simulate(deltaTime);
+        physics->Simulate(deltaTime);
     }
 
     Ref<Scene> Scene::Create(const std::string &name)
@@ -196,6 +199,21 @@ namespace ignite
 
     template<>
     void Scene::OnComponentAdded<BoxCollider2D>(Entity entity, BoxCollider2D &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<Rigibody>(Entity entity, Rigibody &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<BoxCollider>(Entity entity, BoxCollider &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<SphereCollider>(Entity entity, SphereCollider &comp)
     {
     }
 }

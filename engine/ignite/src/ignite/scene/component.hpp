@@ -16,6 +16,12 @@
 #include <nvrhi/nvrhi.h>
 #include <string>
 
+// Forward declaration
+namespace JPH
+{
+    class Body;
+}
+
 namespace ignite
 {
     class Texture;
@@ -28,6 +34,9 @@ namespace ignite
         { "Sprite 2D", CompType_Sprite2D},
         { "Mesh Renderer", CompType_MeshRenderer },
         { "Skinned Mesh", CompType_SkinnedMesh},
+        { "Rigid Body", CompType_Rigidbody},
+        { "Box Collider", CompType_BoxCollider},
+        { "Sphere Collider", CompType_SphereCollider},
     };
 
     enum EntityType : u8
@@ -250,6 +259,71 @@ namespace ignite
         }
 
         static CompType StaticType() { return CompType_MeshRenderer; }
+        virtual CompType GetType() override { return StaticType(); }
+    };
+
+    class Rigibody : public IComponent
+    {
+    public:
+        enum EMotionQuality
+        {
+            Discrete = 0,
+            LinearCast = 1
+        };
+
+        EMotionQuality MotionQuality = Discrete;
+
+        bool useGravity = true;
+        bool rotateX = true, rotateY = true, rotateZ = true;
+        bool moveX = true, moveY = true, moveZ = true;
+        bool isStatic = false;
+        float mass = 1.0f;
+        bool allowSleeping = true;
+        bool retainAcceleration = false;
+        float gravityFactor = 1.0f;
+        glm::vec3 centerMass = { 0.0f, 0.0f, 0.0f };
+
+        JPH::Body *body = nullptr;
+
+        Rigibody() = default;
+        Rigibody(const Rigibody &) = default;
+
+        static CompType StaticType() { return CompType_Rigidbody; }
+        virtual CompType GetType() override { return StaticType(); }
+    };
+
+    class PhysicsCollider
+    {
+    public:
+        float friction = 0.6f;
+        float staticFriction = 0.6f;
+        float restitution = 0.6f;
+        float density = 1.0f;
+
+        void *shape = nullptr;
+    };
+
+    class BoxCollider : public PhysicsCollider, public IComponent
+    {
+    public:
+        glm::vec3 scale = { 1.0f, 1.0f, 1.0f };
+
+        BoxCollider() = default;
+        BoxCollider(const BoxCollider &) = default;
+
+        static CompType StaticType() { return CompType_BoxCollider; }
+        virtual CompType GetType() override { return StaticType(); }
+    };
+
+    class SphereCollider: public PhysicsCollider, public IComponent
+    {
+    public:
+        float radius = 0.5f;
+
+        SphereCollider() = default;
+        SphereCollider(const SphereCollider &) = default;
+
+        static CompType StaticType() { return CompType_SphereCollider; }
         virtual CompType GetType() override { return StaticType(); }
     };
 }

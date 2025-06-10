@@ -519,6 +519,44 @@ namespace ignite
 
                     break;
                 }
+                case CompType_Rigidbody:
+                {
+                    RenderComponent<Rigibody>("Rigid Body", selectedEntity, [&]()
+                    {
+                        Rigibody *c = comp->As<Rigibody>();
+                        ImGui::Checkbox("Static", &c->isStatic);
+
+                    });
+                    break;
+                }
+                case CompType_BoxCollider:
+                {
+                    RenderComponent<BoxCollider>("Box Collider", selectedEntity, [&]()
+                    {
+                        BoxCollider *c = comp->As<BoxCollider>();
+                        ImGui::DragFloat3("Scale", &c->scale.x, 0.025f, 0.0f, 10000.0f);
+                        ImGui::DragFloat("Friction", &c->friction, 0.025f);
+                        ImGui::DragFloat("Static Friction", &c->staticFriction, 0.025f);
+                        ImGui::DragFloat("Restitution", &c->restitution, 0.025f);
+                        ImGui::DragFloat("Density", &c->density, 0.025f);
+                    });
+                    break;
+                }
+
+                case CompType_SphereCollider:
+                {
+                    RenderComponent<SphereCollider>("Sphere Collider", selectedEntity, [&]()
+                        {
+                            SphereCollider *c = comp->As<SphereCollider>();
+                            ImGui::DragFloat("Radius", &c->radius, 0.025f, 0.01f, 10000.0f);
+                            ImGui::DragFloat("Friction", &c->friction, 0.025f);
+                            ImGui::DragFloat("Static Friction", &c->staticFriction, 0.025f);
+                            ImGui::DragFloat("Restitution", &c->restitution, 0.025f);
+                            ImGui::DragFloat("Density", &c->density, 0.025f);
+                        });
+                    break;
+                }
+
                 case CompType_MeshRenderer:
                 {
                     RenderComponent<MeshRenderer>("Mesh Renderer", selectedEntity, [&]()
@@ -756,36 +794,35 @@ namespace ignite
                 }
 
                 static std::function<void(Entity, CompType)> addCompFunc = [=](Entity entity, CompType type)
+                {
+                    switch (type)
                     {
-                        switch (type)
-                        {
-                        case CompType_Sprite2D:
-                        {
-                            entity.AddComponent<Sprite2D>();
-                            break;
-                        }
-                        case CompType_Rigidbody2D:
-                        {
-                            entity.AddComponent<Rigidbody2D>();
-                            break;
-                        }
-                        case CompType_BoxCollider2D:
-                        {
-                            entity.AddComponent<BoxCollider2D>();
-                            break;
-                        }
-                        case CompType_MeshRenderer:
-                        {
-                            entity.AddComponent<MeshRenderer>();
-                            break;
-                        }
-                        case CompType_SkinnedMesh:
-                        {
-                            entity.AddComponent<SkinnedMesh>();
-                            break;
-                        }
-                        }
-                    };
+                    case CompType_Sprite2D:
+                        entity.AddComponent<Sprite2D>();
+                        break;
+                    case CompType_Rigidbody2D:
+                        entity.AddComponent<Rigidbody2D>();
+                        break;
+                    case CompType_BoxCollider2D:
+                        entity.AddComponent<BoxCollider2D>();
+                        break;
+                    case CompType_MeshRenderer:
+                        entity.AddComponent<MeshRenderer>();
+                        break;
+                    case CompType_SkinnedMesh:
+                        entity.AddComponent<SkinnedMesh>();
+                        break;
+                    case CompType_Rigidbody:
+                        entity.AddComponent<Rigibody>();
+                        break;
+                    case CompType_BoxCollider:
+                        entity.AddComponent<BoxCollider>();
+                        break;
+                    case CompType_SphereCollider:
+                        entity.AddComponent<SphereCollider>();
+                        break;
+                    }
+                };
 
                 if (compNameResult.empty())
                 {
