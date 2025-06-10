@@ -4,7 +4,7 @@
 #include "ignite/core/device/device_manager.hpp"
 
 #include "ignite/graphics/renderer_2d.hpp"
-#include "ignite/scene/camera.hpp"
+#include "ignite/scene/icamera.hpp"
 
 #include <nvrhi/utils.h>
 

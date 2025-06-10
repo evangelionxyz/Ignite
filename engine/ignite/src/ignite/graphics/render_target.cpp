@@ -31,9 +31,8 @@ namespace ignite {
                 depthDesc.setDebugName("Render target depth attachment");
                 depthDesc.setInitialState(attachment.state);
                 depthDesc.setIsRenderTarget(true);
-                depthDesc.setIsTypeless(true);
                 depthDesc.setKeepInitialState(true);
-                depthDesc.setClearValue(nvrhi::Color(0.f));
+                depthDesc.setClearValue(nvrhi::Color(1.f));
                 depthDesc.setUseClearValue(true);
                 depthDesc.setDimension(nvrhi::TextureDimension::Texture2D);
 

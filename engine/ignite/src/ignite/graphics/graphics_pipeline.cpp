@@ -25,9 +25,7 @@ namespace ignite {
 
     GraphicsPipeline& GraphicsPipeline::AddShader(nvrhi::ShaderHandle& handle, nvrhi::ShaderType type)
     {
-        m_NeedsToCompileShader = false;
         m_Shaders[type] = handle;
-
         return *this;
     }
 
@@ -38,10 +36,8 @@ namespace ignite {
             // create graphics pipeline
             nvrhi::BlendState blendState;
             blendState.targets[0].blendEnable = m_Params.enableBlend;
-
-            // Attachment 1 (R32_UINT - does NOT support blending)
             blendState.targets[1].blendEnable = false;
-            blendState.targets[1].colorWriteMask = nvrhi::ColorMask::All; // still write, just no blending
+            blendState.targets[1].colorWriteMask = nvrhi::ColorMask::All;
 
             nvrhi::DepthStencilState depthStencilState;
             depthStencilState.depthWriteEnable = m_Params.depthWrite;
@@ -56,6 +52,7 @@ namespace ignite {
             depthStencilState.stencilRefValue = m_Params.stencilRefValue;
 
             nvrhi::RasterState rasterState;
+
             rasterState.cullMode = m_Params.cullMode;
             rasterState.fillMode = m_Params.fillMode;
             rasterState.setFrontCounterClockwise(false);

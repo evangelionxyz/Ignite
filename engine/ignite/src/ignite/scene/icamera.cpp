@@ -1,11 +1,10 @@
-#include "camera.hpp"
+#include "icamera.hpp"
 #include "ignite/core/logger.hpp"
 
 namespace ignite
 {
-    Camera::Camera(const std::string &name)
-    : m_Name(name)
-    , position({0.0f, 0.0f, 0.0f})
+    ICamera::ICamera()
+    : position({0.0f, 0.0f, 0.0f})
     , m_AspectRatio(16.0f / 9.0f)
     , zoom(1.0f)
     , yaw(0.0f)
@@ -21,7 +20,7 @@ namespace ignite
     {
     }
 
-    void Camera::CreateOrthographic(f32 width, f32 height, f32 zoom, f32 nearClip, f32 farClip)
+    void ICamera::CreateOrthographic(f32 width, f32 height, f32 zoom, f32 nearClip, f32 farClip)
     {
         projectionType = Type::Orthographic;
 
@@ -34,7 +33,7 @@ namespace ignite
         UpdateViewMatrix();
     }
 
-    void Camera::CreatePerspective(f32 fov, f32 width, f32 height, f32 nearClip, f32 farClip)
+    void ICamera::CreatePerspective(f32 fov, f32 width, f32 height, f32 nearClip, f32 farClip)
     {
         projectionType = Type::Perspective;
         this->fov = fov;
@@ -45,14 +44,14 @@ namespace ignite
         UpdateProjectionMatrix();
         UpdateViewMatrix();
     }
-    void Camera::SetSize(const f32 w, const f32 h)
+    void ICamera::SetSize(const f32 w, const f32 h)
     {
         width = w;
         height = h;
         m_AspectRatio = width / height;
     }
 
-    void Camera::UpdateProjectionMatrix()
+    void ICamera::UpdateProjectionMatrix()
     {
         switch (projectionType)
         {
@@ -67,13 +66,12 @@ namespace ignite
             case Type::Perspective:
             {
                 projectionMatrix = glm::perspectiveZO(glm::radians(fov), m_AspectRatio, nearClip, farClip);
-                //projectionMatrix = glm::perspective(glm::radians(fov), m_AspectRatio, nearClip, farClip);
                 break;
             }
         }
     }
 
-    void Camera::UpdateViewMatrix()
+    void ICamera::UpdateViewMatrix()
     {
         switch (projectionType)
         {
@@ -88,22 +86,22 @@ namespace ignite
         viewMatrix = glm::inverse(viewMatrix);
     }
 
-    glm::vec2 Camera::GetSize()
+    glm::vec2 ICamera::GetSize()
     {
         return { width, height} ;
     }
 
-    glm::vec3 Camera::GetUpDirection() const
+    glm::vec3 ICamera::GetUpDirection() const
     {
         return glm::rotate(glm::quat({ -pitch, -yaw, 0.0f }), { 0.0f, 1.0f, 0.0f });
     }
 
-    glm::vec3 Camera::GetRightDirection() const
+    glm::vec3 ICamera::GetRightDirection() const
     {
         return glm::rotate(glm::quat({ -pitch, -yaw, 0.0f }), { 1.0f, 0.0f, 0.0f });
     }
 
-    glm::vec3 Camera::GetForwardDirection() const
+    glm::vec3 ICamera::GetForwardDirection() const
     {
         return glm::rotate(glm::quat({ -pitch, -yaw, 0.0f }), { 0.0f, 0.0f, -1.0f });
     }

@@ -9,11 +9,18 @@
 #include "ignite/graphics/mesh.hpp"
 #include "ignite/graphics/vertex_data.hpp"
 #include "ignite/animation/skeletal_animation.hpp"
+#include "scene_camera.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <nvrhi/nvrhi.h>
 #include <string>
+
+// Forward declaration
+namespace JPH
+{
+    class Body;
+}
 
 namespace ignite
 {
@@ -21,11 +28,15 @@ namespace ignite
 
     static std::unordered_map<std::string, CompType> s_ComponentsName =
     {
+        { "Camera", CompType_Camera },
         { "Rigid Body 2D", CompType_Rigidbody2D },
-        { "Sprite 2D", CompType_Sprite2D},
         { "Box Collider 2D", CompType_BoxCollider2D },
+        { "Sprite 2D", CompType_Sprite2D},
         { "Mesh Renderer", CompType_MeshRenderer },
         { "Skinned Mesh", CompType_SkinnedMesh},
+        { "Rigid Body", CompType_Rigidbody},
+        { "Box Collider", CompType_BoxCollider},
+        { "Sphere Collider", CompType_SphereCollider},
     };
 
     enum EntityType : u8
@@ -101,6 +112,12 @@ namespace ignite
         virtual CompType GetType() override { return StaticType(); }
     };
 
+    class Camera : public IComponent
+    {
+    public:
+        SceneCamera camera;
+    };
+
     class Transform : public IComponent
     {
     public:
@@ -127,13 +144,13 @@ namespace ignite
         {
         }
 
-        Transform(const glm::vec3 &_translation, const glm::quat &_rot, const glm::vec3 _size)
+        Transform(const glm::vec3 &_translation, const glm::quat &_rotation, const glm::vec3 _scale)
             : translation(_translation)
-            , rotation(_rot)
-            , scale(_size)
+            , rotation(_rotation)
+            , scale(_scale)
             , localTranslation(_translation)
-            , localRotation(_rot)
-            , localScale(_size)
+            , localRotation(_rotation)
+            , localScale(_scale)
         {
         }
 
@@ -215,12 +232,13 @@ namespace ignite
     class MeshRenderer : public IComponent
     {
     public:
-        std::string name;
-        Ref<EntityMesh> mesh;
+        Ref<Mesh> mesh;
+        AssetHandle meshSource = AssetHandle(0); // actual .glb, .gltf, .fbx file
+        int meshIndex = -1; // submesh index
+
         UUID root = UUID(0);
 
         ObjectBuffer meshBuffer;
-        Material material;
 
         nvrhi::RasterCullMode cullMode = nvrhi::RasterCullMode::Front;
         nvrhi::RasterFillMode fillMode = nvrhi::RasterFillMode::Solid;
@@ -228,17 +246,84 @@ namespace ignite
         MeshRenderer() = default;
         MeshRenderer(const MeshRenderer &other)
         {
-            name = other.name;
-            mesh = CreateRef<EntityMesh>(*other.mesh.get());
+            if (!other.mesh)
+                return;
 
-            material = other.material;
+            mesh = CreateRef<Mesh>(*other.mesh.get());
             cullMode = other.cullMode;
             fillMode = other.fillMode;
 
             meshBuffer = other.meshBuffer;
+            meshSource = other.meshSource;
+            meshIndex = other.meshIndex;
         }
 
         static CompType StaticType() { return CompType_MeshRenderer; }
+        virtual CompType GetType() override { return StaticType(); }
+    };
+
+    class Rigibody : public IComponent
+    {
+    public:
+        enum EMotionQuality
+        {
+            Discrete = 0,
+            LinearCast = 1
+        };
+
+        EMotionQuality MotionQuality = Discrete;
+
+        bool useGravity = true;
+        bool rotateX = true, rotateY = true, rotateZ = true;
+        bool moveX = true, moveY = true, moveZ = true;
+        bool isStatic = false;
+        float mass = 1.0f;
+        bool allowSleeping = true;
+        bool retainAcceleration = false;
+        float gravityFactor = 1.0f;
+        glm::vec3 centerMass = { 0.0f, 0.0f, 0.0f };
+
+        JPH::Body *body = nullptr;
+
+        Rigibody() = default;
+        Rigibody(const Rigibody &) = default;
+
+        static CompType StaticType() { return CompType_Rigidbody; }
+        virtual CompType GetType() override { return StaticType(); }
+    };
+
+    class PhysicsCollider
+    {
+    public:
+        float friction = 0.6f;
+        float staticFriction = 0.6f;
+        float restitution = 0.6f;
+        float density = 1.0f;
+
+        void *shape = nullptr;
+    };
+
+    class BoxCollider : public PhysicsCollider, public IComponent
+    {
+    public:
+        glm::vec3 scale = { 1.0f, 1.0f, 1.0f };
+
+        BoxCollider() = default;
+        BoxCollider(const BoxCollider &) = default;
+
+        static CompType StaticType() { return CompType_BoxCollider; }
+        virtual CompType GetType() override { return StaticType(); }
+    };
+
+    class SphereCollider: public PhysicsCollider, public IComponent
+    {
+    public:
+        float radius = 0.5f;
+
+        SphereCollider() = default;
+        SphereCollider(const SphereCollider &) = default;
+
+        static CompType StaticType() { return CompType_SphereCollider; }
         virtual CompType GetType() override { return StaticType(); }
     };
 }

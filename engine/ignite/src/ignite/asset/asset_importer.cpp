@@ -17,7 +17,7 @@ namespace ignite {
 
     void AssetImporter::SyncMainThread(nvrhi::ICommandList *commandList, nvrhi::IDevice *device)
     {
-        ModelImporter::SyncMainThread(commandList, device);
+        // ModelImporter::SyncMainThread(commandList, device);
         EnvironmentImporter::SyncMainThread(commandList, device);
     }
 
@@ -35,6 +35,7 @@ namespace ignite {
         return nullptr;
     }
 
+#if 0
     std::vector<std::future<Ref<Model>>> ModelImporter::m_ModelFutures;
     void ModelImporter::LoadAsync(std::vector<Ref<Model>> *outModels, const std::vector<std::string> &filepaths, const ModelCreateInfo &createInfo, const Ref<Environment> &env, const Ref<GraphicsPipeline> &pipeline)
     {
@@ -93,6 +94,7 @@ namespace ignite {
 
         return *outModels;
     }
+#endif
 
     void EnvironmentImporter::Import(Ref<Environment> *outEnvironment, const std::string &filepath)
     {

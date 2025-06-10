@@ -72,6 +72,6 @@ namespace ignite {
         std::stack<std::filesystem::path> m_ForwardPathStack;
         std::vector<std::filesystem::path> m_PathEntryList;
 
-        Ref<Texture> m_Icon;
+        std::unordered_map<std::string, Ref<Texture>> m_Icons;
     };
 }

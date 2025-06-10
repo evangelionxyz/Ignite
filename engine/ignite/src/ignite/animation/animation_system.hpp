@@ -11,8 +11,6 @@ namespace ignite {
     {
     public:
         static void PlayAnimation(const std::vector<Ref<SkeletalAnimation>> &animations, int animIndex = 0);
-        static void PlayAnimation(const Ref<Model> &model, int animIndex = 0);
-        static void UpdateAnimation(const Ref<Model> &model, float timeInSeconds);
         static void ApplySkeletonToEntities(Scene *scene, const Ref<Skeleton> &skeleton); 
         static bool UpdateSkeleton(Ref<Skeleton> &skeleton, const Ref<SkeletalAnimation> &animation, float timeInSeconds);
         static void UpdateGlobalTransforms(Ref<Skeleton> &skeleton);

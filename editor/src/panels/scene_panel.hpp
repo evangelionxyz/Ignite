@@ -7,17 +7,17 @@
 #include "ignite/core/uuid.hpp"
 #include "ignite/core/base.hpp"
 #include "ignite/core/types.hpp"
+#include "ignite/imgui/gizmo.hpp"
+
+#include "../editor_camera.hpp"
 
 #include <string>
 #include <glm/fwd.hpp>
 #include <nvrhi/nvrhi.h>
 
-#include "ignite/imgui/gizmo.hpp"
-
 namespace ignite
 {
     class Scene;
-    class Camera;
     class Event;
     class MouseScrolledEvent;
     class MouseMovedEvent;
@@ -45,16 +45,16 @@ namespace ignite
 
         void SetGizmoOperation(ImGuizmo::OPERATION op);
         void SetGizmoMode(ImGuizmo::MODE mode);
+
         bool IsGizmoBeingUse() const { return m_Data.isGizmoBeingUse; }
-        bool IsViewportHovered() const { return m_ViewportData.isHovered; }
         
-        Camera *GetViewportCamera() const { return m_ViewportCamera.get(); }
+        EditorCamera &GetViewportCamera() { return m_Camera; }
 
         const glm::vec2 &GetViewportMousePos() const { return m_ViewportData.mousePos; }
 
         void RenderHierarchy();
         Entity ShowEntityContextMenu();
-        void RenderEntityNode(Entity entity, UUID uuid, i32 index = 0);
+        void RenderEntityNode(Entity entity, UUID uuid);
         
         void RenderInspector();
 
@@ -62,12 +62,12 @@ namespace ignite
         void UpdateCameraInput(f32 deltaTime);
         void DestroyEntity(Entity entity);
         
-        void ClearMultiSelectEntity();
+        void ClearSelection();
 
         Entity SetSelectedEntity(Entity entity);
         Entity GetSelectedEntity();
 
-        const std::vector<Entity> &GetSelectedEntities() { return m_SelectedEntities; }
+        const std::unordered_map<UUID, Entity> &GetSelectedEntities() { return m_SelectedEntities; }
         
         void DuplicateSelectedEntity();
 
@@ -81,19 +81,18 @@ namespace ignite
         struct Data
         {
             bool settingsWindow = true;
+            bool isGizmoManipulating = false;
             bool isGizmoBeingUse = false;
         } m_Data;
 
-        Scope<Camera> m_ViewportCamera;
+        EditorCamera m_Camera;
         Ref<RenderTarget> m_RenderTarget;
         EditorLayer *m_Editor;
 
         Scene *m_Scene = nullptr;
         Gizmo m_Gizmo;
 
-        std::vector<Entity> m_SelectedEntities;
-
-        Entity m_SelectedEntity{};
+        std::unordered_map<UUID, Entity> m_SelectedEntities;
 
         static UUID m_TrackingSelectedEntity;
 
@@ -107,12 +106,10 @@ namespace ignite
 
         struct ViewportData
         {
-            bool isHovered = false;
-            bool isFocused = false;
             Rect rect = { 0, 0, 1, 1 };
             glm::vec2 mousePos = glm::vec2(0.0f);
         } m_ViewportData;
 
-        
+        std::unordered_map<std::string, Ref<Texture>> m_Icons;
     };
 }

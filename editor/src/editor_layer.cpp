@@ -11,19 +11,29 @@
 #include "ignite/asset/asset.hpp"
 #include "ignite/asset/asset_importer.hpp"
 
-#include <inttypes.h>
+#include "ignite/audio/fmod_audio.hpp"
+#include "ignite/audio/fmod_sound.hpp"
+#include "ignite/audio/fmod_dsp.hpp"
 
 #include <glm/glm.hpp>
 #include <nvrhi/utils.h>
-
-#ifdef _WIN32
-#   include <dwmapi.h>
-#   include <ShellScalingApi.h>
-#endif
 #include <ranges>
+#include <cinttypes>
 
 namespace ignite
 {
+    struct TestAudio
+    {
+        Ref<FmodReverb> reverb;
+        Ref<FmodDistortion> distortion;
+        Ref<FmodCompressor> compressor;
+        Ref<FmodSound> sound;
+
+        FMOD::ChannelGroup* reverbGroup;
+    };
+
+    TestAudio audio;
+    
     EditorLayer::EditorLayer(const std::string &name)
         : Layer(name)
     {
@@ -51,12 +61,46 @@ namespace ignite
         for (int i = 0; i < cmdArgs.count; ++i)
         {
             std::string args = cmdArgs[i];
-            if (args.find("-project=") != std::string::npos)
+
+            char projectArgs[] = "-project=";
+            if (args.find(projectArgs) != std::string::npos)
             {
-                std::string projectFilepath = args.substr(9, args.size() - 9);
+                std::string projectFilepath = args.substr(std::size(projectArgs) - 1, args.size() - std::size(projectArgs) + 1);
                 OpenProject(projectFilepath);
             }
         }
+
+#if 0
+        // Test Audio
+
+        // Create reverb DSB
+        audio.reverb = FmodReverb::Create();
+        audio.reverb->SetDiffusion(25.0f);
+        audio.reverb->SetWetLevel(20.0f);
+        audio.reverb->SetDecayTime(500.0f);
+
+        // Create distortion DSP
+        audio.distortion = FmodDistortion::Create();
+        audio.distortion->SetDistortionLevel(0.1f);
+        audio.distortion->SetActive(false);
+
+        // Create compressor DSP
+        audio.compressor = FmodCompressor::Create();
+        audio.compressor->SetRatio(3.0f);
+        audio.compressor->SetRelease(100.0f);
+
+        // Create rever group
+        audio.reverbGroup = FmodAudio::CreateChannelGroup("ReverbGroup");
+        audio.reverbGroup->setMode(FMOD_CHANNELCONTROL_DSP_TAIL);
+        audio.reverbGroup->addDSP(0, audio.distortion->GetFmodDsp()); // add dsp
+        audio.reverbGroup->addDSP(1, audio.reverb->GetFmodDsp()); // add dsp
+        audio.reverbGroup->addDSP(2, audio.compressor->GetFmodDsp());
+
+        // create sound
+        audio.sound = FmodSound::Create("music", "C:/Users/Evangelion Manuhutu/Downloads/Music/06. Mick Gordon - Hellwalker.flac");
+        audio.sound->AddToChannelGroup(audio.reverbGroup);
+        audio.sound->Play();
+#endif
     }
 
     void EditorLayer::OnDetach()
@@ -68,7 +112,7 @@ namespace ignite
     void EditorLayer::OnUpdate(f32 deltaTime)
     {
         Layer::OnUpdate(deltaTime);
-
+        
         AssetImporter::SyncMainThread(m_CommandList, m_Device);
 
         if (!m_ActiveScene)
@@ -115,6 +159,14 @@ namespace ignite
 
         switch (event.GetKeyCode())
         {
+            case Key::Escape:
+            {
+                if (m_ScenePanel->IsFocused())
+                {
+                    m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::NONE);
+                }
+                break;
+            }
             case Key::S:
             {
                 if (control)
@@ -182,7 +234,7 @@ namespace ignite
 
     bool EditorLayer::OnMouseButtonPressed(MouseButtonPressedEvent &event)
     {
-        if (event.Is(Mouse::ButtonLeft) && !m_ScenePanel->IsGizmoBeingUse() && m_ScenePanel->IsViewportHovered())
+        if (event.Is(Mouse::ButtonLeft) && !m_ScenePanel->IsGizmoBeingUse() && m_ScenePanel->IsHovered())
         {
             m_Data.isPickingEntity = true;
         }
@@ -209,16 +261,25 @@ namespace ignite
         m_ScenePanel->GetRT()->ClearColorAttachmentUint(m_CommandList, 1, static_cast<uint32_t>(-1));
 
         f32 farDepth = 1.0f; // LessOrEqual
-        m_CommandList->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), nvrhi::AllSubresources, true, farDepth, true, 1);
+        m_CommandList->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), 
+            nvrhi::AllSubresources, 
+            true, // clear depth ?
+            farDepth, // depth
+            true, // clear stencil?
+            0 // stencil
+        );
         
         if (m_ActiveScene)
         {
+            CameraBuffer cameraBuffer = { m_ScenePanel->GetViewportCamera().GetViewProjectionMatrix(), glm::vec4(m_ScenePanel->GetViewportCamera().position, 1.0f) };
+            m_CommandList->writeBuffer(Renderer::GetCameraBufferHandle(), &cameraBuffer, sizeof(cameraBuffer));
+
             m_SceneRenderer.CreatePipelines(viewportFramebuffer);
-            m_SceneRenderer.Render(m_ActiveScene.get(), m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer);
-            m_SceneRenderer.RenderOutline(m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer, m_ScenePanel->GetSelectedEntities());
+            m_SceneRenderer.Render(m_ActiveScene.get(), &m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer);
+            m_SceneRenderer.RenderOutline(&m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer, m_ScenePanel->GetSelectedEntities());
         }
 
-        // Create staging texture for readback
+        // Create staging texture for read-back
         if (m_Data.isPickingEntity && m_ActiveScene)
         {
             nvrhi::TextureDesc stagingDesc = m_ScenePanel->GetRT()->GetColorAttachment(1)->getDesc();
@@ -250,7 +311,7 @@ namespace ignite
                 auto view = m_ActiveScene->registry->view<Transform>();
                 for (entt::entity e : view)
                 {
-                    uint32_t eId = entt::to_integral(e);
+                    uint32_t eId = static_cast<uint32_t>(e);
                     if (eId == m_Data.hoveredEntity)
                     {
                         m_ScenePanel->SetSelectedEntity(Entity{ e, m_ActiveScene.get() });
@@ -259,9 +320,10 @@ namespace ignite
                     }
                 }
 
-                if (!found)
+                if (!found && !m_Data.multiSelect)
                 {
                     m_ScenePanel->SetSelectedEntity(Entity{});
+                    m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::NONE);
                 }
 
                 m_Device->unmapStagingTexture(m_EntityIDStagingTexture);
@@ -273,9 +335,7 @@ namespace ignite
 
     void EditorLayer::OnGuiRender()
     {
-        constexpr f32 TITLE_BAR_HEIGHT = 60.0f;
-
-        constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse
+        constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar
             | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
         const ImGuiViewport *viewport = ImGui::GetMainViewport();
@@ -283,119 +343,70 @@ namespace ignite
         ImGui::SetNextWindowSize(viewport->Size);
         ImGui::SetNextWindowViewport(viewport->ID);
 
-        f32 totalTitlebarHeight = viewport->Pos.y + TITLE_BAR_HEIGHT;
-
         ImGui::Begin("##main_dockspace", nullptr, windowFlags);
         ImGuiWindow *window = ImGui::GetCurrentWindow();
         window->DC.LayoutType = ImGuiLayoutType_Horizontal;
         window->DC.NavLayerCurrent = ImGuiNavLayer_Menu;
         ImDrawList *drawList = ImGui::GetWindowDrawList();
-        const ImVec2 minPos = viewport->Pos;
-        const ImVec2 maxPos = ImVec2(viewport->Pos.x + viewport->Size.x, totalTitlebarHeight);
-        drawList->AddRectFilled(minPos, maxPos, IM_COL32(30, 30, 30, 255));
 
-        // =========== Menubar ===========
-        const glm::vec2 menuBarButtonSize = { 45.0f, 20.0f };
-        const auto decorateBt = UIButtonDecorate()
-            .Fill( { 0.32f, 0.0f, 0.0f, 1.0f }, { 0.62f, 0.0f, 0.0f, 1.0f })
-            .Outline( { 0.62f, 0.0f, 0.0f, 1.0f }, { 0.92f, 0.0f, 0.0f, 1.0f });
-
-        // ===== MENUBAR BUTTONS ==== 
-        UI::DrawHorizontalButtonList(menuBarButtonSize,
-            { 
-                UIButton("File", decorateBt, []() { ImGui::OpenPopup("MenuBar_File"); }),
-                UIButton("Edit", decorateBt, []() { ImGui::OpenPopup("MenuBar_Edit"); }),
-                UIButton("View", decorateBt, []() {  ImGui::OpenPopup("MenuBar_View"); })
-            },
-            2.0f, // GAP
-            { 12.0f, 2.0f }, // Padding
-            { 0.0f, 0.0f } // Margin
-        );
-        
-        // ==== TOOLBAR BUTTONS ====
-
-        bool sceneStatePlaying = m_Data.sceneState == State::ScenePlay;
-        
-        glm::vec4 toolbarColor = glm::vec4{ 0.32f, 0.0f, 0.0f, 1.0f };
-        glm::vec4 toolbarHoverColor = glm::vec4{ 0.62f, 0.0f, 0.0f, 1.0f };
-        glm::vec4 toolbarOutlineColor = glm::vec4 { 0.62f, 0.0f, 0.0f, 1.0f };
-        glm::vec4 toolbarOutlineHoverColor = glm::vec4{ 0.92f, 0.0f, 0.0f, 1.0f };
-
-        if (sceneStatePlaying)
+        if (ImGui::BeginMenuBar())
         {
-            toolbarColor = glm::vec4 { 0.0f, 0.32f, 0.0f, 1.0f };
-            toolbarHoverColor = glm::vec4 { 0.0f, 0.62f, 0.0f, 1.0f };
-            toolbarOutlineColor = glm::vec4 { 0.0f, 0.62f, 0.0f, 1.0f };
-            toolbarOutlineHoverColor = glm::vec4 { 0.00f, 92.0f, 0.0f, 1.0f };
-        }
 
+            if (ImGui::BeginMenu("File"))
+            {
+                if (ImGui::MenuItem("New Scene", nullptr, false, m_ActiveProject != nullptr))
+                {
+                    NewScene();
+                }
+                else if (ImGui::MenuItem("Open Scene", nullptr, false, m_ActiveProject != nullptr))
+                {
+                    OpenScene();
+                }
+                if (ImGui::MenuItem("Save Scene", nullptr, false, m_ActiveProject != nullptr))
+                {
+                    SaveScene();
+                }
+                else if (ImGui::MenuItem("Save Scene As", nullptr, false, m_ActiveProject != nullptr))
+                {
+                    SaveSceneAs();
+                }
 
-        if (UI::DrawButton(UIButton(sceneStatePlaying ? "Stop" : "Play",
-            UIButtonDecorate()
-            .Fill(toolbarColor, toolbarHoverColor)
-            .Outline(toolbarOutlineColor, toolbarOutlineHoverColor)), menuBarButtonSize, { 12.0f, 2.0f }, Margin(40.0f, 3.0f, 0.0f, 3.0f)))
-        {
-            if (sceneStatePlaying)
-            {
-                OnSceneStop();
-#if _WIN32
-                HWND hwnd = glfwGetWin32Window(Application::GetInstance()->GetDeviceManager()->GetWindow());
-                COLORREF rgbRed = 0x00E86071;
-                DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
-#endif
-            }
-            else
-            {
-                OnScenePlay();
-#if _WIN32
-                HWND hwnd = glfwGetWin32Window(Application::GetInstance()->GetDeviceManager()->GetWindow());
-                COLORREF rgbRed = 0x000000AB;
-                DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &rgbRed, sizeof(rgbRed));
-#endif
-            }
-        }
+                ImGui::Separator();
 
-        if (UI::DrawButton(UIButton("Simulate", decorateBt), menuBarButtonSize, {12.0f, 2.0f }, Margin(3.0f, 0.0f)))
-        {
-        }
+                if (ImGui::MenuItem("New Project"))
+                {
+                    m_Data.popupNewProjectModal = true;
+                }
 
-        if (ImGui::BeginPopup("MenuBar_File"))
-        {
-            if (ImGui::MenuItem("New Scene", nullptr, false, m_ActiveProject != nullptr))
-            {
-                NewScene();
-            }
-            else if (ImGui::MenuItem("Open Scene",nullptr, false, m_ActiveProject != nullptr))
-            {
-                OpenScene();
-            }
-            if (ImGui::MenuItem("Save Scene",nullptr, false, m_ActiveProject != nullptr))
-            {
-                SaveScene();
-            }
-            else if (ImGui::MenuItem("Save Scene As",nullptr, false, m_ActiveProject != nullptr))
-            {
-                SaveSceneAs();
-            }
-            
-            ImGui::Separator();
+                else if (ImGui::MenuItem("Save Project", nullptr, false, m_ActiveProject != nullptr))
+                {
+                    SaveProject();
+                }
 
-            if (ImGui::MenuItem("New Project"))
-            {
-                m_Data.popupNewProjectModal = true;
+                else if (ImGui::MenuItem("Open Project"))
+                {
+                    OpenProject();
+                }
+
+                ImGui::EndMenu();
             }
 
-            else if (ImGui::MenuItem("Save Project",nullptr, false, m_ActiveProject != nullptr))
+            if (ImGui::BeginMenu("Edit"))
             {
-                SaveProject();
+                ImGui::EndMenu();
             }
 
-            else if (ImGui::MenuItem("Open Project"))
+            if (ImGui::BeginMenu("View"))
             {
-                OpenProject();
+                if (ImGui::MenuItem("Asset Registry", nullptr, false, m_ActiveProject != nullptr))
+                {
+                    m_Data.assetRegistryWindow = true;
+                }
+
+                ImGui::EndMenu();
             }
 
-            ImGui::EndPopup();
+            ImGui::EndMenuBar();
         }
 
         if (m_Data.popupNewProjectModal)
@@ -486,7 +497,6 @@ namespace ignite
 
 
         // dockspace
-        ImGui::SetCursorScreenPos({viewport->Pos.x, totalTitlebarHeight});
         ImGui::DockSpace(ImGui::GetID("main_dockspace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
         {
             // scene dockspace
@@ -693,28 +703,53 @@ namespace ignite
             OnSceneStop();
 
         m_Data.sceneState = State::SceneSimulate;
+
+        // copy initial components to new scene
+        m_ActiveScene = SceneManager::Copy(m_EditorScene);
+        m_ActiveScene->OnStart();
+
+        m_ScenePanel->SetActiveScene(m_ActiveScene.get());
     }
 
     void EditorLayer::SettingsUI()
     {
         ImGui::Begin("Settings", &m_Data.settingsWindow);
 
-         ImGuiTreeNodeFlags treeFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+        if (ImGui::TreeNodeEx("Pipeline"))
+        {
+            m_ScenePanel->CameraSettingsUI();
 
-        // Camera
-         if (ImGui::TreeNodeEx("Camera", treeFlags))
-         {
-             m_ScenePanel->CameraSettingsUI();
+            ImGui::SeparatorText("Pipeline");
 
-             ImGui::TreePop();
-         }
+            // Raster settings
+            static const char *rasterFillStr[2] = { "Solid", "Wireframe" };
+            const char *currentFillMode = rasterFillStr[static_cast<i32>(m_Data.rasterFillMode)];
+            if (ImGui::BeginCombo("Fill", currentFillMode))
+            {
+                for (size_t i = 0; i < std::size(rasterFillStr); ++i)
+                {
+                    bool isSelected = strcmp(currentFillMode, rasterFillStr[i]) == 0;
+                    if (ImGui::Selectable(rasterFillStr[i], isSelected))
+                    {
+                        m_Data.rasterFillMode = static_cast<nvrhi::RasterFillMode>(i);
+                        m_SceneRenderer.SetFillMode(m_Data.rasterFillMode);
+                    }
 
-        ImGui::Separator();
+                    if (isSelected)
+                    {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            ImGui::TreePop();
+        }
 
         if (m_ActiveScene)
         {
             // Environment
-            if (ImGui::TreeNodeEx("Environment", treeFlags))
+            if (ImGui::TreeNodeEx("Environment"))
             {
                 static glm::vec2 sunAngles = { 50, -27.0f }; // pitch (elevation), yaw (azimuth)
 
@@ -755,5 +790,67 @@ namespace ignite
         }
 
         ImGui::End();
+
+
+        if (m_Data.assetRegistryWindow)
+        {
+            static std::unordered_set<std::string> registryFilter;
+            static bool showFullPath = false;
+            ImGui::Begin("Asset Registry", &m_Data.assetRegistryWindow);
+
+            static char buffer[256];
+            ImGui::Text("Filter");
+            ImGui::SameLine();
+            ImGui::InputText("##filter", buffer, sizeof(buffer));
+            ImGui::SameLine();
+
+            ImGui::Text("Full path");
+            ImGui::SameLine();
+            ImGui::Checkbox("##fullpath", &showFullPath);
+
+            auto assetRegistry = m_ActiveProject->GetAssetManager().GetAssetAssetRegistry();
+            ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_ScrollX;
+            if (ImGui::BeginTable("asset_registry_table", 3, tableFlags))
+            {
+
+                // setup table 3 columns
+                // AssetHandle, Type, Filepath
+                ImGui::TableSetupScrollFreeze(0, 1);
+                ImGui::TableSetupColumn("UUID", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+                ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthStretch, 0.5f);
+                ImGui::TableSetupColumn("Filepath", ImGuiTableColumnFlags_WidthStretch, 1.5f);
+                ImGui::TableHeadersRow();
+
+                for (auto &[handle, metadata] : assetRegistry)
+                {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%llu", static_cast<uint64_t>(handle));
+
+                    ImGui::TableNextColumn();
+
+                    std::string assetTypeStr = AssetTypeToString(metadata.type);
+                    ImGui::TextWrapped("%s", assetTypeStr.c_str());
+
+                    ImGui::TableNextColumn();
+                    if (showFullPath)
+                    {
+                        std::string assetTypeStr = std::filesystem::absolute(m_ActiveProject->GetAssetFilepath(metadata.filepath)).generic_string();
+                        ImGui::TextWrapped("%s", assetTypeStr.c_str());
+                    }
+                    else
+                    {
+                        std::string assetTypeStr = metadata.filepath.generic_string();
+                        ImGui::TextWrapped("%s", assetTypeStr.c_str());
+                    }
+                }
+
+
+                ImGui::EndTable();
+            }
+            
+
+            ImGui::End();
+        }
     }
 }

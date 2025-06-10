@@ -20,8 +20,8 @@
 namespace ignite::vfs
 {
     Blob::Blob(void* data, size_t size)
-    : m_Data(data)
-    , m_Size(size)
+        : m_Data(data)
+        , m_Size(size)
     {
     }
 

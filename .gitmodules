@@ -1,6 +1,3 @@
-[submodule "thirdparty/NVRHI"]
-	path = thirdparty/NVRHI
-	url = https://github.com/NVIDIA-RTX/NVRHI.git
 [submodule "thirdparty/GLFW"]
 	path = thirdparty/GLFW
 	url = https://github.com/glfw/glfw.git
@@ -19,3 +16,9 @@
 [submodule "thirdparty/YAML"]
 	path = thirdparty/YAML
 	url = https://github.com/jbeder/yaml-cpp.git
+[submodule "thirdparty/NVRHI"]
+	path = thirdparty/NVRHI
+	url = https://github.com/NVIDIA-RTX/NVRHI.git
+[submodule "thirdparty/JOLT"]
+	path = thirdparty/JOLT
+	url = https://github.com/jrouwe/JoltPhysics.git

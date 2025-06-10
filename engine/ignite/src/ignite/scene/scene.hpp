@@ -1,25 +1,26 @@
 #pragma once
 
 #define GLM_ENABLE_EXPERIMENTAL
-#include <ignite/physics/2d/physics_2d.hpp>
-#include <nvrhi/nvrhi.h>
-#include <unordered_map>
+#include "ignite/physics/2d/physics_2d.hpp"
 #include "ignite/core/logger.hpp"
 #include "ignite/core/types.hpp"
 #include "ignite/core/uuid.hpp"
 #include "ignite/asset/asset.hpp"
 #include "ignite/math/aabb.hpp"
 
+#include <nvrhi/nvrhi.h>
+#include <unordered_map>
+
 namespace ignite
 {
     class Camera;
     class Physics2D;
+    class JoltScene;
     class Entity;
     class Environment;
     class SceneRenderer;
 
     using EntityComponents = std::unordered_map<entt::entity, std::vector<IComponent *>>;
-    using StringCounterMap = std::unordered_map<std::string, i32>;
 
     class Scene : public Asset
     {
@@ -47,13 +48,11 @@ namespace ignite
         entt::registry *registry = nullptr;
 
         std::unordered_map<UUID, entt::entity> entities; // uuid to entity
-        std::unordered_map<std::string, UUID> nameToUUID;
         
         EntityComponents registeredComps;
-        StringCounterMap entityNamesMapCounter;
-        std::vector<std::string> entityNames;
 
         Scope<Physics2D> physics2D;
+        Scope<JoltScene> physics;
 
         bool IsPlaying() const { return m_Playing; }
 
@@ -67,6 +66,8 @@ namespace ignite
             AABB aabb;
             glm::mat4 transform;
         };
+
+        glm::vec3 physicsGravity{ 0.0f, -9.8f, 0.0f };
 
         float timeInSeconds = 0.0f;
     

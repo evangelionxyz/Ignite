@@ -4,7 +4,6 @@
 #include "vertex_data.hpp"
 #include "graphics_pipeline.hpp"
 #include "renderer.hpp"
-
 #include "shader.hpp"
 
 #include <unordered_map>
@@ -14,7 +13,6 @@ namespace ignite
     class GraphicsPipeline;
     class DeviceManager;
     class Texture;
-    class Camera;
 
     template<typename VertexType>
     struct BatchRender
@@ -48,7 +46,7 @@ namespace ignite
     struct Renderer2DData
     {
         BatchRender<Vertex2DQuad> quadBatch;
-        std::unordered_map<GPipeline, nvrhi::BindingSetHandle> quadBindingSets;
+        nvrhi::BindingSetHandle quadBindingSet;
 
         BatchRender<Vertex2DLine> lineBatch;
         nvrhi::BindingSetHandle lineBindingSet;
@@ -63,7 +61,7 @@ namespace ignite
         static void Shutdown();
 
         static void Begin(nvrhi::ICommandList *commandList, nvrhi::IFramebuffer* framebuffer);
-        static void Flush(Ref<GraphicsPipeline> quadPipeline, Ref<GraphicsPipeline> linePipeline, bool outlining = false);
+        static void Flush(Ref<GraphicsPipeline> quadPipeline, Ref<GraphicsPipeline> linePipeline);
         static void End();
 
         static void DrawBox(const glm::mat4& transform, const glm::vec4& color = glm::vec4(1.0f), uint32_t entityID = 0);
@@ -84,5 +82,7 @@ namespace ignite
     private:
         static nvrhi::ICommandList *renderCommandList;
         static nvrhi::IFramebuffer *renderFramebuffer;
+
+        static Renderer2DData *s_Data;
     };
 }

@@ -9,7 +9,6 @@
 #include "ignite/math/math.hpp"
 #include "ignite/core/logger.hpp"
 #include "ignite/core/application.hpp"
-#include "ignite/scene/camera.hpp"
 #include "ignite/graphics/environment.hpp"
 #include "ignite/graphics/graphics_pipeline.hpp"
 
@@ -19,55 +18,6 @@
 namespace ignite {
 
     static std::unordered_map<std::string, nvrhi::TextureHandle> textureCache;
-
-    void Mesh::CreateConstantBuffers(nvrhi::IDevice *device)
-    {
-        // create buffers
-        auto constantBufferDesc = nvrhi::BufferDesc()
-            .setIsConstantBuffer(true)
-            .setIsVolatile(true)
-            .setMaxVersions(16)
-            .setInitialState(nvrhi::ResourceStates::ConstantBuffer);
-
-        // create per mesh constant buffers
-        constantBufferDesc.setDebugName("Mesh constant buffer");
-        constantBufferDesc.setByteSize(sizeof(ObjectBuffer));
-        objectBuffer = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(objectBuffer, "[Model] Failed to create object constant buffer");
-
-        constantBufferDesc.setDebugName("Material constant buffer");
-        constantBufferDesc.setByteSize(sizeof(MaterialData));
-        materialBuffer = device->createBuffer(constantBufferDesc);
-        LOG_ASSERT(materialBuffer, "[Model] Failed to create material constant buffer");
-    }
-
-    // Mesh class
-    void Mesh::CreateBuffers()
-    {
-        nvrhi::IDevice *device = Application::GetDeviceManager()->GetDevice();
-
-        // create vertex buffer
-        nvrhi::BufferDesc vbDesc = nvrhi::BufferDesc();
-        vbDesc.isVertexBuffer = true;
-        vbDesc.byteSize = sizeof(VertexMesh) * vertices.size();
-        vbDesc.initialState = nvrhi::ResourceStates::VertexBuffer;
-        vbDesc.keepInitialState = true;
-        vbDesc.debugName = "[Mesh] vertex buffer";
-
-        vertexBuffer = device->createBuffer(vbDesc);
-        LOG_ASSERT(vertexBuffer, "[Mesh] Failed to create Vertex Buffer");
-
-        // create index buffer
-        nvrhi::BufferDesc ibDesc = nvrhi::BufferDesc();
-        ibDesc.isIndexBuffer = true;
-        ibDesc.byteSize = sizeof(uint32_t) * indices.size();
-        ibDesc.initialState = nvrhi::ResourceStates::IndexBuffer;
-        ibDesc.keepInitialState = true;
-        ibDesc.debugName = "[Mesh] index buffer";
-
-        indexBuffer = device->createBuffer(ibDesc);
-        LOG_ASSERT(indexBuffer, "[Mesh] Failed to create Index Buffer");
-    }
 
     // Mesh loader
     void MeshLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Ref<Skeleton> &skeleton, i32 parentNodeID)
@@ -119,7 +69,29 @@ namespace ignite {
                 LoadMaterial(scene, mat, filepath, meshes[meshIndex]->material);
             }
 
-            LoadSingleMesh<Mesh>(scene, meshIndex, assimpMesh, meshes[meshIndex], filepath, skeleton);
+            LoadSingleMesh(filepath, scene, assimpMesh, meshIndex, meshes[meshIndex]->data, skeleton, meshes[meshIndex]->aabb);
+
+            // Load bones
+            if (assimpMesh->HasBones())
+            {
+                ProcessBoneWeights(assimpMesh, meshes[meshIndex]->data, meshes[meshIndex]->boneInfo, meshes[meshIndex]->boneMapping, skeleton);
+            }
+
+            // Copy vertices to outline vertices
+            meshes[meshIndex]->outlineVertices.resize(meshes[meshIndex]->data.vertices.size());
+            for (size_t i = 0; i < meshes[meshIndex]->data.vertices.size(); ++i)
+            {
+                VertexMesh mVertex = meshes[meshIndex]->data.vertices[i];
+                meshes[meshIndex]->outlineVertices[i].position = mVertex.position;
+
+                for (int w = 0; w < VERTEX_MAX_BONES; ++w)
+                {
+                    meshes[meshIndex]->outlineVertices[i].boneIDs[w] = mVertex.boneIDs[w];
+                    meshes[meshIndex]->outlineVertices[i].weights[w] = mVertex.weights[w];
+                }
+            }
+
+            meshes[meshIndex]->CreateBuffers();
         }
 
         // Process all children with this node as parent
@@ -129,31 +101,31 @@ namespace ignite {
         }
     }
 
-    template<typename T>
-    void MeshLoader::LoadSingleMesh(const aiScene *scene, const uint32_t meshIndex, aiMesh *assimpMesh, Ref<T> &mesh, const std::string &filepath, const Ref<Skeleton> &skeleton)
+    void MeshLoader::LoadSingleMesh(const std::string &filepath, const aiScene *scene, aiMesh *mesh, const uint32_t meshIndex, MeshData &outMeshData, const Ref<Skeleton> &skeleton, AABB &outAABB)
     {
         // vertices;
         VertexMesh vertex;
-        mesh->vertices.resize(assimpMesh->mNumVertices);
+        // mesh->outlineVertices.resize(assimpMesh->mNumVertices);
+        outMeshData.vertices.resize(mesh->mNumVertices);
 
-        mesh->aabb.min = glm::vec3(FLT_MAX);
-        mesh->aabb.max = glm::vec3(-FLT_MAX);
+        outAABB.min = glm::vec3(FLT_MAX);
+        outAABB.max = glm::vec3(-FLT_MAX);
 
-        for (uint32_t i = 0; i < assimpMesh->mNumVertices; ++i)
+        for (uint32_t i = 0; i < mesh->mNumVertices; ++i)
         {
-            vertex.position = { assimpMesh->mVertices[i].x, assimpMesh->mVertices[i].y, assimpMesh->mVertices[i].z };
+            vertex.position = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
 
-            mesh->aabb.min = glm::min(mesh->aabb.min, vertex.position);
-            mesh->aabb.max = glm::max(mesh->aabb.max, vertex.position);
+            outAABB.min = glm::min(outAABB.min, vertex.position);
+            outAABB.max = glm::max(outAABB.max, vertex.position);
 
             vertex.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-            if (assimpMesh->HasNormals())
-                vertex.normal = { assimpMesh->mNormals[i].x, assimpMesh->mNormals[i].y, assimpMesh->mNormals[i].z };
+            if (mesh->HasNormals())
+                vertex.normal = { mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z };
             else 
                 vertex.normal = { 0.0f, 1.0f, 0.0f }; // default normals
 
-            if (assimpMesh->mTextureCoords[0])
-                vertex.texCoord = { assimpMesh->mTextureCoords[0][i].x, assimpMesh->mTextureCoords[0][i].y };
+            if (mesh->mTextureCoords[0])
+                vertex.texCoord = { mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y };
             else
                 vertex.texCoord = { 0.0f, 0.0f };
 
@@ -164,38 +136,29 @@ namespace ignite {
                 vertex.weights[j] = 0.0f;
             }
 
-            mesh->vertices[i] = vertex;
+            outMeshData.vertices[i] = vertex;
         }
 
-        mesh->indices.reserve(assimpMesh->mNumFaces * 3);
-        for (uint32_t i = 0; i < assimpMesh->mNumFaces; ++i)
+        outMeshData.indices.reserve(mesh->mNumFaces * 3);
+        for (uint32_t i = 0; i < mesh->mNumFaces; ++i)
         {
-            aiFace face = assimpMesh->mFaces[i];
-            mesh->indices.push_back(face.mIndices[0]);
-            mesh->indices.push_back(face.mIndices[1]);
-            mesh->indices.push_back(face.mIndices[2]);
+            aiFace face = mesh->mFaces[i];
+            outMeshData.indices.push_back(face.mIndices[0]);
+            outMeshData.indices.push_back(face.mIndices[1]);
+            outMeshData.indices.push_back(face.mIndices[2]);
         }
-
-        // Load bones
-        if (assimpMesh->HasBones())
-        {
-            ProcessBoneWeights<T>(assimpMesh, mesh, skeleton);
-        }
-
-        mesh->CreateBuffers();
     }
 
-    template<typename T>
-    void MeshLoader::ProcessBoneWeights(aiMesh *assimpMesh, Ref<T> &mesh, const Ref<Skeleton> &skeleton)
+    void MeshLoader::ProcessBoneWeights(aiMesh *assimpMesh, MeshData &outMeshData, std::vector<BoneInfo> &outBoneInfo, std::unordered_map<std::string, uint32_t> &outBoneMapping, const Ref<Skeleton> &skeleton)
     {
-        mesh->boneMapping.clear();
-        mesh->boneInfo.resize(skeleton->joints.size());
+        outBoneMapping.clear();
+        outBoneInfo.resize(skeleton->joints.size());
 
         // Copy bone offset from skeleton
         for (size_t i = 0; i < skeleton->joints.size(); ++i)
         {
-            mesh->boneInfo[i].offsetMatrix = skeleton->joints[i].inverseBindPose;
-            mesh->boneMapping[skeleton->joints[i].name] = static_cast<i32>(i);
+            outBoneInfo[i].offsetMatrix = skeleton->joints[i].inverseBindPose;
+            outBoneMapping[skeleton->joints[i].name] = static_cast<i32>(i);
         }
 
         for (uint32_t boneIndex = 0; boneIndex < assimpMesh->mNumBones; ++boneIndex)
@@ -213,7 +176,7 @@ namespace ignite {
 
             uint32_t boneId = it->second;
 
-            // Each vertex can be affected by multimple bones
+            // Each vertex can be affected by multiple bones
             for (uint32_t weightIndex = 0; weightIndex < bone->mNumWeights; ++weightIndex)
             {
                 uint32_t vertexId = bone->mWeights[weightIndex].mVertexId;
@@ -222,18 +185,18 @@ namespace ignite {
                 // Find the first empty slot in this vertex's bone array
                 for (uint32_t j = 0; j < VERTEX_MAX_BONES; ++j)
                 {
-                    if (mesh->vertices[vertexId].weights[j] < 0.00001f)
+                    if (outMeshData.vertices[vertexId].weights[j] < 0.00001f)
                     {
-                        mesh->vertices[vertexId].boneIDs[j] = boneId;
-                        mesh->vertices[vertexId].weights[j] = weight;
+                        outMeshData.vertices[vertexId].boneIDs[j] = boneId;
+                        outMeshData.vertices[vertexId].weights[j] = weight;
                         break;
                     }
                 }
             }
         }
 
-        // Normalize weights to ensure the sume to 1.0
-        for (auto &vertex : mesh->vertices)
+        // Normalize weights to ensure the sum to 1.0
+        for (auto &vertex : outMeshData.vertices)
         {
             float totalWeight = 0.0f;
             for (uint32_t i = 0; i < VERTEX_MAX_BONES; ++i)
@@ -302,7 +265,7 @@ namespace ignite {
             skeleton->joints.push_back(joint);
         }
 
-        // process childe (use parent id if this node is not a joint)
+        // process child (use parent id if this node is not a joint)
         i32 childParentId = isJoint ? currentJointId : parentJointId;
         for (uint32_t i = 0; i < node->mNumChildren; ++i)
         {
@@ -469,6 +432,8 @@ namespace ignite {
 
                     LOG_ASSERT(meshMaterial->textures[type].buffer.Data, "[Material] Failed to load texture");
 
+                    meshMaterial->textures[type].width = width;
+                    meshMaterial->textures[type].height = height;
                     meshMaterial->textures[type].buffer.Size = width * height * 4;
                     meshMaterial->textures[type].rowPitch = width * 4;
 
@@ -480,6 +445,7 @@ namespace ignite {
                         .setFormat(nvrhi::Format::RGBA8_UNORM)
                         .setInitialState(nvrhi::ResourceStates::ShaderResource)
                         .setKeepInitialState(true)
+                        .setMipLevels(meshMaterial->mipLevels)
                         .setDebugName("Material embedded Texture");
 
                     meshMaterial->textures[type].handle = device->createTexture(textureDesc);
@@ -502,7 +468,7 @@ namespace ignite {
 
     }
 
-    void MeshLoader::CalculateWorldTransforms(std::vector<NodeInfo> &nodes, std::vector<Ref<Mesh>> &meshes)
+    void MeshLoader::CalculateWorldTransforms(std::vector<NodeInfo> &nodes)
     {
         // First pass: calculate world transforms for nodes
         for (size_t i = 0; i < nodes.size(); i++)
@@ -517,12 +483,13 @@ namespace ignite {
                 // Child node
                 nodes[i].worldTransform = nodes[nodes[i].parentID].worldTransform * nodes[i].localTransform;
             }
-
+#if 0
             // Apply node's world transform to all its meshes
             for (i32 meshIdx : nodes[i].meshIndices)
             {
-                meshes[meshIdx]->worldTransform = nodes[i].worldTransform;
+                outMeshIndexGlobalMatrices[meshIdx] = nodes[i].worldTransform;
             }
+#endif
         }
     }
 
@@ -531,9 +498,47 @@ namespace ignite {
         textureCache.clear();
     }
 
-    void EntityMesh::CreateConstantBuffers(nvrhi::IDevice *device)
+
+    // Entity Mesh class
+    void Mesh::CreateBuffers()
     {
-        // create buffers
+        nvrhi::IDevice *device = Application::GetDeviceManager()->GetDevice();
+
+        // create vertex buffer
+        nvrhi::BufferDesc vbDesc = nvrhi::BufferDesc();
+        vbDesc.isVertexBuffer = true;
+        vbDesc.byteSize = sizeof(VertexMesh) * data.vertices.size();
+        vbDesc.initialState = nvrhi::ResourceStates::VertexBuffer;
+        vbDesc.keepInitialState = true;
+        vbDesc.debugName = "[Mesh] vertex buffer";
+
+        vertexBuffer = device->createBuffer(vbDesc);
+        LOG_ASSERT(vertexBuffer, "[Mesh] Failed to create Vertex Buffer");
+
+        // Outline
+        {
+            vbDesc = nvrhi::BufferDesc();
+            vbDesc.isVertexBuffer = true;
+            vbDesc.byteSize = sizeof(VertexMeshOutline) * outlineVertices.size();
+            vbDesc.initialState = nvrhi::ResourceStates::VertexBuffer;
+            vbDesc.keepInitialState = true;
+            vbDesc.debugName = "[Mesh] vertex buffer";
+            outlineVertexBuffer = device->createBuffer(vbDesc);
+            LOG_ASSERT(outlineVertexBuffer, "[Mesh] Failed to create Vertex Buffer");
+        }
+
+        // create index buffer
+        nvrhi::BufferDesc ibDesc = nvrhi::BufferDesc();
+        ibDesc.isIndexBuffer = true;
+        ibDesc.byteSize = sizeof(uint32_t) * data.indices.size();
+        ibDesc.initialState = nvrhi::ResourceStates::IndexBuffer;
+        ibDesc.keepInitialState = true;
+        ibDesc.debugName = "[Mesh] index buffer";
+
+        indexBuffer = device->createBuffer(ibDesc);
+        LOG_ASSERT(indexBuffer, "[Mesh] Failed to create Index Buffer");
+
+        // Constant buffer
         auto constantBufferDesc = nvrhi::BufferDesc()
             .setIsConstantBuffer(true)
             .setIsVolatile(true)
@@ -550,34 +555,6 @@ namespace ignite {
         constantBufferDesc.setByteSize(sizeof(MaterialData));
         materialBufferHandle = device->createBuffer(constantBufferDesc);
         LOG_ASSERT(materialBufferHandle, "[Model] Failed to create material constant buffer");
-    }
-
-    // Entity Mesh class
-    void EntityMesh::CreateBuffers()
-    {
-        nvrhi::IDevice *device = Application::GetDeviceManager()->GetDevice();
-
-        // create vertex buffer
-        nvrhi::BufferDesc vbDesc = nvrhi::BufferDesc();
-        vbDesc.isVertexBuffer = true;
-        vbDesc.byteSize = sizeof(VertexMesh) * vertices.size();
-        vbDesc.initialState = nvrhi::ResourceStates::VertexBuffer;
-        vbDesc.keepInitialState = true;
-        vbDesc.debugName = "[Mesh] vertex buffer";
-
-        vertexBuffer = device->createBuffer(vbDesc);
-        LOG_ASSERT(vertexBuffer, "[Mesh] Failed to create Vertex Buffer");
-
-        // create index buffer
-        nvrhi::BufferDesc ibDesc = nvrhi::BufferDesc();
-        ibDesc.isIndexBuffer = true;
-        ibDesc.byteSize = sizeof(uint32_t) * indices.size();
-        ibDesc.initialState = nvrhi::ResourceStates::IndexBuffer;
-        ibDesc.keepInitialState = true;
-        ibDesc.debugName = "[Mesh] index buffer";
-
-        indexBuffer = device->createBuffer(ibDesc);
-        LOG_ASSERT(indexBuffer, "[Mesh] Failed to create Index Buffer");
     }
 
 }

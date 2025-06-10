@@ -3,7 +3,7 @@
 #include <imgui.h>
 #include <ImGuizmo.h>
 
-#include "ignite/scene/camera.hpp"
+#include "ignite/scene/icamera.hpp"
 
 #include "ignite/math/math.hpp"
 
@@ -13,11 +13,11 @@ namespace ignite {
     {
         glm::mat4 cameraView;
         glm::mat4 cameraProjection;
-        Camera::Type cameraType;
+        ICamera::Type cameraType;
 
         Rect viewRect;
         float snapValue = 0.25f;
-        bool isSnapping = false;
+        bool isSnapping = true;
     };
 
     class Gizmo
@@ -29,6 +29,9 @@ namespace ignite {
 
         void SetOperation(ImGuizmo::OPERATION op);
         void SetMode(ImGuizmo::MODE mode);
+
+        ImGuizmo::MODE GetMode() { return m_Mode; }
+        ImGuizmo::OPERATION GetOperation() { return m_Operation; }
 
         void Manipulate(glm::mat4 &inOutMatrix);
         void DrawGrid(float gridSize = 10.0f, const glm::mat4 &gridMatrix = glm::mat4(1.0f));

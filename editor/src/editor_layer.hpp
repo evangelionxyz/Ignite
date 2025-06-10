@@ -14,12 +14,8 @@
 namespace ignite
 {
     class ShaderFactory;
-    class DeviceManager;
     class ScenePanel;
     class ContentBrowserPanel;
-    class Model;
-    class SkeletalAnimation;
-    struct Skeleton;
 
     class EditorLayer final : public Layer
     {
@@ -31,6 +27,7 @@ namespace ignite
             bool multiSelect = false;
             bool settingsWindow = false;
             bool popupNewProjectModal = false;
+            bool assetRegistryWindow = false;
             bool isPickingEntity = false;
             uint32_t hoveredEntity = uint32_t(-1);
 
@@ -58,7 +55,7 @@ namespace ignite
         Scene *GetActiveScene() { return m_ActiveScene.get(); }
         Project *GetActiveProject() { return m_ActiveProject.get(); }
 
-        EditorData GetState() const { return m_Data; }
+        EditorData &GetState() { return m_Data; }
 
     private:
 

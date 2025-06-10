@@ -9,13 +9,17 @@ namespace ignite
     {
         CompType_Invalid = 0,
         CompType_ID = 1,
+        CompType_Camera,
         CompType_Transform,
         CompType_Sprite2D,
         CompType_SkinnedMesh,
         CompType_StaticMesh,
         CompType_MeshRenderer,
         CompType_BoxCollider2D,
-        CompType_Rigidbody2D
+        CompType_Rigidbody2D,
+        CompType_Rigidbody,
+        CompType_BoxCollider,
+        CompType_SphereCollider,
     };
 
     class IComponent

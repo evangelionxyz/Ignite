@@ -196,29 +196,40 @@ namespace ignite
         }
     };
 
-    struct VertexOutline
+    struct VertexMeshOutline
     {
         glm::vec3 position;
+        u32 boneIDs[VERTEX_MAX_BONES] = { 0 };
+        f32 weights[VERTEX_MAX_BONES] = { 0.0f };
 
-        static std::array<nvrhi::VertexAttributeDesc, 1> GetAttributes()
+        static std::array<nvrhi::VertexAttributeDesc, 3> GetAttributes()
         {
             return
             {
                 nvrhi::VertexAttributeDesc()
                     .setName("POSITION")
-                    .setBufferIndex(0)
                     .setFormat(nvrhi::Format::RGB32_FLOAT)
-                    .setOffset(offsetof(VertexOutline, position))
-                    .setElementStride(sizeof(VertexOutline))
+                    .setOffset(offsetof(VertexMeshOutline, position))
+                    .setElementStride(sizeof(VertexMeshOutline)),
+                nvrhi::VertexAttributeDesc()
+                    .setName("BONEIDS")
+                    .setFormat(nvrhi::Format::RGBA32_UINT)
+                    .setOffset(offsetof(VertexMeshOutline, boneIDs))
+                    .setElementStride(sizeof(VertexMeshOutline)),
+                nvrhi::VertexAttributeDesc()
+                    .setName("WEIGHTS")
+                    .setFormat(nvrhi::Format::RGBA32_FLOAT)
+                    .setOffset(offsetof(VertexMeshOutline, weights))
+                    .setElementStride(sizeof(VertexMeshOutline))
             };
         }
 
         static nvrhi::BindingLayoutDesc GetBindingLayoutDesc()
         {
-            nvrhi::BindingLayoutDesc desc;
-            desc.setVisibility(nvrhi::ShaderType::All);
-            desc.addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0));
-            return desc;
+            return nvrhi::BindingLayoutDesc()
+                .setVisibility(nvrhi::ShaderType::All)
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(0)) // camera
+                .addItem(nvrhi::BindingLayoutItem::VolatileConstantBuffer(1)); // model
         }
     };
 }

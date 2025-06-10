@@ -2,15 +2,15 @@
 
 namespace ignite
 {
-    static CommandManager *s_Instance = nullptr;
+    static CommandManager *s_JoltInstance = nullptr;
     
     CommandManager::CommandManager()
     {
-        s_Instance = this;
+        s_JoltInstance = this;
     }
 
     CommandManager *CommandManager::GetInstance()
     {
-        return s_Instance;
+        return s_JoltInstance;
     }
 }

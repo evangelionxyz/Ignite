@@ -23,6 +23,7 @@ includedirs {
     "%{wks.location}/engine/ignite/src",
     "%{IncludeDir.GLFW}",
     "%{IncludeDir.BOX2D}",
+    "%{IncludeDir.JOLT}",
     "%{IncludeDir.ENTT}",
     "%{IncludeDir.GLM}",
     "%{IncludeDir.IMGUI}",

@@ -16,6 +16,9 @@ namespace ignite
         Rigidbody2D,
         BoxCollider2D,
         SkinnedMesh,
-        MeshRenderer
+        MeshRenderer,
+        Rigibody,
+        BoxCollider,
+        SphereCollider
     >; 
 }

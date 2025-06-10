@@ -2,6 +2,7 @@
 #include "ignite/project/project.hpp"
 #include "editor_layer.hpp"
 
+#include <format>
 #include <algorithm>
 
 namespace ignite {
@@ -13,14 +14,16 @@ namespace ignite {
 
         TextureCreateInfo createInfo;
         createInfo.format = nvrhi::Format::RGBA8_UNORM;
-        m_Icon = Texture::Create("resources/ui/ic_folder.png", createInfo);
+        m_Icons["folder"] = Texture::Create("resources/ui/ic_folder.png", createInfo);
+        m_Icons["unknown"] = Texture::Create("resources/ui/ic_file.png", createInfo);
 
         nvrhi::IDevice *device = Application::GetRenderDevice();
-
         nvrhi::CommandListHandle commandList = device->createCommandList();
-
         commandList->open();
-        m_Icon->Write(commandList);
+        for (auto &[name, icon] : m_Icons)
+        {
+            icon->Write(commandList);
+        }
         commandList->close();
         
         device->executeCommandList(commandList);
@@ -123,9 +126,6 @@ namespace ignite {
             CompactTree();
         }
 
-        ImGui::SameLine();
-        ImGui::SliderInt("Thumbnail Size", &m_ThumbnailSize, 1, 100);
-
         ImGui::EndChild();
 
         if (m_ActiveProject)
@@ -180,6 +180,9 @@ namespace ignite {
                 std::string filenameStr = item.generic_string();
                 ImGui::PushID(filenameStr.c_str());
 
+                std::filesystem::path path = m_CurrentDirectory / item;
+                bool isDirectory = std::filesystem::is_directory(path);
+
                 // float thumbnailHeight = m_ThumbnailSize * (thumbnail->GetHeight() / thumbnail->GetWidth());
                 const float thumbnailHeight = static_cast<float>(m_ThumbnailSize) * (320.0f / 540.0f);
                 const float diff = static_cast<float>(m_ThumbnailSize) - thumbnailHeight;
@@ -187,17 +190,43 @@ namespace ignite {
 
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 
-                ImTextureID iconId = reinterpret_cast<ImTextureID>(m_Icon->GetHandle().Get());
+                Ref<Texture> icon = isDirectory ? m_Icons["folder"] : m_Icons["unknown"];
+                ImTextureID iconId = reinterpret_cast<ImTextureID>( icon->GetHandle().Get());
                 ImGui::ImageButton(item.string().c_str(), iconId, { static_cast<float>(m_ThumbnailSize), static_cast<float>(m_ThumbnailSize) });
 
-                if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+
+                if (ImGui::IsItemHovered())
                 {
-                    std::filesystem::path openPath = m_CurrentDirectory / item;
-                    if (std::filesystem::is_directory(openPath))
+                    if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
                     {
-                        m_BackwardPathStack.push(m_CurrentDirectory);
-                        m_CurrentDirectory = openPath;
+                        if (isDirectory)
+                        {
+                            m_BackwardPathStack.push(m_CurrentDirectory);
+                            m_CurrentDirectory = path;
+                        }
                     }
+                }
+
+                if (ImGui::BeginPopupContextItem())
+                {
+                    if (ImGui::MenuItem("Open"))
+                    {
+                        if (isDirectory)
+                        {
+                            m_BackwardPathStack.push(m_CurrentDirectory);
+                            m_CurrentDirectory = path;
+                        }
+                        else
+                        {
+                            // Windows
+                            std::string command = std::format("\"{}\"", path.generic_string());
+                            std::system(command.c_str());
+                        }
+                    }
+
+                    ImGui::Text("%s", filenameStr.c_str());
+
+                    ImGui::EndPopup();
                 }
 
                 if (ImGui::BeginDragDropSource())
@@ -227,6 +256,34 @@ namespace ignite {
             }
 
             ImGui::Columns(1);
+
+            if (ImGui::BeginPopupContextWindow("##content_browser_context_menu", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoReopen | ImGuiPopupFlags_NoOpenOverItems))
+            {
+                if (ImGui::BeginMenu("Create"))
+                {
+                    if (ImGui::MenuItem("New Folder"))
+                    {
+                    }
+
+                    ImGui::EndMenu();
+                }
+
+                if (ImGui::BeginMenu("Thumbnail Size"))
+                {
+                    if (ImGui::MenuItem("Small")) m_ThumbnailSize = 38;
+                    if (ImGui::MenuItem("Medium")) m_ThumbnailSize = 64;
+                    if (ImGui::MenuItem("Large")) m_ThumbnailSize = 96;
+                    ImGui::EndMenu();
+                }
+
+                if (ImGui::MenuItem("Open Folder in File Explorer"))
+                {
+                    std::string command = std::format("explorer {}", m_CurrentDirectory.string());
+                    std::system(command.c_str());
+                }
+
+                ImGui::EndPopup();
+            }
 
             ImGui::EndChild();
         }
@@ -346,7 +403,7 @@ namespace ignite {
         std::vector<uint32_t> nodesToDelete;
         CollectNodesToDelete(nodeIndex, basePath, nodesToDelete);
 
-        // sort in descending order to delete from highes index first
+        // sort in descending order to delete from highest index first
         std::ranges::sort(nodesToDelete.rbegin(), nodesToDelete.rend());
         for (uint32_t nodeToDelete : nodesToDelete)
         {

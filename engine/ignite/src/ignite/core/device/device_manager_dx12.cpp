@@ -24,7 +24,7 @@ static bool IsNvDevice(const UINT ID) { return ID == 0x10DE; }
 
 namespace ignite
 {
-    static DeviceManager_DX12 *s_Instance = nullptr;
+    static DeviceManager_DX12 *s_JoltInstance = nullptr;
 
     void DescriptorHeapAllocator::Create(ID3D12Device *device, ID3D12DescriptorHeap *descriptorHeap)
     {
@@ -595,12 +595,12 @@ namespace ignite
 
     DeviceManager *DeviceManager::CreateD3D12()
     {
-        s_Instance = new DeviceManager_DX12();
-        return s_Instance;
+        s_JoltInstance = new DeviceManager_DX12();
+        return s_JoltInstance;
     }
 
     DeviceManager_DX12 &DeviceManager_DX12::GetInstance()
     {
-        return *s_Instance;
+        return *s_JoltInstance;
     }
 }

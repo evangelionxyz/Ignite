@@ -21,6 +21,7 @@ namespace ignite
         createInfo.width = 1640;
         createInfo.height = 940;
         createInfo.useGui = true;
+        createInfo.maximized = true;
 
         // vulkan by default
         createInfo.graphicsApi = nvrhi::GraphicsAPI::VULKAN;
