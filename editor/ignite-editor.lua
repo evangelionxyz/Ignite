@@ -41,7 +41,19 @@ includedirs {
 
 defines {
     "SHADERMAKE_COLORS",
-    "YAML_CPP_STATIC_DEFINE"
+    "YAML_CPP_STATIC_DEFINE",
+    "JPH_FLOATING_POINT_EXCEPTIONS_ENABLED",
+    "JPH_DEBUG_RENDERER",
+    "JPH_PROFILE_ENABLED",
+    "JPH_OBJECT_STREAM",
+    "JPH_USE_AVX2",
+    "JPH_USE_AVX",
+    "JPH_USE_SSE4_1",
+    "JPH_USE_SSE4_2",
+    "JPH_USE_LZCNT",
+    "JPH_USE_TZCNT",
+    "JPH_USE_F16C",
+    "JPH_USE_FMADD",
 }
 
 --linux
@@ -67,6 +79,27 @@ filter "configurations:Debug"
 runtime "Debug"
 symbols "on"
 
+filter "configurations:Debug"
+    runtime "Debug"
+    optimize "off"
+    symbols "on"
+    defines {
+        "DEBUG",
+        "_DEBUG",
+    }
+
 filter "configurations:Release"
-runtime "Release"
-symbols "off"
+    runtime "Release"
+    optimize "on"
+    symbols "off"
+    defines {
+        "NDEBUG"
+    }
+
+filter "configurations:Dist"
+    runtime "Release"
+    optimize "on"
+    symbols "off"
+    defines {
+        "NDEBUG"
+    }

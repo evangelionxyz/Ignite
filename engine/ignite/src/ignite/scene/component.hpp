@@ -222,7 +222,7 @@ namespace ignite
      public:
          Ref<Skeleton> skeleton;
          std::vector<glm::mat4> boneTransforms;
-         std::vector<Ref<SkeletalAnimation>> animations;
+         std::vector<SkeletalAnimation> animations;
          i32 activeAnimIndex = 0;
 
          static CompType StaticType() { return CompType_SkinnedMesh; }
@@ -256,6 +256,7 @@ namespace ignite
             meshBuffer = other.meshBuffer;
             meshSource = other.meshSource;
             meshIndex = other.meshIndex;
+            root = other.root;
         }
 
         static CompType StaticType() { return CompType_MeshRenderer; }

@@ -44,7 +44,5 @@ namespace ignite
         Ref<GraphicsPipeline> m_EnvironmentPipeline;
 
         Ref<GraphicsPipeline> m_GeometryPipeline;
-        Ref<GraphicsPipeline> m_GeometryDepthStencilPipeline;
-        Ref<GraphicsPipeline> m_GeometryOutlinePipeline;
     };
 }

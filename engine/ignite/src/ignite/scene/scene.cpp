@@ -58,7 +58,7 @@ namespace ignite
         for (auto entity : skinnedMeshView)
         {
             SkinnedMesh &skinnedMesh = skinnedMeshView.get<SkinnedMesh>(entity);
-            if (!skinnedMesh.animations.empty() && skinnedMesh.animations[skinnedMesh.activeAnimIndex]->isPlaying)
+            if (!skinnedMesh.animations.empty() && skinnedMesh.animations[skinnedMesh.activeAnimIndex].isPlaying)
             {
                 if (AnimationSystem::UpdateSkeleton(skinnedMesh.skeleton, skinnedMesh.animations[skinnedMesh.activeAnimIndex], timeInSeconds))
                 {
@@ -109,6 +109,10 @@ namespace ignite
             if (meshRenderer.root != UUID(0))
             {
                 Entity rootNodeEntity = SceneManager::GetEntity(this, meshRenderer.root);
+                
+                if (!rootNodeEntity.IsValid())
+                    meshRenderer.root = UUID(0);
+
                 SkinnedMesh &skinnedMesh = rootNodeEntity.GetComponent<SkinnedMesh>();
                 
                 const size_t numBones = std::min(skinnedMesh.boneTransforms.size(), static_cast<size_t>(MAX_BONES));

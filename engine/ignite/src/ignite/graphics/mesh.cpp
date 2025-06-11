@@ -17,10 +17,10 @@
 
 namespace ignite {
 
-    static std::unordered_map<std::string, nvrhi::TextureHandle> textureCache;
+    static std::unordered_map<std::string, Material::TextureData> textureCache;
 
     // Mesh loader
-    void MeshLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::string &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Ref<Skeleton> &skeleton, i32 parentNodeID)
+    void MeshLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::filesystem::path &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Ref<Skeleton> &skeleton, i32 parentNodeID)
     {
         // Create a node entry and get its index
         NodeInfo nodeInfo;
@@ -66,16 +66,18 @@ namespace ignite {
             if (assimpMesh->mMaterialIndex >= 0)
             {
                 aiMaterial *mat = scene->mMaterials[assimpMesh->mMaterialIndex];
-                LoadMaterial(scene, mat, filepath, meshes[meshIndex]->material);
+                LoadMaterial(scene, mat, meshes[meshIndex]->material, filepath);
             }
 
-            LoadSingleMesh(filepath, scene, assimpMesh, meshIndex, meshes[meshIndex]->data, skeleton, meshes[meshIndex]->aabb);
+            LoadSingleMesh(scene, assimpMesh, meshIndex, meshes[meshIndex]->data, skeleton, meshes[meshIndex]->aabb);
 
             // Load bones
             if (assimpMesh->HasBones())
             {
                 ProcessBoneWeights(assimpMesh, meshes[meshIndex]->data, meshes[meshIndex]->boneInfo, meshes[meshIndex]->boneMapping, skeleton);
             }
+
+            LOG_WARN("[Mesh Loader] {} [{}] Loaded", assimpMesh->mName.data, meshIndex);
 
             // Copy vertices to outline vertices
             meshes[meshIndex]->outlineVertices.resize(meshes[meshIndex]->data.vertices.size());
@@ -101,7 +103,7 @@ namespace ignite {
         }
     }
 
-    void MeshLoader::LoadSingleMesh(const std::string &filepath, const aiScene *scene, aiMesh *mesh, const uint32_t meshIndex, MeshData &outMeshData, const Ref<Skeleton> &skeleton, AABB &outAABB)
+    void MeshLoader::LoadSingleMesh(const aiScene *scene, aiMesh *mesh, const uint32_t meshIndex, MeshData &outMeshData, const Ref<Skeleton> &skeleton, AABB &outAABB)
     {
         // vertices;
         VertexMesh vertex;
@@ -325,7 +327,7 @@ namespace ignite {
         skeleton->joints = std::move(sortedJoints);
     }
 
-    void MeshLoader::LoadMaterial(const aiScene *scene, aiMaterial *assimpMaterial, const std::string &filepath, Material &material)
+    void MeshLoader::LoadMaterial(const aiScene *scene, aiMaterial *assimpMaterial, Material &material, const std::filesystem::path &filepath)
     {
         aiColor4D baseColor(1.0f, 1.0f, 1.0f, 1.0f);
         aiColor4D diffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -344,98 +346,117 @@ namespace ignite {
             material.data.emissive = emissiveColor.r / diffuseColor.r;
 
         // load textures
-        LoadTextures(scene, assimpMaterial, &material, aiTextureType_DIFFUSE);
-        LoadTextures(scene, assimpMaterial, &material, aiTextureType_SPECULAR);
-        LoadTextures(scene, assimpMaterial, &material, aiTextureType_EMISSIVE);
-        LoadTextures(scene, assimpMaterial, &material, aiTextureType_DIFFUSE_ROUGHNESS);
-        LoadTextures(scene, assimpMaterial, &material, aiTextureType_NORMALS);
+        LoadTextures(scene, assimpMaterial, &material, aiTextureType_DIFFUSE, filepath);
+        LoadTextures(scene, assimpMaterial, &material, aiTextureType_SPECULAR, filepath);
+        LoadTextures(scene, assimpMaterial, &material, aiTextureType_EMISSIVE, filepath);
+        LoadTextures(scene, assimpMaterial, &material, aiTextureType_DIFFUSE_ROUGHNESS, filepath);
+        LoadTextures(scene, assimpMaterial, &material, aiTextureType_NORMALS, filepath);
 
         // set transparent and reflectivity
         material._transparent = false;
         material._reflective = reflectivity > 0.0f;
     }
 
-    void MeshLoader::LoadAnimation(const aiScene *scene, std::vector<Ref<SkeletalAnimation>> &animations)
+    void MeshLoader::LoadAnimation(const aiScene *scene, std::vector<SkeletalAnimation> &animations)
     {
         animations.resize(scene->mNumAnimations);
 
         for (uint32_t i = 0; i < scene->mNumAnimations; ++i)
         {
             aiAnimation *anim = scene->mAnimations[i];
-            animations[i] = CreateRef<SkeletalAnimation>(anim);
+            animations[i] = SkeletalAnimation(anim);
         }
     }
 
-    void MeshLoader::LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type)
+    void MeshLoader::LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type, const std::filesystem::path &modelFilepath)
     {
         if (const i32 texCount = material->GetTextureCount(type))
         {
             for (i32 i = 0; i < texCount; ++i)
             {
-                aiString textureFilepath;
-                material->GetTexture(type, i, &textureFilepath);
+                aiString aiTextureFilepath;
+                material->GetTexture(type, i, &aiTextureFilepath);
 
                 // try to load from cache
                 for (auto &[path, tex] : textureCache)
                 {
-                    if (std::strcmp(path.c_str(), textureFilepath.C_Str()) == 0)
+                    if (std::strcmp(path.c_str(), aiTextureFilepath.C_Str()) == 0)
                     {
-                        meshMaterial->textures[type].handle = tex;
-                        break;
+                        meshMaterial->textures[type] = tex;
+                        LOG_WARN("[Material] {} Loaded from cache", path.c_str());
+                        return;
                     }
                 }
 
+                nvrhi::IDevice *device = Application::GetDeviceManager()->GetDevice();
+                stbi_set_flip_vertically_on_load(false);
+                i32 width, height, channels;
+                uint8_t *sourceData = nullptr;
+
                 // create new texture
-                const aiTexture *embeddedTexture = scene->GetEmbeddedTexture(textureFilepath.C_Str());
+                // Embedded texture
+                const aiTexture *embeddedTexture = scene->GetEmbeddedTexture(aiTextureFilepath.C_Str());
                 if (embeddedTexture && meshMaterial->textures[type].handle == nullptr)
                 {
-                    nvrhi::IDevice *device = Application::GetDeviceManager()->GetDevice();
-
-                    stbi_set_flip_vertically_on_load(false);
-
-                    i32 width, height, channels;
-
                     // handle compressed textures
                     if (embeddedTexture->mHeight == 0)
                     {
-                        LOG_INFO("[Material] Loading compressed format texture of size {} bytes", embeddedTexture->mWidth);
-
-                        meshMaterial->textures[type].buffer.Data = stbi_load_from_memory(
-                            reinterpret_cast<const stbi_uc *>(embeddedTexture->pcData),
+                        LOG_INFO("[Material] Loading embedded compressed format texture of size {} bytes", embeddedTexture->mWidth);
+                        meshMaterial->textures[type].buffer.Data = stbi_load_from_memory(reinterpret_cast<const stbi_uc *>(embeddedTexture->pcData),
                             embeddedTexture->mWidth, &width, &height, &channels, 4);
                     }
                     else
                     {
-                        width = embeddedTexture->mWidth;
-                        height = embeddedTexture->mHeight;
+                        width = static_cast<int>(embeddedTexture->mWidth);
+                        height = static_cast<int>(embeddedTexture->mHeight);
 
-                        LOG_INFO("[Material] Loading uncompressed texture of size {}x{}", width, height);
-
-                        // for uncompressed texture, convert to RGBA format for consitent handling
-                        const unsigned char *srcData = reinterpret_cast<const unsigned char *>(embeddedTexture->pcData);
+                        LOG_INFO("[Material] Loading embedded uncompressed texture of size {}x{}", width, height);
 
                         // Allocate space for RGBA8 data
-                        unsigned char *dstData = new unsigned char[width * height * 4];
+                        uint8_t *destinationData = new uint8_t[width * height * 4];
 
                         // Assimp embedded uncompressed texture data is usually in RGB format without alpha
                         // You can test with alpha channel (or assume RGB with alpha set to 255)
                         for (int i = 0; i < width * height; ++i)
                         {
-                            dstData[i * 4 + 0] = srcData[i * 3 + 0]; // R
-                            dstData[i * 4 + 1] = srcData[i * 3 + 1]; // G
-                            dstData[i * 4 + 2] = srcData[i * 3 + 2]; // B
-                            dstData[i * 4 + 3] = 255;                // A
+                            destinationData[i * 4 + 0] = sourceData[i * 3 + 0]; // R
+                            destinationData[i * 4 + 1] = sourceData[i * 3 + 1]; // G
+                            destinationData[i * 4 + 2] = sourceData[i * 3 + 2]; // B
+                            destinationData[i * 4 + 3] = 255;                   // A
                         }
 
-                        meshMaterial->textures[type].buffer.Data = dstData;
+                        meshMaterial->textures[type].buffer.Data = destinationData;
+
+                        sourceData = reinterpret_cast<uint8_t *>(embeddedTexture->pcData);
+                        LOG_ASSERT(sourceData, "[Material] Failed to load texture");
                     }
+                }
+                else
+                {
+                    std::filesystem::path filepath = modelFilepath.parent_path() / std::string(aiTextureFilepath.C_Str());
 
-                    LOG_ASSERT(meshMaterial->textures[type].buffer.Data, "[Material] Failed to load texture");
+                    LOG_ASSERT(std::filesystem::exists(filepath), "[Material] texture path is not exists!");
 
+                    LOG_INFO("[Material] Load texture from {}", filepath.generic_string());
+                    
+                    sourceData = stbi_load(filepath.generic_string().c_str(), &width, &height, &channels, 4);
+                    LOG_ASSERT(sourceData, "[Material] Failed to load texture");
+                }
+
+
+                if (sourceData)
+                {
+                    meshMaterial->textures[type].buffer.Data = sourceData;
+                }
+                
+                LOG_ASSERT(meshMaterial->textures[type].buffer.Data, "[Material] Failed to load texture");
+
+                if (meshMaterial->textures[type].buffer.Data)
+                {
                     meshMaterial->textures[type].width = width;
                     meshMaterial->textures[type].height = height;
-                    meshMaterial->textures[type].buffer.Size = width * height * 4;
-                    meshMaterial->textures[type].rowPitch = width * 4;
+                    meshMaterial->textures[type].buffer.Size = width * height * 4u;
+                    meshMaterial->textures[type].rowPitch = width * 4u;
 
                     // create texture
                     const auto textureDesc = nvrhi::TextureDesc()
@@ -452,8 +473,7 @@ namespace ignite {
                     LOG_ASSERT(meshMaterial->textures[type].handle, "[Material] Failed to create texture!");
 
                     // store to cache
-                    textureCache[textureFilepath.C_Str()] = meshMaterial->textures[type].handle;
-
+                    textureCache[aiTextureFilepath.C_Str()] = meshMaterial->textures[type];
                     meshMaterial->_shouldWriteTexture = true;
                 }
             }

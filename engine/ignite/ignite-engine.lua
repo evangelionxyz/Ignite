@@ -48,7 +48,19 @@ links {
 
 defines {
     "SHADERMAKE_COLORS",
-    "YAML_CPP_STATIC_DEFINE"
+    "YAML_CPP_STATIC_DEFINE",
+    "JPH_FLOATING_POINT_EXCEPTIONS_ENABLED",
+    "JPH_DEBUG_RENDERER",
+    "JPH_PROFILE_ENABLED",
+    "JPH_OBJECT_STREAM",
+    "JPH_USE_AVX2",
+    "JPH_USE_AVX",
+    "JPH_USE_SSE4_1",
+    "JPH_USE_SSE4_2",
+    "JPH_USE_LZCNT",
+    "JPH_USE_TZCNT",
+    "JPH_USE_F16C",
+    "JPH_USE_FMADD",
 }
 
 --linux
@@ -106,7 +118,9 @@ filter "system:windows"
         "NOMINMAX",
         "IGNITE_WITH_DX12",
         "IGNITE_WITH_VULKAN",
-        "_CRT_SECURE_NO_WARNINGS"
+        "_CRT_SECURE_NO_WARNINGS",
+        "WIN32",
+        "_WINDOWS"
     }
 
     postbuildcommands {
@@ -116,6 +130,10 @@ filter "system:windows"
     filter "configurations:Debug"
         runtime "Debug"
         symbols "on"
+        defines {
+            "DEBUG",
+            "_DEBUG"
+        }
         links {
             "%{Library.ShaderC_Debug}",
             "%{Library.SPIRV_Cross_Debug}",
@@ -128,6 +146,27 @@ filter "system:windows"
     filter "configurations:Release"
         runtime "release"
         optimize "on"
+        symbols "on" -- with debug info
+        defines {
+            "NDEBUG"
+        }
+        links {
+            "%{Library.ShaderC}",
+            "%{Library.SPIRV_Cross}",
+            "%{Library.SPIRV_Cross_GLSL}",
+            "%{Library.SPIRV_Cross_HLSL}",
+            "%{Library.SPIRV_Cross_Reflect}",
+            "%{Library.SPIRV_Cross_Util}",
+            "%{Library.SPIRV_Tools}",
+        }
+
+    filter "configurations:Dist"
+        runtime "release"
+        optimize "on"
+        symbols "off" -- without debug info
+        defines {
+            "NDEBUG"
+        }
         links {
             "%{Library.ShaderC}",
             "%{Library.SPIRV_Cross}",

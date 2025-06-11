@@ -11,6 +11,8 @@ namespace ignite
     static constexpr unsigned int cMaxBodyPairs = 64000;
     static constexpr unsigned int cMaxContactConstraints = 20480;
 
+    using namespace JPH::literals;
+
     static JoltPhysics *s_JoltInstance = nullptr;
 
     void JoltPhysics::Init()
@@ -18,8 +20,14 @@ namespace ignite
         s_JoltInstance = new JoltPhysics();
 
         JPH::RegisterDefaultAllocator();
+
+        JPH::Trace = TraceImpl;
+        //JPH_IF_ENABLE_ASSERTS(AssertFailed = AssertFailedImpl);
+
         JPH::Factory::sInstance = new JPH::Factory();
+        
         JPH::RegisterTypes();
+        
         s_JoltInstance->tempAllocator = std::make_unique<JPH::TempAllocatorImpl>(32 * 1024 * 1024);
         s_JoltInstance->jobSystem = std::make_unique<JPH::JobSystemThreadPool>(cMaxPhysicsJobs, 8,
             std::thread::hardware_concurrency() - 1);

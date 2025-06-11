@@ -410,7 +410,7 @@ namespace ignite
         newScene->sceneRenderer = other->sceneRenderer;
 
         // Do not copy entities (it is created when creating entity)
-        // newScene->entities = other->entities; 
+        // newScene->entities = other->entities;
 
         auto mrView = destRegistry->view<MeshRenderer>();
         for (entt::entity e : mrView)
@@ -419,8 +419,8 @@ namespace ignite
             WriteMeshBuffer(newScene.get(), meshRenderer, static_cast<uint32_t>(e));
         }
 
+        Application::GetDeviceManager()->WaitForIdle();
+
         return newScene;
     }
-
-
 } // namespace ignite

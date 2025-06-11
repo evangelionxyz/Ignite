@@ -42,6 +42,34 @@ namespace ignite {
         return glm::quat(q.GetW(), q.GetX(), q.GetY(), q.GetZ());
     }
 
+
+    static void TraceImpl(const char *inFMT, ...)
+    {
+        // Format the message
+        va_list list;
+        va_start(list, inFMT);
+        char buffer[1024];
+        vsnprintf(buffer, sizeof(buffer), inFMT, list);
+        va_end(list);
+
+        // Print to the TTY
+        LOG_INFO("{}", buffer);
+    }
+
+#ifdef JPH_ENABLE_ASSERTS
+
+    // Callback for asserts, connect this to your own assert handler if you have one
+    static bool AssertFailedImpl(const char *inExpression, const char *inMessage, const char *inFile, uint32_t inLine)
+    {
+        // Print to the TTY
+        LOG_ERROR("{}: {}: ({}) {}", inFile, inLine, inExpression, inMessage ? inMessage : "");
+
+        // Breakpoint
+        return true;
+    };
+
+#endif // JPH_ENABLE_ASSERTS
+
     namespace Layers
     {
         static constexpr JPH::ObjectLayer NON_MOVING = 0;
@@ -93,6 +121,19 @@ namespace ignite {
             LOG_ASSERT(inLayer < Layers::NUM_LAYERS, "[Jolt] Invalid Layer");
             return m_ObjectToBP[inLayer];
         }
+
+#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
+        virtual const char *GetBroadPhaseLayerName(JPH::BroadPhaseLayer inLayer) const override
+        {
+            switch (static_cast<JPH::BroadPhaseLayer::Type>(inLayer))
+            {
+                case static_cast<JPH::BroadPhaseLayer::Type>(BroadPhaseLayers::NON_MOVING):	return "NON_MOVING";
+                case static_cast<JPH::BroadPhaseLayer::Type>(BroadPhaseLayers::MOVING):		return "MOVING";
+                default: JPH_ASSERT(false); return "INVALID";
+            }
+        }
+#endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED
+
 
     private:
         JPH::BroadPhaseLayer m_ObjectToBP[Layers::NUM_LAYERS];

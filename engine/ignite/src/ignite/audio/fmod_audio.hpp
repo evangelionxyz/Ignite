@@ -9,7 +9,7 @@
 #include "ignite/core/base.hpp"
 #include "ignite/core/types.hpp"
 
-#define FMOD_CHECK(x) if ((x) != FMOD_OK) DEBUGBREAK();
+#define FMOD_CHECK(x) if ((x) != FMOD_OK) { DEBUGBREAK() }
 
 namespace ignite
 {

@@ -450,29 +450,26 @@ namespace ignite {
     }
 
 
-    AnimationSerializer::AnimationSerializer(const Ref<SkeletalAnimation> &animation)
+    AnimationSerializer::AnimationSerializer(const SkeletalAnimation &animation)
         : m_Animation(animation)
     {
     }
 
     bool AnimationSerializer::Serialize(const std::filesystem::path &filepath)
     {
-        if (!m_Animation)
-            return false;
-
         Serializer sr(filepath);
 
         sr.BeginMap(); // START
 
         sr.BeginMap("Animation");
         sr.AddKeyValue("Version", ENGINE_VERSION);
-        sr.AddKeyValue("Name", m_Animation->name);
-        sr.AddKeyValue("Duration", m_Animation->duration);
-        sr.AddKeyValue("TicksPerSeconds", m_Animation->ticksPerSeconds);
+        sr.AddKeyValue("Name", m_Animation.name);
+        sr.AddKeyValue("Duration", m_Animation.duration);
+        sr.AddKeyValue("TicksPerSeconds", m_Animation.ticksPerSeconds);
 
         sr.BeginSequence("Channels");
 
-        for (auto &[name, channel] : m_Animation->channels)
+        for (auto &[name, channel] : m_Animation.channels)
         {
             sr.BeginMap();
 
@@ -525,9 +522,9 @@ namespace ignite {
         return true;
     }
 
-    Ref<SkeletalAnimation> AnimationSerializer::Deserialize(const std::filesystem::path &filepath)
+    SkeletalAnimation AnimationSerializer::Deserialize(const std::filesystem::path &filepath)
     {
-        Ref<SkeletalAnimation> animation;
+        SkeletalAnimation animation;
 
         return animation;
     }

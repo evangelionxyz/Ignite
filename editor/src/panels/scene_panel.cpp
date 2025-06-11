@@ -35,7 +35,12 @@ namespace ignite
 
         m_Camera = EditorCamera("ScenePanel-Editor Camera");
         // m_Camera.CreateOrthographic(app->GetCreateInfo().width, app->GetCreateInfo().height, 8.0f, 0.1f, 350.0f);
-        m_Camera.CreatePerspective(45.0f, app->GetCreateInfo().width, app->GetCreateInfo().height, 0.1f, 350.0f);
+        m_Camera.CreatePerspective(45.0f, 
+            static_cast<float>(app->GetCreateInfo().width), 
+            static_cast<float>(app->GetCreateInfo().height),
+            0.1f,
+            450.0f);
+
         m_Camera.position = {3.0f, 2.0f, 3.0f};
         m_Camera.yaw = -0.729f;
         m_Camera.pitch = 0.410f;
@@ -620,7 +625,7 @@ namespace ignite
 
                                 std::vector<NodeInfo> nodes;
 
-                                MeshLoader::ProcessNode(assimpScene, assimpScene->mRootNode, filepath.generic_string(), meshes, nodes, c->skeleton, -1);
+                                MeshLoader::ProcessNode(assimpScene, assimpScene->mRootNode, filepath, meshes, nodes, c->skeleton, -1);
                                 MeshLoader::CalculateWorldTransforms(nodes);
 
                                 // First pass: create all node entities
@@ -703,6 +708,24 @@ namespace ignite
                         {
 
                             ImGui::SeparatorText("Animations");
+                            
+                            if (ImGui::Button("Play"))
+                            {
+                                SkeletalAnimation &anim = c->animations[c->activeAnimIndex];
+                                anim.isPlaying = true;
+                            }
+
+                            ImGui::SameLine();
+
+                            if (ImGui::Button("Stop"))
+                            {
+                                SkeletalAnimation &anim = c->animations[c->activeAnimIndex];
+                                anim.isPlaying = false;
+                            }
+
+#if 0
+                            ImGui::SameLine();
+
                             if (ImGui::Button("Save Animations"))
                             {
                                 std::filesystem::path directory = FileDialogs::SelectFolder();
@@ -710,37 +733,29 @@ namespace ignite
                                 {
                                     for (auto &anim : c->animations)
                                     {
-                                        std::filesystem::path filepath = directory / std::format("anim_{0}.anim", anim->name);
+                                        std::filesystem::path filepath = directory / std::format("anim_{0}.anim", anim.name);
                                         AnimationSerializer sr(anim);
                                         sr.Serialize(filepath);
                                     }
                                 }
                             }
+#endif
 
-                            if (ImGui::Button("Play"))
-                            {
-                                const Ref<SkeletalAnimation> &anim = c->animations[c->activeAnimIndex];
-                                anim->isPlaying = true;
-                            }
-
-                            ImGui::SameLine();
-
-                            if (ImGui::Button("Stop"))
-                            {
-                                const Ref<SkeletalAnimation> &anim = c->animations[c->activeAnimIndex];
-                                anim->isPlaying = false;
-                            }
-
-                            if (ImGui::TreeNode("Animations"))
+                            if (ImGui::TreeNodeEx("Animations", 0))
                             {
                                 for (size_t animIdx = 0; animIdx < c->animations.size(); ++animIdx)
                                 {
-                                    const Ref<SkeletalAnimation> &anim = c->animations[animIdx];
-                                    if (ImGui::TreeNodeEx(anim->name.c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", anim->name.c_str()))
+                                    const SkeletalAnimation &anim = c->animations[animIdx];
+                                    if (ImGui::TreeNodeEx(anim.name.c_str(), ImGuiTreeNodeFlags_Leaf, "%s", anim.name.c_str()))
                                     {
                                         if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
                                         {
-                                            c->activeAnimIndex = animIdx;
+                                            bool play = false;
+                                            if (c->animations[c->activeAnimIndex].isPlaying)
+                                                play = true;
+                                            
+                                            c->activeAnimIndex = static_cast<int>(animIdx);
+                                            c->animations[c->activeAnimIndex].isPlaying = play;
                                         }
                                         ImGui::TreePop();
                                     }
@@ -908,7 +923,7 @@ namespace ignite
             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
                 m_RenderTarget->Resize(vpWidth, vpHeight);
-                m_Camera.SetSize(vpWidth, vpHeight);
+                m_Camera.SetSize(static_cast<float>(vpWidth), static_cast<float>(vpHeight));
                 m_Camera.UpdateProjectionMatrix();
             }
         }
@@ -1225,7 +1240,7 @@ namespace ignite
             T &comp = entity.GetComponent<T>();
             UUID compID = comp.GetCompID();
 
-            ImGui::PushID(compID);
+            ImGui::PushID(static_cast<int>(compID));
 
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2 { 0.5f, 6.0f });
             ImGui::Separator();
