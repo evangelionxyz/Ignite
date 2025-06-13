@@ -20,7 +20,7 @@ namespace ignite {
 
     void Serializer::Serialize() const
     {
-        std::ofstream outFile(m_Filepath, std::ios::trunc);
+        std::ofstream outFile(m_Filepath);
         outFile << m_Emitter.c_str();
         outFile.close();
     }
@@ -29,7 +29,7 @@ namespace ignite {
     {
         m_Filepath = filepath;
 
-        std::ofstream outFile(m_Filepath, std::ios::trunc);
+        std::ofstream outFile(m_Filepath);
         outFile << m_Emitter.c_str();
         outFile.close();
     }
@@ -195,6 +195,21 @@ namespace ignite {
                     sr.EndMap();
                 }
 
+                // Audio Source
+                if (entity.HasComponent<AudioSource>())
+                {
+                    const AudioSource &comp = entity.GetComponent<AudioSource>();
+                    sr.BeginMap("AudioSource");
+                    {
+                        sr.AddKeyValue("Handle", static_cast<uint64_t>(comp.handle));
+                        sr.AddKeyValue("Volume", comp.volume);
+                        sr.AddKeyValue("Pitch", comp.pitch);
+                        sr.AddKeyValue("Pan", comp.pan);
+                        sr.AddKeyValue("PlayOnStart", comp.playOnStart);
+                    }
+                    sr.EndMap();
+                }
+
             }
             sr.EndMap(); // END Entity
         }
@@ -330,6 +345,17 @@ namespace ignite {
                 comp.friction = node["Friction"].as<float>();
                 comp.density = node["Density"].as<float>();
                 comp.isSensor = node["IsSensor"].as<bool>();
+            }
+
+            // Audio Source
+            if (YAML::Node node = entityNode["AudioSource"])
+            {
+                AudioSource &comp = desEntity.AddComponent<AudioSource>();
+                comp.handle = AssetHandle(node["Handle"].as<uint64_t>());
+                comp.volume = node["Volume"].as<float>();
+                comp.pitch= node["Pitch"].as<float>();
+                comp.pan = node["Pan"].as<float>();
+                comp.playOnStart = node["PlayOnStart"].as<bool>();
             }
         }
         

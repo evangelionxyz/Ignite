@@ -13,6 +13,10 @@
 #include "ignite/core/application.hpp"
 #include "ignite/animation/animation_system.hpp"
 
+#include "ignite/project/project.hpp"
+
+#include "ignite/audio/fmod_sound.hpp"
+
 #include <ranges>
 
 namespace ignite
@@ -37,6 +41,24 @@ namespace ignite
         // reset time
         timeInSeconds = 0.0f;
 
+        // play on start audio
+        auto audioView = registry->view<AudioSource>();
+        for (entt::entity e : audioView)
+        {
+            AudioSource &as = audioView.get<AudioSource>(e);
+            if (as.playOnStart)
+            {
+                Ref<FmodSound> sound = Project::GetAsset<FmodSound>(as.handle);
+                if (sound)
+                {
+                    sound->Play();
+                    sound->SetVolume(as.volume);
+                    sound->SetPitch(as.pitch);
+                    sound->SetPan(as.pan);
+                }
+            }
+        }
+
         m_Playing = true;
         physics2D->SimulationStart();
         physics->SimulationStart();
@@ -45,6 +67,18 @@ namespace ignite
     void Scene::OnStop()
     {
         timeInSeconds = 0.0f;
+
+        // play on start audio
+        auto audioView = registry->view<AudioSource>();
+        for (entt::entity e : audioView)
+        {
+            AudioSource &as = audioView.get<AudioSource>(e);
+            Ref<FmodSound> sound = Project::GetAsset<FmodSound>(as.handle);
+            if (sound)
+            {
+                sound->Stop();
+            }
+        }
 
         m_Playing = false;
         
@@ -218,6 +252,11 @@ namespace ignite
 
     template<>
     void Scene::OnComponentAdded<SphereCollider>(Entity entity, SphereCollider &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<AudioSource>(Entity entity, AudioSource &comp)
     {
     }
 }
