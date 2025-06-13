@@ -544,6 +544,11 @@ namespace ignite
 
     void EditorLayer::NewScene()
     {
+        if (m_EditorScene)
+        {
+            m_EditorScene->OnStop();
+        }
+
         m_CurrentSceneFilePath.clear();
 
         // create editor scene
@@ -593,6 +598,11 @@ namespace ignite
 
     bool EditorLayer::OpenScene(const std::filesystem::path &filepath)
     {
+        if (m_EditorScene)
+        {
+            m_EditorScene->OnStop();
+        }
+
         if (m_Data.sceneState == State::ScenePlay)
             OnSceneStop();
 
@@ -673,6 +683,11 @@ namespace ignite
 
     void EditorLayer::OnScenePlay()
     {
+        if (m_EditorScene)
+        {
+            m_EditorScene->OnStop();
+        }
+
         m_ScenePanel->SetGizmoOperation(ImGuizmo::OPERATION::NONE);
 
         if (m_Data.sceneState != State::SceneEdit)

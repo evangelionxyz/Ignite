@@ -1,6 +1,7 @@
 #include "fmod_sound.hpp"
-
 #include "fmod_audio.hpp"
+
+#include "ignite/core/logger.hpp"
 
 namespace ignite {
 
@@ -155,6 +156,13 @@ bool FmodSound::IsPlaying() const
     return is_playing;
 }
 
+bool FmodSound::IsPaused() const
+{
+    bool paused = false;
+    m_Channel->getPaused(&paused);
+    return paused;
+}
+
 u32 FmodSound::GetLengthMs() const
 {
     u32 length;
@@ -187,6 +195,8 @@ Ref<FmodSound> FmodSound::Create(const std::string &name, const std::string &fil
         );
     
     FMOD_CHECK(result);
+
+    LOG_WARN("[FMOD Sound] Load sound '{}'", filepath);
     
     FmodAudio::InsertFmodSound(name, fmod_sound);
     return fmod_sound;

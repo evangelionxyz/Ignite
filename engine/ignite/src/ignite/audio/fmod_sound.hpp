@@ -40,6 +40,7 @@ namespace ignite {
         FMOD::Channel* GetFmodChannel() const;
         const std::string &GetName() const;
         bool IsPlaying() const;
+        bool IsPaused() const;
         u32 GetLengthMs() const;
         u32 GetPositionMs() const;
         FMOD::ChannelGroup *GetChannelGroup() const;

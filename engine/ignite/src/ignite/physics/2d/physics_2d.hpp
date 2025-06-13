@@ -27,6 +27,6 @@ namespace ignite
 
     private:
         Scene *m_Scene;
-        b2WorldId m_WorldId{};
+        b2WorldId m_WorldId{ b2_nullWorldId };
     };
 }
