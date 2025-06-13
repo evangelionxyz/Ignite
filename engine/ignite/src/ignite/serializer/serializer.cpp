@@ -174,6 +174,27 @@ namespace ignite {
                     sr.EndMap();
                 }
 
+                // skinned mesh
+                if (entity.HasComponent<SkinnedMesh>())
+                {
+                    const SkinnedMesh &comp = entity.GetComponent<SkinnedMesh>();
+                    sr.BeginMap("SkinnedMesh");
+                    sr.AddKeyValue("Filepath", comp.filepath.generic_string());
+                    sr.EndMap();
+                }
+
+                // Mesh Renderer
+                if (entity.HasComponent<MeshRenderer>())
+                {
+                    const MeshRenderer &comp = entity.GetComponent<MeshRenderer>();
+                    sr.BeginMap("MeshRenderer");
+                    {
+                        sr.AddKeyValue("Root", static_cast<uint64_t>(comp.root));
+                        sr.AddKeyValue("MeshIndex", comp.meshIndex);
+                    }
+                    sr.EndMap();
+                }
+
             }
             sr.EndMap(); // END Entity
         }
@@ -311,7 +332,7 @@ namespace ignite {
                 comp.isSensor = node["IsSensor"].as<bool>();
             }
         }
-
+        
         // attach each node to it's parent
         for (auto [uuid, e] : desScene->entities)
         {
@@ -450,29 +471,26 @@ namespace ignite {
     }
 
 
-    AnimationSerializer::AnimationSerializer(const Ref<SkeletalAnimation> &animation)
+    AnimationSerializer::AnimationSerializer(const SkeletalAnimation &animation)
         : m_Animation(animation)
     {
     }
 
     bool AnimationSerializer::Serialize(const std::filesystem::path &filepath)
     {
-        if (!m_Animation)
-            return false;
-
         Serializer sr(filepath);
 
         sr.BeginMap(); // START
 
         sr.BeginMap("Animation");
         sr.AddKeyValue("Version", ENGINE_VERSION);
-        sr.AddKeyValue("Name", m_Animation->name);
-        sr.AddKeyValue("Duration", m_Animation->duration);
-        sr.AddKeyValue("TicksPerSeconds", m_Animation->ticksPerSeconds);
+        sr.AddKeyValue("Name", m_Animation.name);
+        sr.AddKeyValue("Duration", m_Animation.duration);
+        sr.AddKeyValue("TicksPerSeconds", m_Animation.ticksPerSeconds);
 
         sr.BeginSequence("Channels");
 
-        for (auto &[name, channel] : m_Animation->channels)
+        for (auto &[name, channel] : m_Animation.channels)
         {
             sr.BeginMap();
 
@@ -525,9 +543,9 @@ namespace ignite {
         return true;
     }
 
-    Ref<SkeletalAnimation> AnimationSerializer::Deserialize(const std::filesystem::path &filepath)
+    SkeletalAnimation AnimationSerializer::Deserialize(const std::filesystem::path &filepath)
     {
-        Ref<SkeletalAnimation> animation;
+        SkeletalAnimation animation;
 
         return animation;
     }

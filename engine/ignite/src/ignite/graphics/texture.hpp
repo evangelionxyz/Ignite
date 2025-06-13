@@ -359,8 +359,6 @@ namespace ignite
 
         ~Texture();
 
-        void Write(nvrhi::ICommandList *commandList);
-
         static Ref<Texture> Create(Buffer buffer, const TextureCreateInfo &createInfo);
         static Ref<Texture> Create(const std::filesystem::path &filepath, const TextureCreateInfo &createInfo);
 
@@ -382,6 +380,8 @@ namespace ignite
         virtual AssetType GetType() override { return GetStaticType(); }
 
     private:
+        void Write(nvrhi::ICommandList *commandList);
+
         void *m_Data = nullptr;
         bool m_WithSTBI = false;
 

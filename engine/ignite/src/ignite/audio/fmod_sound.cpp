@@ -18,7 +18,7 @@ void FmodSound::Play()
         &m_Channel
     );
 
-    FMOD_CHECK(result)
+    FMOD_CHECK(result);
 
     // remove dsp
     int dsp_count = 0;
@@ -186,7 +186,7 @@ Ref<FmodSound> FmodSound::Create(const std::string &name, const std::string &fil
             &fmod_sound->m_Channel
         );
     
-    FMOD_CHECK(result)
+    FMOD_CHECK(result);
     
     FmodAudio::InsertFmodSound(name, fmod_sound);
     return fmod_sound;
@@ -204,7 +204,7 @@ Ref<FmodSound> FmodSound::CreateStream(const std::string& name, const std::strin
         &fmod_sound->m_Channel
     );
     
-    FMOD_CHECK(result)
+    FMOD_CHECK(result);
     
     FmodAudio::InsertFmodSound(name, fmod_sound);
     return fmod_sound;

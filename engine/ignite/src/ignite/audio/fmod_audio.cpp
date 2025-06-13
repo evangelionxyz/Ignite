@@ -5,19 +5,19 @@
 
 namespace ignite {
 
-    static FMOD_RESULT fmod_result;
+    static FMOD_RESULT result;
     static FmodAudio *s_fmod_audio = nullptr;
 
     void FmodAudio::SetMasterVolume(const float volume)
     {
-        fmod_result = s_fmod_audio->m_MasterGroup->setVolume(volume); 
-        FMOD_CHECK(fmod_result)
+        result = s_fmod_audio->m_MasterGroup->setVolume(volume); 
+        FMOD_CHECK(result);
     }
 
     void FmodAudio::MuteMaster(const bool mute)
     {
-        fmod_result = s_fmod_audio->m_MasterGroup->setMute(mute);
-        FMOD_CHECK(fmod_result)
+        result = s_fmod_audio->m_MasterGroup->setMute(mute);
+        FMOD_CHECK(result);
     }
 
     void FmodAudio::Update(const float delta_time)
@@ -33,11 +33,11 @@ namespace ignite {
     {
         s_fmod_audio = new FmodAudio();
 
-        fmod_result = FMOD::System_Create(&s_fmod_audio->m_System);
-        FMOD_CHECK(fmod_result)
+        result = FMOD::System_Create(&s_fmod_audio->m_System);
+        FMOD_CHECK(result);
 
-        fmod_result = s_fmod_audio->m_System->init(32, FMOD_INIT_NORMAL, nullptr);
-        FMOD_CHECK(fmod_result)
+        result = s_fmod_audio->m_System->init(32, FMOD_INIT_NORMAL, nullptr);
+        FMOD_CHECK(result);
 
         s_fmod_audio->m_MasterGroup = FmodAudio::CreateChannelGroup("Master");
 
@@ -57,10 +57,10 @@ namespace ignite {
 
         s_fmod_audio->m_SoundMap.clear();
 
-        fmod_result = s_fmod_audio->m_System->close();
-        FMOD_CHECK(fmod_result)
-        fmod_result = s_fmod_audio->m_System->release();
-        FMOD_CHECK(fmod_result)
+        result = s_fmod_audio->m_System->close();
+        FMOD_CHECK(result);
+        result = s_fmod_audio->m_System->release();
+        FMOD_CHECK(result);
         
         delete s_fmod_audio;
     }

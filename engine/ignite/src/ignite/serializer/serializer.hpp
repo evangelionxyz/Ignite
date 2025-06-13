@@ -326,12 +326,12 @@ namespace ignite {
     class AnimationSerializer
     {
     public:
-        AnimationSerializer(const Ref<SkeletalAnimation> &animation);
+        AnimationSerializer(const SkeletalAnimation &animation);
 
         bool Serialize(const std::filesystem::path &filepath);
-        static Ref<SkeletalAnimation> Deserialize(const std::filesystem::path &filepath);
+        static SkeletalAnimation Deserialize(const std::filesystem::path &filepath);
 
     private:
-        Ref<SkeletalAnimation> m_Animation;
+        SkeletalAnimation m_Animation;
     };
 }

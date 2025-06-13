@@ -36,8 +36,8 @@ namespace ignite {
             // create graphics pipeline
             nvrhi::BlendState blendState;
             blendState.targets[0].blendEnable = m_Params.enableBlend;
-            blendState.targets[1].blendEnable = false;
-            blendState.targets[1].colorWriteMask = nvrhi::ColorMask::All;
+            // blendState.targets[1].blendEnable = false;
+            // blendState.targets[1].colorWriteMask = nvrhi::ColorMask::All;
 
             nvrhi::DepthStencilState depthStencilState;
             depthStencilState.depthWriteEnable = m_Params.depthWrite;

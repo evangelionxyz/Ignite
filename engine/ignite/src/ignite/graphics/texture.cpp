@@ -33,6 +33,12 @@ namespace ignite
 
         m_Sampler = device->createSampler(samplerDesc);
         LOG_ASSERT(m_Sampler, "Failed to create texture sampler");
+
+        nvrhi::CommandListHandle commandList = device->createCommandList();
+        commandList->open();
+        Write(commandList);
+        commandList->close();
+        device->executeCommandList(commandList);
     }
 
     Texture::Texture(const std::filesystem::path &filepath, const TextureCreateInfo &createInfo)
@@ -89,6 +95,12 @@ namespace ignite
 
         m_Sampler = device->createSampler(samplerDesc);
         LOG_ASSERT(m_Sampler, "Failed to create texture sampler");
+
+        nvrhi::CommandListHandle commandList = device->createCommandList();
+        commandList->open();
+        Write(commandList);
+        commandList->close();
+        device->executeCommandList(commandList);
     }
 
     Texture::~Texture()
@@ -130,6 +142,7 @@ namespace ignite
         {
             // free if loaded with stbi
             stbi_image_free(m_Data);
+            m_Data = nullptr;
         }
     }
 

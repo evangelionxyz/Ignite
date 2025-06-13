@@ -70,6 +70,10 @@ namespace ignite
             }
         }
 
+        // create render target framebuffer
+        m_ScenePanel->GetRenderTarget()->CreateSingleFramebuffer();
+        m_SceneRenderer.CreatePipelines(m_ScenePanel->GetRenderTarget()->GetCurrentFramebuffer());
+
 #if 0
         // Test Audio
 
@@ -89,7 +93,7 @@ namespace ignite
         audio.compressor->SetRatio(3.0f);
         audio.compressor->SetRelease(100.0f);
 
-        // Create rever group
+        // Create reverb group
         audio.reverbGroup = FmodAudio::CreateChannelGroup("ReverbGroup");
         audio.reverbGroup->setMode(FMOD_CHANNELCONTROL_DSP_TAIL);
         audio.reverbGroup->addDSP(0, audio.distortion->GetFmodDsp()); // add dsp
@@ -246,10 +250,7 @@ namespace ignite
     {
         Layer::OnRender(mainFramebuffer);
 
-        // create render target framebuffer
-        m_ScenePanel->GetRT()->CreateSingleFramebuffer();
-
-        nvrhi::IFramebuffer *viewportFramebuffer = m_ScenePanel->GetRT()->GetCurrentFramebuffer();
+        nvrhi::IFramebuffer *viewportFramebuffer = m_ScenePanel->GetRenderTarget()->GetCurrentFramebuffer();
 
         // main scene rendering
         m_CommandList->open();
@@ -257,11 +258,11 @@ namespace ignite
         // clear main framebuffer color attachment
         nvrhi::utils::ClearColorAttachment(m_CommandList, mainFramebuffer, 0, nvrhi::Color(0.0f, 0.0f, 0.0f, 1.0f));
 
-        m_ScenePanel->GetRT()->ClearColorAttachmentFloat(m_CommandList, 0);
-        m_ScenePanel->GetRT()->ClearColorAttachmentUint(m_CommandList, 1, static_cast<uint32_t>(-1));
+        m_ScenePanel->GetRenderTarget()->ClearColorAttachmentFloat(m_CommandList, 0);
+        m_ScenePanel->GetRenderTarget()->ClearColorAttachmentUint(m_CommandList, 1, static_cast<uint32_t>(-1));
 
         f32 farDepth = 1.0f; // LessOrEqual
-        m_CommandList->clearDepthStencilTexture(m_ScenePanel->GetRT()->GetDepthAttachment(), 
+        m_CommandList->clearDepthStencilTexture(m_ScenePanel->GetRenderTarget()->GetDepthAttachment(), 
             nvrhi::AllSubresources, 
             true, // clear depth ?
             farDepth, // depth
@@ -274,19 +275,18 @@ namespace ignite
             CameraBuffer cameraBuffer = { m_ScenePanel->GetViewportCamera().GetViewProjectionMatrix(), glm::vec4(m_ScenePanel->GetViewportCamera().position, 1.0f) };
             m_CommandList->writeBuffer(Renderer::GetCameraBufferHandle(), &cameraBuffer, sizeof(cameraBuffer));
 
-            m_SceneRenderer.CreatePipelines(viewportFramebuffer);
             m_SceneRenderer.Render(m_ActiveScene.get(), &m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer);
-            m_SceneRenderer.RenderOutline(&m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer, m_ScenePanel->GetSelectedEntities());
+            // m_SceneRenderer.RenderOutline(&m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer, m_ScenePanel->GetSelectedEntities());
         }
 
         // Create staging texture for read-back
         if (m_Data.isPickingEntity && m_ActiveScene)
         {
-            nvrhi::TextureDesc stagingDesc = m_ScenePanel->GetRT()->GetColorAttachment(1)->getDesc();
+            nvrhi::TextureDesc stagingDesc = m_ScenePanel->GetRenderTarget()->GetColorAttachment(1)->getDesc();
             stagingDesc.initialState = nvrhi::ResourceStates::CopyDest;
             m_EntityIDStagingTexture = m_Device->createStagingTexture(stagingDesc, nvrhi::CpuAccessMode::Read);
             LOG_ASSERT(m_EntityIDStagingTexture, "Failed to create staging texture");
-            m_CommandList->copyTexture(m_EntityIDStagingTexture, nvrhi::TextureSlice(), m_ScenePanel->GetRT()->GetColorAttachment(1), nvrhi::TextureSlice());
+            m_CommandList->copyTexture(m_EntityIDStagingTexture, nvrhi::TextureSlice(), m_ScenePanel->GetRenderTarget()->GetColorAttachment(1), nvrhi::TextureSlice());
         }
 
         m_CommandList->close();

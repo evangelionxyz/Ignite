@@ -3,9 +3,7 @@
 #include <nvrhi/nvrhi.h>
 #include "ignite/core/layer.hpp"
 #include "ignite/ignite.hpp"
-#include "ignite/graphics/graphics_pipeline.hpp"
 #include "ignite/graphics/scene_renderer.hpp"
-#include "ignite/graphics/environment.hpp"
 #include "ignite/serializer/serializer.hpp"
 #include "ignite/project/project.hpp"
 #include "states.hpp"

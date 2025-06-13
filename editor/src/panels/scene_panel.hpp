@@ -36,7 +36,7 @@ namespace ignite
         void OnGuiRender() override;
         void RenderViewport();
 
-        Ref<RenderTarget> GetRT() const { return m_RenderTarget; }
+        Ref<RenderTarget> GetRenderTarget() const { return m_RenderTarget; }
 
         void OnEvent(Event &event);
         bool OnMouseScrolledEvent(MouseScrolledEvent &event);

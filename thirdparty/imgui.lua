@@ -35,7 +35,7 @@ files {
 includedirs {
     "IMGUI/",
     "GLFW/include",
-    "%{IncludeDir.VULKAN_SDK}",
+    "%{IncludeDir.NVRHI_VULKAN_HPP}",
 }
 
 --windows

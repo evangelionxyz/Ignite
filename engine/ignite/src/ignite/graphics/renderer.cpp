@@ -88,9 +88,8 @@ namespace ignite
     {
         s_instance = this;
         m_GraphicsAPI = api;
-        
+
         nvrhi::IDevice *device = deviceManager->GetDevice();
-        nvrhi::CommandListHandle commandList = device->createCommandList();
 
         {
             TextureCreateInfo textureCI;
@@ -107,13 +106,7 @@ namespace ignite
             u32 black = 0x00000000;
             m_BlackTexture = Texture::Create(Buffer(&black, sizeof(u32)), textureCI);
             
-            commandList->open();
-            m_WhiteTexture->Write(commandList);
-            m_BlackTexture->Write(commandList);
-            commandList->close();
-
         }
-        device->executeCommandList(commandList);
 
         // Create shaders
         {
@@ -132,7 +125,6 @@ namespace ignite
         m_BindingLayouts[GPipeline::QUAD2D] = device->createBindingLayout(Vertex2DQuad::GetBindingLayoutDesc());
         m_BindingLayouts[GPipeline::LINE] = device->createBindingLayout(Vertex2DLine::GetBindingLayoutDesc());
         m_BindingLayouts[GPipeline::ENVIRONMENT] = device->createBindingLayout(Environment::GetBindingLayoutDesc());
-        m_BindingLayouts[GPipeline::MESH_OUTLINE] = device->createBindingLayout(VertexMeshOutline::GetBindingLayoutDesc());
 
 
         // Create camera constant buffer
