@@ -169,6 +169,7 @@ namespace ignite {
 
         case AssetType::Scene:
         case AssetType::Texture:
+        case AssetType::Audio:
         {
             asset = AssetImporter::Import(handle, metadata);
             m_LoadedAssets[handle] = asset;

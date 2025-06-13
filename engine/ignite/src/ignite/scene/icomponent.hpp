@@ -20,6 +20,7 @@ namespace ignite
         CompType_Rigidbody,
         CompType_BoxCollider,
         CompType_SphereCollider,
+        CompType_AudioSource,
     };
 
     class IComponent
