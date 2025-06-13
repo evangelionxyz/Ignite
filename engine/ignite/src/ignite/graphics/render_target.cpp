@@ -142,7 +142,7 @@ namespace ignite {
         if (m_IsSingleFramebuffer)
             m_CurrentBackBufferIndex = 0;
 
-        if (m_CurrentBackBufferIndex <= m_Framebuffers.size())
+        if (m_CurrentBackBufferIndex < m_Framebuffers.size())
             return m_Framebuffers[m_CurrentBackBufferIndex];
 
         LOG_ASSERT(false, "[Render target] Invalid current back buffer index!");

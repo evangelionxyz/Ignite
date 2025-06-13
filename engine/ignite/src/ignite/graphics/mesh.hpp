@@ -5,15 +5,12 @@
 
 #include "renderer.hpp"
 
-#include "ignite/asset/asset.hpp"
 #include "ignite/core/uuid.hpp"
 #include "ignite/math/aabb.hpp"
-#include "ignite/core/buffer.hpp"
 #include "ignite/animation/skeletal_animation.hpp"
+#include "ignite/scene/entity.hpp"
 
 #include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
 #include <nvrhi/nvrhi.h>
 #include <filesystem>
 
@@ -80,15 +77,12 @@ namespace ignite {
 
         MeshData data;
         Material material;
-
-        std::vector<VertexMeshOutline> outlineVertices;
-
         Ref<Shader> vertexShader;
         Ref<Shader> pixelShader;
+        Ref<Environment> environment;
 
         // do not copy the buffer
         nvrhi::BufferHandle vertexBuffer;
-        nvrhi::BufferHandle outlineVertexBuffer;
         nvrhi::BufferHandle indexBuffer;
         nvrhi::BufferHandle objectBufferHandle;
         nvrhi::BufferHandle materialBufferHandle;
@@ -114,30 +108,13 @@ namespace ignite {
             boneMapping = other.boneMapping;
             aabb = other.aabb;
 
-            // outline
-            outlineVertices = other.outlineVertices;
-
             CreateBuffers();
         }
 
         void CreateBuffers();
+        void CreateBindingSet();
+        void WriteBuffers(uint32_t entityID = -1);
+        void UpdateTexture(Ref<Texture> texture, aiTextureType type);
     };
     
-    class MeshLoader
-    {
-    public:
-
-        static void ProcessNode(const aiScene *scene, aiNode *node, const std::filesystem::path &filepath, std::vector<Ref<Mesh>> &mesh, std::vector<NodeInfo> &nodes, const Ref<Skeleton> &skeleton, i32 parentNodeID);
-        static void LoadSingleMesh(const aiScene *scene, aiMesh *mesh, const uint32_t meshIndex, MeshData &outMeshData, const Ref<Skeleton> &skeleton, AABB &outAABB);
-        static void ProcessBoneWeights(aiMesh *assimpMesh, MeshData &outMeshData, std::vector<BoneInfo> &outBoneInfo, std::unordered_map<std::string, uint32_t> &outBoneMapping, const Ref<Skeleton> &skeleton);
-
-        static void ExtractSkeleton(const aiScene *scene, Ref<Skeleton> &skeleton);
-        static void ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Ref<Skeleton> &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices);
-        static void SortJointsHierarchically(Ref<Skeleton> &skeleton);
-        static void LoadAnimation(const aiScene *scene, std::vector<SkeletalAnimation> &animations);
-        static void LoadMaterial(const aiScene *scene, aiMaterial *assimpMaterial, Material &material, const std::filesystem::path &filepath);
-        static void LoadTextures(const aiScene *scene, aiMaterial *material, Material *meshMaterial, aiTextureType type, const std::filesystem::path &modelFilepath);
-        static void CalculateWorldTransforms(std::vector<NodeInfo> &nodes);
-        static void ClearTextureCache();
-    };
 }

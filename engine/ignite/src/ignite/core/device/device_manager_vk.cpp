@@ -577,19 +577,30 @@ namespace ignite
             return false;
         }
 
-        const u32 minimumVulkanVersion = VK_MAKE_API_VERSION(0, 1, 3, 0);
+        const u32 minimumVulkanVersion = VK_MAKE_API_VERSION(0, 1, 4, 0);
         if (applicationInfo.apiVersion < minimumVulkanVersion)
         {
             LOG_ASSERT(false, "The Vulkan API version supported on the system ({}.{}.{}) is too low, at least {}.{}.{} is required",
-                VK_API_VERSION_MAJOR(applicationInfo.apiVersion), VK_API_VERSION_MINOR(applicationInfo.apiVersion), VK_API_VERSION_PATCH(applicationInfo.apiVersion), VK_API_VERSION_MAJOR(minimumVulkanVersion), VK_API_VERSION_MINOR(minimumVulkanVersion), VK_API_VERSION_PATCH(minimumVulkanVersion)
+                VK_API_VERSION_MAJOR(applicationInfo.apiVersion),
+                VK_API_VERSION_MINOR(applicationInfo.apiVersion),
+                VK_API_VERSION_PATCH(applicationInfo.apiVersion),
+                VK_API_VERSION_MAJOR(minimumVulkanVersion),
+                VK_API_VERSION_MINOR(minimumVulkanVersion),
+                VK_API_VERSION_PATCH(minimumVulkanVersion)
                 );
             return false;
         }
 
+        LOG_INFO("Vulkan API version supported on the system ({}.{}.{})",
+                VK_API_VERSION_MAJOR(applicationInfo.apiVersion),
+                VK_API_VERSION_MINOR(applicationInfo.apiVersion),
+                VK_API_VERSION_PATCH(applicationInfo.apiVersion)
+                );
+
         // spec says: a non zero variant indicates the API is a variant of the Vulkan API and applications will typically need to modified to run against it.
         if (VK_API_VERSION_VARIANT(applicationInfo.apiVersion) != 0)
         {
-            LOG_ASSERT(false, "The Vulkan API supported on the system yses an unexpected variant: {}", VK_API_VERSION_VARIANT(applicationInfo.apiVersion));
+            LOG_ASSERT(false, "The Vulkan API supported on the system uses an unexpected variant: {}", VK_API_VERSION_VARIANT(applicationInfo.apiVersion));
             return false;
         }
 

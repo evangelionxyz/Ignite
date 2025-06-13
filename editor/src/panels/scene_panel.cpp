@@ -24,6 +24,8 @@
 #include <string>
 #include <algorithm>
 
+#include "ignite/asset/asset_importer.hpp"
+
 namespace ignite
 {
     UUID ScenePanel::m_TrackingSelectedEntity = UUID(0);
@@ -55,6 +57,7 @@ namespace ignite
         m_Icons["simulate"] = Texture::Create("resources/ui/ic_simulate.png", createInfo);
         m_Icons["play"] = Texture::Create("resources/ui/ic_play.png", createInfo);
         m_Icons["stop"] = Texture::Create("resources/ui/ic_stop.png", createInfo);
+        m_Icons["checker128"] = Texture::Create("resources/ui/checker-128px.jpg", createInfo);
 
         nvrhi::IDevice *device = app->GetRenderDevice();
         nvrhi::CommandListHandle commandList = device->createCommandList();
@@ -377,7 +380,9 @@ namespace ignite
             {
                 ImGui::PushID(&*comp);
 
-                switch (comp->GetType())
+                auto compType = comp->GetType();
+
+                switch (compType)
                 {
                 case CompType_Sprite2D:
                 {
@@ -547,7 +552,6 @@ namespace ignite
                     });
                     break;
                 }
-
                 case CompType_SphereCollider:
                 {
                     RenderComponent<SphereCollider>("Sphere Collider", selectedEntity, [&]()
@@ -561,7 +565,6 @@ namespace ignite
                         });
                     break;
                 }
-
                 case CompType_MeshRenderer:
                 {
                     RenderComponent<MeshRenderer>("Mesh Renderer", selectedEntity, [&]()
@@ -571,10 +574,69 @@ namespace ignite
                         ImGui::Text("Mesh [%d]: %s", c->meshIndex, c->mesh ? c->mesh->name.c_str() : "<null>");
                         if (c->meshIndex != -1)
                         {
+                            const ImVec2 imageSize = { 72.0f, 72.0f };
+
                             ImGui::ColorEdit4("Base Color", &c->mesh->material.data.baseColor.x);
+                            
+                            auto checkerTex = m_Icons["checker128"]->GetHandle().Get();
+                            auto baseColorTex = c->mesh->material.textures[aiTextureType_BASE_COLOR].handle ? c->mesh->material.textures[aiTextureType_BASE_COLOR].handle.Get() : checkerTex;
+                            ImTextureID texId = reinterpret_cast<ImTextureID>(baseColorTex);
+                            if (ImGui::ImageButton("Base Color Texture", texId, imageSize))
+                            {
+                                const std::filesystem::path filepath = FileDialogs::OpenFile("Image Files (*.jpg,*.jpeg,*.png)\0*.jpg;*.jpeg;*.png");
+                                if (!filepath.empty())
+                                {
+                                    TextureCreateInfo createInfo;
+                                    createInfo.format = nvrhi::Format::RGBA8_UNORM;
+                                    Ref<Texture> texture = Texture::Create(filepath, createInfo);
+                                    c->mesh->UpdateTexture(texture, aiTextureType_BASE_COLOR);
+                                }
+                            }
+
                             ImGui::DragFloat("Metallic", &c->mesh->material.data.metallic, 0.025f, 0.0f, 1.0f);
+                            auto metalTex = c->mesh->material.textures[aiTextureType_SPECULAR].handle ? c->mesh->material.textures[aiTextureType_SPECULAR].handle.Get() : checkerTex;
+                            texId = reinterpret_cast<ImTextureID>(metalTex);
+                            if (ImGui::ImageButton("Specular Texture", texId, imageSize))
+                            {
+                                const std::filesystem::path filepath = FileDialogs::OpenFile("Image Files (*.jpg,*.jpeg,*.png)\0*.jpg;*.jpeg;*.png");
+                                if (!filepath.empty())
+                                {
+                                    TextureCreateInfo createInfo;
+                                    createInfo.format = nvrhi::Format::RGBA8_UNORM;
+                                    Ref<Texture> texture = Texture::Create(filepath, createInfo);
+                                    c->mesh->UpdateTexture(texture, aiTextureType_SPECULAR);
+                                }
+                            }
+
                             ImGui::DragFloat("Roughness", &c->mesh->material.data.roughness, 0.025f, 0.0f, 1.0f);
+                            auto roughnessTex = c->mesh->material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle ? c->mesh->material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle.Get() : checkerTex;
+                            texId = reinterpret_cast<ImTextureID>(roughnessTex);
+                            if (ImGui::ImageButton("Roughness Texture", texId, imageSize))
+                            {
+                                const std::filesystem::path filepath = FileDialogs::OpenFile("Image Files (*.jpg,*.jpeg,*.png)\0*.jpg;*.jpeg;*.png");
+                                if (!filepath.empty())
+                                {
+                                    TextureCreateInfo createInfo;
+                                    createInfo.format = nvrhi::Format::RGBA8_UNORM;
+                                    Ref<Texture> texture = Texture::Create(filepath, createInfo);
+                                    c->mesh->UpdateTexture(texture, aiTextureType_DIFFUSE_ROUGHNESS);
+                                }
+                            }
+
                             ImGui::DragFloat("Emissive", &c->mesh->material.data.emissive, 0.025f, 0.0f, 1.0f);
+                            auto emmisiveTex = c->mesh->material.textures[aiTextureType_EMISSIVE].handle ? c->mesh->material.textures[aiTextureType_EMISSIVE].handle.Get() : checkerTex;
+                            texId = reinterpret_cast<ImTextureID>(emmisiveTex);
+                            if (ImGui::ImageButton("Emissive Texture", texId, imageSize))
+                            {
+                                const std::filesystem::path filepath = FileDialogs::OpenFile("Image Files (*.jpg,*.jpeg,*.png)\0*.jpg;*.jpeg;*.png");
+                                if (!filepath.empty())
+                                {
+                                    TextureCreateInfo createInfo;
+                                    createInfo.format = nvrhi::Format::RGBA8_UNORM;
+                                    Ref<Texture> texture = Texture::Create(filepath, createInfo);
+                                    c->mesh->UpdateTexture(texture, aiTextureType_EMISSIVE);
+                                }
+                            }
                         }
                     });
                     break;
@@ -585,128 +647,21 @@ namespace ignite
                     {
                         SkinnedMesh *c = comp->As<SkinnedMesh>();
 
-                        if (ImGui::Button("Load", {50.0f, 30.0f}))
+                        std::string btnLabel = c->filepath.empty() ? "Load" : "Loaded";
+                        if (ImGui::Button(btnLabel.c_str(), {55.0f, 30.0f}))
                         {
                             std::filesystem::path filepath = FileDialogs::OpenFile("GLB/GLTF (*.glb;*.gltf)\0*.glb;*.gltf\0FBX (*.fbx)\0*.fbx");
                             if (!filepath.empty())
                             {
-                                LOG_ASSERT(std::filesystem::exists(filepath), "[Mesh Loader] File does not exists!");
-
-                                Assimp::Importer importer;
-                                const aiScene *assimpScene = importer.ReadFile(filepath.generic_string(), ASSIMP_IMPORTER_FLAGS);
-
-                                LOG_ASSERT(assimpScene == nullptr || assimpScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || assimpScene->mRootNode,
-                                    "[Model] Failed to load {}: {}",
-                                    filepath,
-                                    importer.GetErrorString());
-
-                                if (!assimpScene)
-                                {
-                                    return Entity{};
-                                }
-
-                                c->skeleton = CreateRef<Skeleton>();
-
-                                if (assimpScene->HasAnimations())
-                                {
-                                    MeshLoader::LoadAnimation(assimpScene, c->animations);
-
-                                    // Process Skeleton
-                                    MeshLoader::ExtractSkeleton(assimpScene, c->skeleton);
-                                    MeshLoader::SortJointsHierarchically(c->skeleton);
-                                }
-
-                                std::vector<Ref<Mesh>> meshes;
-                                meshes.resize(assimpScene->mNumMeshes);
-                                for (auto &mesh : meshes)
-                                {
-                                    mesh = CreateRef<Mesh>();
-                                }
-
-                                std::vector<NodeInfo> nodes;
-
-                                MeshLoader::ProcessNode(assimpScene, assimpScene->mRootNode, filepath, meshes, nodes, c->skeleton, -1);
-                                MeshLoader::CalculateWorldTransforms(nodes);
-
-                                // First pass: create all node entities
-                                for (auto &node : nodes)
-                                {
-                                    if (node.uuid == UUID(0) || node.parentID != -1) // not yet created
-                                    {
-                                        Entity entity = SceneManager::CreateEntity(m_Scene, node.name, EntityType_Node);
-                                        node.uuid = entity.GetUUID();
-
-                                        Transform &tr = entity.GetComponent<Transform>();
-
-                                        glm::vec3 skew;
-                                        glm::vec4 perspective;
-                                        glm::decompose(node.localTransform, tr.localScale, tr.localRotation, tr.localTranslation, skew, perspective);
-
-                                        tr.dirty = true;
-                                    }
-                                }
-
-                                // Second pass: establish hierarchy and add meshes
-                                for (auto &node : nodes)
-                                {
-                                    Entity nodeEntity = SceneManager::GetEntity(m_Scene, node.uuid);
-
-                                    if (node.parentID == -1)
-                                    {
-                                        // Attach the node to root node
-                                        ID &id = selectedEntity.GetComponent<ID>();
-                                        id.name = filepath.stem().string();
-
-                                        SceneManager::AddChild(m_Scene, selectedEntity, nodeEntity);
-                                    }
-                                    else
-                                    {
-                                        // Attach to parent if not root
-                                        const auto &parentNode = nodes[node.parentID];
-                                        Entity parentEntity = SceneManager::GetEntity(m_Scene, parentNode.uuid);
-                                        SceneManager::AddChild(m_Scene, parentEntity, nodeEntity);
-                                    }
-
-                                    // Attach mesh entities to this node
-                                    for (i32 meshIdx : node.meshIndices)
-                                    {
-                                        const auto &mesh = meshes[meshIdx];
-
-                                        MeshRenderer &meshRenderer = nodeEntity.AddComponent<MeshRenderer>();
-                                        meshRenderer.meshIndex = meshIdx;
-                                        meshRenderer.root = selectedEntity.GetUUID();
-                                        meshRenderer.mesh = mesh;
-                                        meshRenderer.mesh->CreateBuffers();
-
-                                        SceneManager::WriteMeshBuffer(m_Scene, meshRenderer, static_cast<uint32_t>(nodeEntity));
-                                    }
-
-                                    // Extract skeleton joints into entity
-                                    for (size_t i = 0; i < c->skeleton->joints.size(); ++i)
-                                    {
-                                        const std::string &name = c->skeleton->joints[i].name;
-                                        for (auto [uuid, e] : m_Scene->entities)
-                                        {
-                                            Entity entity = { e, m_Scene };
-                                            if (entity.GetName() == name)
-                                            {
-                                                c->skeleton->jointEntityMap[static_cast<i32>(i)] = uuid;
-                                                Entity entity = SceneManager::GetEntity(m_Scene, uuid);
-                                                entity.GetComponent<ID>().type = EntityType_Joint;
-                                                break;
-                                            }
-                                        }
-                                        
-                                    }
-                                }
-
-                                MeshLoader::ClearTextureCache();
+                                AssetImporter::LoadSkinnedMesh(m_Scene, selectedEntity, filepath);
                             }
                         }
 
+                        ImGui::SameLine();
+                        ImGui::Text("%s", c->filepath.generic_string().c_str());
+
                         if (!c->animations.empty())
                         {
-
                             ImGui::SeparatorText("Animations");
                             
                             if (ImGui::Button("Play"))
@@ -923,6 +878,8 @@ namespace ignite
             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
                 m_RenderTarget->Resize(vpWidth, vpHeight);
+                m_RenderTarget->CreateSingleFramebuffer();
+
                 m_Camera.SetSize(static_cast<float>(vpWidth), static_cast<float>(vpHeight));
                 m_Camera.UpdateProjectionMatrix();
             }

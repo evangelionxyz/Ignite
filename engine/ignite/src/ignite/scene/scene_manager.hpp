@@ -13,8 +13,6 @@ namespace ignite
         static Entity CreateSprite(Scene *scene, const std::string &name, UUID uuid = UUID());
         static Entity CreateMesh(Scene *scene, const std::string &name, UUID uuid = UUID());
 
-        static void WriteMeshBuffer(Scene *scene, MeshRenderer &meshRenderer, uint32_t entityID);
-
         static void RenameEntity(Scene *scene, Entity entity, const std::string &newName);
         static void DestroyEntity(Scene *scene, Entity entity);
         static void DestroyEntity(Scene *scene, UUID uuid);

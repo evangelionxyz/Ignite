@@ -100,7 +100,7 @@ namespace ignite {
 
     void Environment::Render(nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const Ref<GraphicsPipeline> &pipeline)
     {
-        m_IsUpdatingTexture = false;
+        isUpdatingTexture = false;
 
         // write params buffer
         commandList->writeBuffer(m_ParamsConstantBuffer, &params, sizeof(EnvironmentParams));
@@ -131,8 +131,6 @@ namespace ignite {
     void Environment::LoadTexture(const std::string &filepath)
     {
         nvrhi::IDevice *device = Application::GetRenderDevice();
-
-        m_IsUpdatingTexture = true;
 
         TextureCreateInfo textureCI;
         textureCI.dimension = nvrhi::TextureDimension::Texture2D;

@@ -35,14 +35,12 @@ namespace ignite
 
             m_GeometryPipeline = GraphicsPipeline::Create(params, &pci, Renderer::GetBindingLayout(GPipeline::MESH));
             m_GeometryPipeline->AddShader("default_mesh.vertex.hlsl", nvrhi::ShaderType::Vertex)
-                .AddShader("default_mesh.pixel.hlsl", nvrhi::ShaderType::Pixel)
+                .AddShader("default_mesh.pixel.hlsl", nvrhi::ShaderType::Pixel, true)
                 .Build();
         }
 
         // Environment Pipeline
         {
-            params.enableDepthStencil = false;
-
             params.cullMode = nvrhi::RasterCullMode::Front;
             params.comparison = nvrhi::ComparisonFunc::Always;
 
@@ -63,8 +61,6 @@ namespace ignite
             params.cullMode = nvrhi::RasterCullMode::None;
             params.comparison = nvrhi::ComparisonFunc::LessOrEqual;
 
-            params.enableDepthStencil = true;
-
             auto attributes = Vertex2DQuad::GetAttributes();
             GraphicsPiplineCreateInfo pci;
             pci.attributes = attributes.data();
@@ -80,10 +76,6 @@ namespace ignite
 
         // Batch Line 2D Pipeline
         {
-            params.enableBlend = false;
-            params.depthWrite = true;
-            params.depthTest = true;
-
             params.fillMode = nvrhi::RasterFillMode::Wireframe;
             params.cullMode = nvrhi::RasterCullMode::None;
             params.primitiveType = nvrhi::PrimitiveType::LineList;
@@ -129,7 +121,19 @@ namespace ignite
     {
         if (scene->sceneRenderer == nullptr)
             scene->sceneRenderer = this;
- 
+
+        if (m_Environment->isUpdatingTexture)
+        {
+            auto meshRendererView = scene->registry->view<MeshRenderer>();
+            for (entt::entity e : meshRendererView)
+            {
+                MeshRenderer &mr = meshRendererView.get<MeshRenderer>(e);
+                mr.mesh->CreateBindingSet();
+            }
+
+            m_Environment->isUpdatingTexture = false;
+        }
+
         m_Environment->Render(commandList, framebuffer, m_EnvironmentPipeline);
 
         Renderer2D::Begin(commandList, framebuffer);

@@ -6,11 +6,9 @@
 #include "ignite/graphics/material.hpp"
 #include "ignite/core/uuid.hpp"
 #include "ignite/math/aabb.hpp"
-#include "ignite/graphics/mesh.hpp"
 #include "ignite/graphics/vertex_data.hpp"
 #include "ignite/animation/skeletal_animation.hpp"
 #include "scene_camera.hpp"
-
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <nvrhi/nvrhi.h>
@@ -25,7 +23,9 @@ namespace JPH
 namespace ignite
 {
     class Texture;
-
+    class Mesh;
+    struct Skeleton;
+    
     static std::unordered_map<std::string, CompType> s_ComponentsName =
     {
         { "Camera", CompType_Camera },
@@ -90,10 +90,10 @@ namespace ignite
 
         void RemoveChild(UUID childId)
         {
-            children.erase(std::remove_if(children.begin(), children.end(), [childId](const UUID id) 
+            std::erase_if(children, [childId](const UUID id) 
             { 
                 return id == childId;
-            }), children.end());
+            });
         }
 
         bool HasChild() const
@@ -225,6 +225,10 @@ namespace ignite
          std::vector<SkeletalAnimation> animations;
          i32 activeAnimIndex = 0;
 
+         std::filesystem::path filepath;
+
+         SkinnedMesh() = default;
+
          static CompType StaticType() { return CompType_SkinnedMesh; }
          virtual CompType GetType() override { return StaticType(); };
      };
@@ -244,20 +248,7 @@ namespace ignite
         nvrhi::RasterFillMode fillMode = nvrhi::RasterFillMode::Solid;
 
         MeshRenderer() = default;
-        MeshRenderer(const MeshRenderer &other)
-        {
-            if (!other.mesh)
-                return;
-
-            mesh = CreateRef<Mesh>(*other.mesh.get());
-            cullMode = other.cullMode;
-            fillMode = other.fillMode;
-
-            meshBuffer = other.meshBuffer;
-            meshSource = other.meshSource;
-            meshIndex = other.meshIndex;
-            root = other.root;
-        }
+        MeshRenderer(const MeshRenderer &other);
 
         static CompType StaticType() { return CompType_MeshRenderer; }
         virtual CompType GetType() override { return StaticType(); }
@@ -266,13 +257,13 @@ namespace ignite
     class Rigibody : public IComponent
     {
     public:
-        enum EMotionQuality
+        enum class EMotionQuality
         {
             Discrete = 0,
             LinearCast = 1
         };
 
-        EMotionQuality MotionQuality = Discrete;
+        EMotionQuality MotionQuality = EMotionQuality::Discrete;
 
         bool useGravity = true;
         bool rotateX = true, rotateY = true, rotateZ = true;
@@ -287,7 +278,6 @@ namespace ignite
         JPH::Body *body = nullptr;
 
         Rigibody() = default;
-        Rigibody(const Rigibody &) = default;
 
         static CompType StaticType() { return CompType_Rigidbody; }
         virtual CompType GetType() override { return StaticType(); }
@@ -310,7 +300,6 @@ namespace ignite
         glm::vec3 scale = { 1.0f, 1.0f, 1.0f };
 
         BoxCollider() = default;
-        BoxCollider(const BoxCollider &) = default;
 
         static CompType StaticType() { return CompType_BoxCollider; }
         virtual CompType GetType() override { return StaticType(); }
@@ -322,7 +311,6 @@ namespace ignite
         float radius = 0.5f;
 
         SphereCollider() = default;
-        SphereCollider(const SphereCollider &) = default;
 
         static CompType StaticType() { return CompType_SphereCollider; }
         virtual CompType GetType() override { return StaticType(); }

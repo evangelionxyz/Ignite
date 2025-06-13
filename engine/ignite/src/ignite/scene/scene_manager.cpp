@@ -18,6 +18,8 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
 
+#include "ignite/graphics/mesh.hpp"
+
 namespace ignite
 {    
     static std::string GenerateUniqueName(const std::string &name, const std::vector<std::string> &names, std::unordered_map<std::string, uint32_t> &strMap)
@@ -32,7 +34,7 @@ namespace ignite
                 break;
         }
 
-        // if the name does not exists, return it as the unique key
+        // if the name does not exist, return it as the unique key
         if (!found)
             return name;
 
@@ -144,64 +146,6 @@ namespace ignite
         return entity;
     }
 
-    void SceneManager::WriteMeshBuffer(Scene *scene, MeshRenderer &meshRenderer, uint32_t entityID)
-    {
-        nvrhi::IDevice *device = Application::GetRenderDevice();
-        nvrhi::CommandListHandle commandList = device->createCommandList();
-
-        commandList->open();
-
-        commandList->writeBuffer(meshRenderer.mesh->indexBuffer, meshRenderer.mesh->data.indices.data(), sizeof(uint32_t) * meshRenderer.mesh->data.indices.size());
-
-        // default
-        for (auto &vertex : meshRenderer.mesh->data.vertices)
-        {
-            vertex.entityID = entityID;
-        }
-
-        commandList->writeBuffer(meshRenderer.mesh->vertexBuffer, meshRenderer.mesh->data.vertices.data(), sizeof(VertexMesh) * meshRenderer.mesh->data.vertices.size());
-        
-        // outline
-        commandList->writeBuffer(meshRenderer.mesh->outlineVertexBuffer, meshRenderer.mesh->outlineVertices.data(), sizeof(VertexMeshOutline) * meshRenderer.mesh->outlineVertices.size());
-
-        // write textures
-        if (meshRenderer.mesh->material.ShouldWriteTexture())
-        {
-            meshRenderer.mesh->material.WriteBuffer(commandList);
-        }
-
-        auto desc = nvrhi::BindingSetDesc();
-        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, Renderer::GetCameraBufferHandle()));
-        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, meshRenderer.mesh->objectBufferHandle));
-        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(2, scene->sceneRenderer->GetEnvironment()->GetDirLightBuffer()));
-        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(3, scene->sceneRenderer->GetEnvironment()->GetParamsBuffer()));
-        desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(4, meshRenderer.mesh->materialBufferHandle));
-
-        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, meshRenderer.mesh->material.textures[aiTextureType_DIFFUSE].handle));
-        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(1, meshRenderer.mesh->material.textures[aiTextureType_SPECULAR].handle));
-        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(2, meshRenderer.mesh->material.textures[aiTextureType_EMISSIVE].handle));
-        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(3, meshRenderer.mesh->material.textures[aiTextureType_DIFFUSE_ROUGHNESS].handle));
-        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(4, meshRenderer.mesh->material.textures[aiTextureType_NORMALS].handle));
-        desc.addItem(nvrhi::BindingSetItem::Texture_SRV(5, scene->sceneRenderer->GetEnvironment()->GetHDRTexture()));
-        desc.addItem(nvrhi::BindingSetItem::Sampler(0, meshRenderer.mesh->material.sampler));
-
-        meshRenderer.mesh->bindingSets[GPipeline::MESH] = device->createBindingSet(desc, Renderer::GetBindingLayout(GPipeline::MESH));
-        LOG_ASSERT(meshRenderer.mesh->bindingSets[GPipeline::MESH], "Failed to create binding set");
-
-        {
-            // Outline
-
-            desc = nvrhi::BindingSetDesc();
-            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(0, Renderer::GetCameraBufferHandle()));
-            desc.addItem(nvrhi::BindingSetItem::ConstantBuffer(1, meshRenderer.mesh->objectBufferHandle));
-            meshRenderer.mesh->bindingSets[GPipeline::MESH_OUTLINE] = device->createBindingSet(desc, Renderer::GetBindingLayout(GPipeline::MESH_OUTLINE));
-            LOG_ASSERT(meshRenderer.mesh->bindingSets[GPipeline::MESH_OUTLINE], "Failed to create binding set");
-        }
-
-        commandList->close();
-        device->executeCommandList(commandList);
-    }
-
     void SceneManager::RenameEntity(Scene *scene, Entity entity, const std::string &newName)
     {
         scene->SetDirtyFlag(true);
@@ -262,7 +206,9 @@ namespace ignite
         if (newEntity.HasComponent<MeshRenderer>())
         {
             MeshRenderer &mr = newEntity.GetComponent<MeshRenderer>();
-            SceneManager::WriteMeshBuffer(scene, mr, newEntity);
+            mr.mesh->environment = scene->sceneRenderer->GetEnvironment();
+            mr.mesh->WriteBuffers(newEntity);
+            mr.mesh->CreateBindingSet();
         }
 
         // get new entity's ID Component
@@ -406,17 +352,22 @@ namespace ignite
 
         // copy scene extra data
         newScene->handle = other->handle;
-        newScene->registeredComps = other->registeredComps;
         newScene->sceneRenderer = other->sceneRenderer;
 
         // Do not copy entities (it is created when creating entity)
         // newScene->entities = other->entities;
+        
+        // Do not copy registered comps
+        // newScene->registeredComps = other->registeredComps;
 
         auto mrView = destRegistry->view<MeshRenderer>();
         for (entt::entity e : mrView)
         {
-            MeshRenderer &meshRenderer = mrView.get<MeshRenderer>(e);
-            WriteMeshBuffer(newScene.get(), meshRenderer, static_cast<uint32_t>(e));
+            MeshRenderer &mr = mrView.get<MeshRenderer>(e);
+
+            mr.mesh->environment = newScene->sceneRenderer->GetEnvironment();
+            mr.mesh->WriteBuffers(static_cast<uint32_t>(e));
+            mr.mesh->CreateBindingSet();
         }
 
         Application::GetDeviceManager()->WaitForIdle();

@@ -29,8 +29,6 @@ namespace ignite {
         void WriteBuffer(nvrhi::ICommandList *commandList);
         void SetSunDirection(float pitch, float yaw);
 
-        bool IsUpdatingTexture() const { return m_IsUpdatingTexture; }
-
         static Ref<Environment> Create();
 
         static nvrhi::VertexAttributeDesc GetAttribute();
@@ -43,6 +41,7 @@ namespace ignite {
         nvrhi::BufferHandle GetParamsBuffer() { return m_ParamsConstantBuffer; }
         nvrhi::BufferHandle GetDirLightBuffer() { return m_DirLightConstantBuffer; }
 
+        bool isUpdatingTexture = false;
     private:
 
         nvrhi::BufferHandle m_VertexBuffer;
@@ -53,10 +52,5 @@ namespace ignite {
         nvrhi::BindingSetHandle m_BindingSet;
 
         Ref<Texture> m_HDRTexture;
-        bool m_IsUpdatingTexture = false;
-
-        friend class EnvironmentImporter;
-
-
     };
 }
