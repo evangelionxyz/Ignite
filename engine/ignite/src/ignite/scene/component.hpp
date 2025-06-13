@@ -37,6 +37,7 @@ namespace ignite
         { "Rigid Body", CompType_Rigidbody},
         { "Box Collider", CompType_BoxCollider},
         { "Sphere Collider", CompType_SphereCollider},
+        { "Audio Source", CompType_AudioSource},
     };
 
     enum EntityType : u8
@@ -46,6 +47,7 @@ namespace ignite
         EntityType_Mesh,
         EntityType_Prefab,
         EntityType_Joint,
+        EntityType_Audio,
         EntityType_Invalid
     };
 
@@ -58,6 +60,7 @@ namespace ignite
         case EntityType_Mesh: return "Mesh";
         case EntityType_Prefab: return "Prefab";
         case EntityType_Joint: return "Joint";
+        case EntityType_Audio: return "Audio";
         case EntityType_Invalid:
         default: return "Invalid";
         }
@@ -69,7 +72,8 @@ namespace ignite
         if (typeStr == "Camera") return EntityType_Camera;
         if (typeStr == "Mesh") return EntityType_Mesh;
         if (typeStr == "Prefab") return EntityType_Prefab;
-        if (typeStr == "Joint") return EntityType_Prefab;
+        if (typeStr == "Joint") return EntityType_Joint;
+        if (typeStr == "Audio") return EntityType_Audio;
         return EntityType_Invalid;
     }
 
@@ -313,6 +317,22 @@ namespace ignite
         SphereCollider() = default;
 
         static CompType StaticType() { return CompType_SphereCollider; }
+        virtual CompType GetType() override { return StaticType(); }
+    };
+
+    class AudioSource : public IComponent
+    {
+    public:
+        AssetHandle handle = AssetHandle(0);
+
+        float volume = 1.0f;
+        float pitch = 1.0f;
+        float pan = 0.0f;
+        bool playOnStart = false;
+
+        AudioSource() = default;
+
+        static CompType StaticType() { return CompType_AudioSource; }
         virtual CompType GetType() override { return StaticType(); }
     };
 }

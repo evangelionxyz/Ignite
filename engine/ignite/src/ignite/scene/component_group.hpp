@@ -19,6 +19,7 @@ namespace ignite
         MeshRenderer,
         Rigibody,
         BoxCollider,
+        AudioSource,
         SphereCollider
     >; 
 }

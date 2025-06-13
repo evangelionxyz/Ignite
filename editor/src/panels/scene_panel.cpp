@@ -1,5 +1,7 @@
 #include "scene_panel.hpp"
 
+#include "ignite/audio/fmod_sound.hpp"
+
 #include "ignite/core/application.hpp"
 #include "ignite/core/input/event.hpp"
 #include "ignite/core/input/key_event.hpp"
@@ -555,6 +557,81 @@ namespace ignite
                         });
                     break;
                 }
+                case CompType_AudioSource:
+                {
+                    RenderComponent<AudioSource>("Audio Source", selectedEntity, [&]()
+                        {
+                            AudioSource *c = comp->As<AudioSource>();
+
+                            ImGui::Button("Drag Here", { 65, 30.0f });
+
+                            if (ImGui::BeginDragDropTarget())
+                            {
+                                if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("content_browser_item"))
+                                {
+                                    if (payload->DataSize == sizeof(AssetHandle))
+                                    {
+                                        AssetHandle *handle = static_cast<AssetHandle *>(payload->Data);
+                                        if (handle && *handle != AssetHandle(0))
+                                        {
+                                            AssetMetaData metadata = Project::GetInstance()->GetAssetManager().GetMetaData(*handle);
+                                            if (metadata.type == AssetType::Audio)
+                                            {
+                                                c->handle = *handle;
+                                                Ref<FmodSound> sound = Project::GetAsset<FmodSound>(*handle);
+                                            }
+                                        }
+                                    }
+                                }
+                                ImGui::EndDragDropTarget();
+                            }
+
+                            ImGui::SameLine();
+                            ImGui::Text("%llu", c->handle);
+
+                            if (c->handle != AssetHandle(0))
+                            {
+                                if (Ref<FmodSound> sound = Project::GetAsset<FmodSound>(c->handle))
+                                {
+                                    if (ImGui::Button("Play", { 55.0f, 30.0f }))
+                                    {
+                                        sound->Stop();
+
+                                        sound->Play();
+                                        sound->SetVolume(c->volume);
+                                        sound->SetPitch(c->pitch);
+                                        sound->SetPan(c->pan);
+                                    }
+                                    ImGui::SameLine();
+                                    if (ImGui::Button("Stop", { 55.0f, 30.0f }))
+                                    {
+                                        sound->Stop();
+                                    }
+                                    ImGui::SameLine();
+                                    if (ImGui::Button("Pause", { 55.0f, 30.0f }))
+                                    {
+                                        sound->Pause();
+                                    }
+                                    if (sound->IsPaused())
+                                    {
+                                        ImGui::SameLine();
+                                        if (ImGui::Button("Resume", { 55.0f, 30.0f }))
+                                        {
+                                            sound->Resume();
+                                        }
+                                    }
+
+                                    ImGui::DragFloat("Volume", &c->volume, 0.001f, 0.0f, 1.0f);
+                                    ImGui::DragFloat("Pitch", &c->pitch, 0.001f);
+                                    ImGui::DragFloat("Pan", &c->pan, 0.001f);
+                                    ImGui::Checkbox("Play On Start", &c->playOnStart);
+                                }
+                            }
+                        }
+                    );
+
+                    break;
+                }
                 case CompType_MeshRenderer:
                 {
                     RenderComponent<MeshRenderer>("Mesh Renderer", selectedEntity, [&]()
@@ -595,7 +672,7 @@ namespace ignite
                                             AssetMetaData metadata = Project::GetInstance()->GetAssetManager().GetMetaData(*handle);
                                             if (metadata.type == AssetType::Texture)
                                             {
-                                                Ref<Texture> texture = Project::GetInstance()->GetAsset<Texture>(*handle);
+                                                Ref<Texture> texture = Project::GetAsset<Texture>(*handle);
                                                 c->mesh->UpdateTexture(texture, aiTextureType_BASE_COLOR);
                                             }
                                         }
@@ -803,6 +880,10 @@ namespace ignite
                     case CompType_SphereCollider:
                         entity.AddComponent<SphereCollider>();
                         break;
+                    case CompType_AudioSource:
+                        entity.AddComponent<AudioSource>();
+                        break;
+                    default: break;
                     }
                 };
 

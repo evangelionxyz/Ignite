@@ -1,5 +1,8 @@
 #include "asset_importer.hpp"
 
+#include "ignite/audio/fmod_audio.hpp"
+#include "ignite/audio/fmod_sound.hpp"
+
 #include "ignite/core/application.hpp"
 #include "ignite/project/project.hpp"
 #include "ignite/serializer/serializer.hpp"
@@ -19,6 +22,7 @@ namespace ignite {
     {
         { AssetType::Scene, AssetImporter::ImportScene },
         { AssetType::Texture, AssetImporter::ImportTexture },
+        { AssetType::Audio, AssetImporter::ImportAudio },
     };
 
     void AssetImporter::SyncMainThread(nvrhi::ICommandList *commandList, nvrhi::IDevice *device)
@@ -63,6 +67,16 @@ namespace ignite {
         }
 
         return texture;
+    }
+
+    Ref<FmodSound> AssetImporter::ImportAudio(AssetHandle handle, const AssetMetaData &metadata)
+    {
+        Ref<FmodSound> sound = FmodSound::Create(metadata.filepath.filename().string(), metadata.filepath.generic_string(), FMOD_DEFAULT);
+        if (sound)
+        {
+            sound->handle = handle;
+        }
+        return sound;
     }
 
     void AssetImporter::LoadSkinnedMesh(Scene *scene, Entity outEntity, const std::filesystem::path &filepath)

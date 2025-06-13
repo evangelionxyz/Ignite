@@ -64,7 +64,10 @@ namespace ignite
 
     void Physics2D::SimulationStop()
     {
-        b2DestroyWorld(m_WorldId);
+        if (B2_IS_NULL(m_WorldId) == false)
+            b2DestroyWorld(m_WorldId);
+
+        m_WorldId = b2_nullWorldId;
     }
 
     void Physics2D::Instantiate(entt::entity e)
