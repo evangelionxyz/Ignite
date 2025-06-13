@@ -108,13 +108,10 @@ namespace ignite
         if (!texture)
             return;
 
-        nvrhi::IDevice *device = Application::GetRenderDevice();
-        nvrhi::CommandListHandle commandList = device->createCommandList();
-
-        commandList->open();
-        texture->Write(commandList);
-        commandList->close();
-        device->executeCommandList(commandList);
+        if (type == aiTextureType_BASE_COLOR)
+        {
+            material.sampler = texture->GetSampler();
+        }
 
         material.textures[type].handle = texture->GetHandle();
         CreateBindingSet();

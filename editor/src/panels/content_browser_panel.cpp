@@ -16,17 +16,6 @@ namespace ignite {
         createInfo.format = nvrhi::Format::RGBA8_UNORM;
         m_Icons["folder"] = Texture::Create("resources/ui/ic_folder.png", createInfo);
         m_Icons["unknown"] = Texture::Create("resources/ui/ic_file.png", createInfo);
-
-        nvrhi::IDevice *device = Application::GetRenderDevice();
-        nvrhi::CommandListHandle commandList = device->createCommandList();
-        commandList->open();
-        for (auto &[name, icon] : m_Icons)
-        {
-            icon->Write(commandList);
-        }
-        commandList->close();
-        
-        device->executeCommandList(commandList);
     }
 
     void ContentBrowserPanel::SetActiveProject(const Ref<Project> &project)
@@ -233,15 +222,11 @@ namespace ignite {
                 {
                     if (!std::filesystem::is_directory(item))
                     {
-                        std::string fileExtension = item.extension().string();
-                        if (fileExtension == ".ixasset")
+                        const std::filesystem::path filepath = m_ActiveProject->GetAssetRelativeFilepath(m_BaseDirectory / node->path / item);
+                        AssetHandle handle = m_ActiveProject->GetAssetManager().GetAssetHandle(filepath);
+                        if (handle != AssetHandle(0))
                         {
-                            std::filesystem::path filepath = m_ActiveProject->GetAssetRelativeFilepath(m_BaseDirectory / node->path / item);
-                            AssetHandle handle = m_ActiveProject->GetAssetManager().GetAssetHandle(filepath);
-                            if (handle != AssetHandle(0))
-                            {
-                                ImGui::SetDragDropPayload("content_browser_item", &handle, sizeof(AssetHandle));
-                            }
+                            ImGui::SetDragDropPayload("content_browser_item", &handle, sizeof(AssetHandle));
                         }
                     }
 
@@ -336,8 +321,19 @@ namespace ignite {
                     AssetHandle assetHandle = AssetHandle(0);
                     if (!std::filesystem::is_directory(path) && path.has_extension())
                     {
-                        std::string relativeAssetPathStr = relativePath.generic_string();
-                        assetHandle = Project::GetInstance()->GetAssetManager().ImportAsset(relativeAssetPathStr);
+                        std::string relPath = relativePath.generic_string();
+                        assetHandle = Project::GetInstance()->GetAssetManager().GetAssetHandle(relPath);
+                        
+                        // not registered yet
+                        // (insert the metadata and generate the asset handle)
+                        if (assetHandle == AssetHandle(0))
+                        {
+                            assetHandle = AssetHandle();
+                            AssetMetaData metadata;
+                            metadata.type = GetAssetTypeFromExtension(relativePath.extension().generic_string());
+                            metadata.filepath = relPath;
+                            Project::GetInstance()->GetAssetManager().InsertMetaData(assetHandle, metadata);
+                        }
                     }
 
                     FileTreeNode newNode(path, assetHandle);

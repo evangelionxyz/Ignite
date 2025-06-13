@@ -17,7 +17,8 @@ namespace ignite {
 
     static std::unordered_map<AssetType, std::function<Ref<Asset>(UUID, const AssetMetaData &)>> s_ImportFunctions =
     {
-        { AssetType::Scene, AssetImporter::ImportScene }
+        { AssetType::Scene, AssetImporter::ImportScene },
+        { AssetType::Texture, AssetImporter::ImportTexture },
     };
 
     void AssetImporter::SyncMainThread(nvrhi::ICommandList *commandList, nvrhi::IDevice *device)
@@ -50,7 +51,21 @@ namespace ignite {
         return scene;
     }
 
-    void AssetImporter::LoadSkinnedMesh(Scene *scene, Entity outEntity, const std::filesystem::path& filepath)
+    Ref<Texture> AssetImporter::ImportTexture(AssetHandle handle, const AssetMetaData &metadata)
+    {
+        TextureCreateInfo createInfo;
+        createInfo.format = nvrhi::Format::RGBA8_UNORM;
+
+        Ref<Texture> texture = Texture::Create(metadata.filepath, createInfo);
+        if (texture)
+        {
+            texture->handle = handle;
+        }
+
+        return texture;
+    }
+
+    void AssetImporter::LoadSkinnedMesh(Scene *scene, Entity outEntity, const std::filesystem::path &filepath)
     {
         LOG_ASSERT(std::filesystem::exists(filepath), "[Mesh Loader] File does not exists!");
 

@@ -153,32 +153,27 @@ namespace ignite {
     void Environment::WriteBuffer(nvrhi::ICommandList *commandList)
     {
         // write buffers
-        m_HDRTexture->Write(commandList);
+        commandList->writeBuffer(m_VertexBuffer, vertices.data(), sizeof(vertices));
 
+        u32 *indices = new u32[36];
+        u32 Offset = 0;
+        for (u32 i = 0; i < 36; i += 6)
         {
-            // vertex buffer
-            commandList->writeBuffer(m_VertexBuffer, vertices.data(), sizeof(vertices));
+            indices[i + 0] = Offset + 0;
+            indices[i + 1] = Offset + 1;
+            indices[i + 2] = Offset + 2;
 
-            u32 *indices = new u32[36];
-            u32 Offset = 0;
-            for (u32 i = 0; i < 36; i += 6)
-            {
-                indices[i + 0] = Offset + 0;
-                indices[i + 1] = Offset + 1;
-                indices[i + 2] = Offset + 2;
+            indices[i + 3] = Offset + 2;
+            indices[i + 4] = Offset + 3;
+            indices[i + 5] = Offset + 0;
 
-                indices[i + 3] = Offset + 2;
-                indices[i + 4] = Offset + 3;
-                indices[i + 5] = Offset + 0;
-
-                Offset += 4;
-            }
-
-            // index buffer
-            commandList->writeBuffer(m_IndexBuffer, indices, sizeof(uint32_t) * 36);
-
-            delete[] indices;
+            Offset += 4;
         }
+
+        // index buffer
+        commandList->writeBuffer(m_IndexBuffer, indices, sizeof(uint32_t) * 36);
+
+        delete[] indices;
     }
 
     void Environment::SetSunDirection(float pitch, float yaw)

@@ -58,16 +58,6 @@ namespace ignite
         m_Icons["play"] = Texture::Create("resources/ui/ic_play.png", createInfo);
         m_Icons["stop"] = Texture::Create("resources/ui/ic_stop.png", createInfo);
         m_Icons["checker128"] = Texture::Create("resources/ui/checker-128px.jpg", createInfo);
-
-        nvrhi::IDevice *device = app->GetRenderDevice();
-        nvrhi::CommandListHandle commandList = device->createCommandList();
-        commandList->open();
-        for (auto &[name, icon] : m_Icons)
-        {
-            icon->Write(commandList);
-        }
-        commandList->close();
-        device->executeCommandList(commandList);
     }
 
     void ScenePanel::SetActiveScene(Scene *scene, bool reset)
@@ -593,6 +583,28 @@ namespace ignite
                                 }
                             }
 
+                            if (ImGui::BeginDragDropTarget())
+                            {
+                                if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("content_browser_item"))
+                                {
+                                    if (payload->DataSize == sizeof(AssetHandle))
+                                    {
+                                        AssetHandle *handle = static_cast<AssetHandle *>(payload->Data);
+                                        if (handle && *handle != AssetHandle(0))
+                                        {
+                                            AssetMetaData metadata = Project::GetInstance()->GetAssetManager().GetMetaData(*handle);
+                                            if (metadata.type == AssetType::Texture)
+                                            {
+                                                Ref<Texture> texture = Project::GetInstance()->GetAsset<Texture>(*handle);
+                                                c->mesh->UpdateTexture(texture, aiTextureType_BASE_COLOR);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                ImGui::EndDragDropTarget();
+                            }
+
                             ImGui::DragFloat("Metallic", &c->mesh->material.data.metallic, 0.025f, 0.0f, 1.0f);
                             auto metalTex = c->mesh->material.textures[aiTextureType_SPECULAR].handle ? c->mesh->material.textures[aiTextureType_SPECULAR].handle.Get() : checkerTex;
                             texId = reinterpret_cast<ImTextureID>(metalTex);
@@ -890,7 +902,7 @@ namespace ignite
 
         if (ImGui::BeginDragDropTarget())
         {
-            if (const ImGuiPayload *payload = ImGui::GetDragDropPayload())
+            if (const ImGuiPayload *payload = ImGui::AcceptDragDropPayload("content_browser_item"))
             {
                 if (payload->DataSize == sizeof(AssetHandle))
                 {

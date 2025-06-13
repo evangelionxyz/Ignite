@@ -28,7 +28,10 @@ namespace ignite {
         AssetRegistry &GetAssetAssetRegistry() { return m_AssetRegistry; }
 
     private:
+        Ref<Asset> Import(AssetHandle handle, const AssetMetaData &metadata);
+
         AssetRegistry m_AssetRegistry;
+        std::unordered_map<AssetHandle, Ref<Asset>> m_LoadedAssets;
     };
 
 }

@@ -174,6 +174,27 @@ namespace ignite {
                     sr.EndMap();
                 }
 
+                // skinned mesh
+                if (entity.HasComponent<SkinnedMesh>())
+                {
+                    const SkinnedMesh &comp = entity.GetComponent<SkinnedMesh>();
+                    sr.BeginMap("SkinnedMesh");
+                    sr.AddKeyValue("Filepath", comp.filepath.generic_string());
+                    sr.EndMap();
+                }
+
+                // Mesh Renderer
+                if (entity.HasComponent<MeshRenderer>())
+                {
+                    const MeshRenderer &comp = entity.GetComponent<MeshRenderer>();
+                    sr.BeginMap("MeshRenderer");
+                    {
+                        sr.AddKeyValue("Root", static_cast<uint64_t>(comp.root));
+                        sr.AddKeyValue("MeshIndex", comp.meshIndex);
+                    }
+                    sr.EndMap();
+                }
+
             }
             sr.EndMap(); // END Entity
         }
@@ -311,7 +332,7 @@ namespace ignite {
                 comp.isSensor = node["IsSensor"].as<bool>();
             }
         }
-
+        
         // attach each node to it's parent
         for (auto [uuid, e] : desScene->entities)
         {

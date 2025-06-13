@@ -50,17 +50,31 @@ namespace ignite {
                     // found it
                     handle = assetHandle;
                     metadata = assetMetaData;
+
+                    foundInAssetRegistry = true;
                     break;
                 }
             }
         }
 
-        // get the asset
-        Ref<Asset> asset = GetAsset(handle);
-        if (!asset)
+        // generate handle for new asset
+        if (!foundInAssetRegistry)
         {
+            handle = AssetHandle();
+            Import(handle, metadata);
             m_AssetRegistry[handle] = metadata;
         }
+        else
+        {
+            // get the asset
+            Ref<Asset> asset = GetAsset(handle);
+            if (!asset)
+            {
+                m_AssetRegistry[handle] = metadata;
+                m_LoadedAssets[handle] = asset;
+            }
+        }
+
 
         return handle;
     }
@@ -84,27 +98,8 @@ namespace ignite {
             return nullptr;
         }
 
-        Ref<Asset> asset;
-        // currently metadata filepath only a relative filepath
-        // should be loaded with full filepath in Import function
         const AssetMetaData &metadata = GetMetaData(handle);
-
-        switch (metadata.type)
-        {
-            case AssetType::Invalid:
-            {
-                LOG_ERROR("[Asset Manager] Invalid asset type!");
-                return nullptr;
-            }
-
-            case AssetType::Scene:
-            {
-                asset = AssetImporter::Import(handle, metadata);
-                break;
-            }
-        }
-
-        return asset;
+        return Import(handle, metadata);
     }
 
     AssetType AssetManager::GetAssetType(AssetHandle handle)
@@ -155,4 +150,32 @@ namespace ignite {
     {
         return (uint64_t)handle != 0 && m_AssetRegistry.contains(handle);
     }
+
+    Ref<Asset> AssetManager::Import(AssetHandle handle, const AssetMetaData &metadata)
+    {
+        if (m_LoadedAssets.contains(handle))
+        {
+            return m_LoadedAssets[handle];
+        }
+
+        Ref<Asset> asset;
+        switch (metadata.type)
+        {
+        case AssetType::Invalid:
+        {
+            LOG_ERROR("[Asset Manager] Invalid asset type!");
+            return nullptr;
+        }
+
+        case AssetType::Scene:
+        case AssetType::Texture:
+        {
+            asset = AssetImporter::Import(handle, metadata);
+            m_LoadedAssets[handle] = asset;
+            break;
+        }
+        }
+        return asset;
+    }
+
 }

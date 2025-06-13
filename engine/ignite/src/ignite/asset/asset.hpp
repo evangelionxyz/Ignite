@@ -24,7 +24,6 @@ namespace ignite {
         Skeleton,
         MeshSource, // Mesh Source (contains vertices, indices, etc...)
         Mesh, // Mesh Asset
-        Generic,
         Scene
     };
 
@@ -51,10 +50,9 @@ namespace ignite {
     static std::map<std::string, AssetType> s_AssetExtensionMap =
     {
         { ".ixproj", AssetType::Project },
-        { ".ixasset", AssetType::Generic },
+        { ".ixscene", AssetType::Scene },
         { ".jpg", AssetType::Texture },
         { ".png", AssetType::Texture },
-        { ".jpeg", AssetType::Texture },
         { ".jpeg", AssetType::Texture },
         { ".hdr", AssetType::TextureCube },
         { ".mp3", AssetType::Audio },

@@ -383,9 +383,6 @@ namespace ignite
             s_Data->quadBatch.textureSlots[s_Data->quadBatch.textureSlotIndex] = texture;
             s_Data->quadBatch.textureSlotIndex++;
 
-            // command list already open in editor layer
-            texture->Write(renderCommandList);
-
             UpdateTextureBindings();
         }
 

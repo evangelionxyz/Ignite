@@ -18,6 +18,7 @@ namespace ignite {
         static void SyncMainThread(nvrhi::ICommandList *commandList, nvrhi::IDevice *device);
         static Ref<Asset> Import(AssetHandle handle, const AssetMetaData &metadata);
         static Ref<Scene> ImportScene(AssetHandle handle, const AssetMetaData &metadata);
+        static Ref<Texture> ImportTexture(AssetHandle handle, const AssetMetaData &metadata);
         static void LoadSkinnedMesh(Scene *scene, Entity outEntity, const std::filesystem::path& filepath);
     };
 
