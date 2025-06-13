@@ -15,6 +15,8 @@
 #include "ignite/audio/fmod_sound.hpp"
 #include "ignite/audio/fmod_dsp.hpp"
 
+#include "stb_image_write.h"
+
 #include <glm/glm.hpp>
 #include <nvrhi/utils.h>
 #include <ranges>
@@ -289,8 +291,36 @@ namespace ignite
             m_CommandList->copyTexture(m_EntityIDStagingTexture, nvrhi::TextureSlice(), m_ScenePanel->GetRenderTarget()->GetColorAttachment(1), nvrhi::TextureSlice());
         }
 
+        if (m_Data.takeScreenshot && m_ActiveScene)
+        {
+            nvrhi::TextureDesc stagingDesc = m_ScenePanel->GetRenderTarget()->GetColorAttachment(0)->getDesc();
+            stagingDesc.initialState = nvrhi::ResourceStates::CopyDest;
+            m_ScreenshotStagingTexture = m_Device->createStagingTexture(stagingDesc, nvrhi::CpuAccessMode::Read);
+            m_CommandList->copyTexture(m_ScreenshotStagingTexture, nvrhi::TextureSlice(), m_ScenePanel->GetRenderTarget()->GetColorAttachment(0), nvrhi::TextureSlice());
+        }
+
         m_CommandList->close();
         m_Device->executeCommandList(m_CommandList);
+
+        if (m_Data.takeScreenshot && m_ActiveScene)
+        {
+            // Map and read the pixel data
+            size_t rowPitch = 0;
+            void *mappedData = m_Device->mapStagingTexture(m_ScreenshotStagingTexture, nvrhi::TextureSlice(), nvrhi::CpuAccessMode::Read, &rowPitch);
+            if (mappedData)
+            {
+                const void *pixelData = reinterpret_cast<const void *>(mappedData);
+                std::string filepath = FileDialogs::SaveFile("PNG (*.png)\0*.png");
+                if (!filepath.empty())
+                {
+                    const int channels = 4;
+                    const int width = static_cast<int>(m_ScreenshotStagingTexture->getDesc().width);
+                    const int height = static_cast<int>(m_ScreenshotStagingTexture->getDesc().height);
+                    stbi_write_png(filepath.c_str(), width, height, channels, pixelData, static_cast<int>(rowPitch));
+                }
+            }
+            m_Data.takeScreenshot = false;
+        }
 
         if (m_Data.isPickingEntity && m_ActiveScene)
         {
@@ -402,6 +432,12 @@ namespace ignite
                 {
                     m_Data.assetRegistryWindow = true;
                 }
+
+                if (ImGui::MenuItem("Screenshot", nullptr, false, m_ActiveProject != nullptr))
+                {
+                    m_Data.takeScreenshot = true;
+                }
+
 
                 ImGui::EndMenu();
             }
