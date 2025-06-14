@@ -18,7 +18,7 @@
 
 namespace ignite {
 
-    static std::unordered_map<AssetType, std::function<Ref<Asset>(UUID, const AssetMetaData &)>> s_ImportFunctions =
+    static std::unordered_map<AssetType, std::function<Ref<Asset>(AssetHandle, const AssetMetaData &)>> s_ImportFunctions =
     {
         { AssetType::Scene, AssetImporter::ImportScene },
         { AssetType::Texture, AssetImporter::ImportTexture },
@@ -90,7 +90,7 @@ namespace ignite {
         const aiScene *assimpScene = importer.ReadFile(filepath.generic_string(), ASSIMP_IMPORTER_FLAGS);
 
         LOG_ASSERT(assimpScene == nullptr || assimpScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || assimpScene->mRootNode,
-            "[Model] Failed to load {}: {}",
+            "[Asset Importer] Failed to load {}: {}",
             filepath,
             importer.GetErrorString());
 

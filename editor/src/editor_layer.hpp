@@ -27,6 +27,8 @@ namespace ignite
             bool popupNewProjectModal = false;
             bool assetRegistryWindow = false;
             bool isPickingEntity = false;
+            bool takeScreenshot = false;
+
             uint32_t hoveredEntity = uint32_t(-1);
 
             ProjectInfo projectCreateInfo;
@@ -56,11 +58,10 @@ namespace ignite
         EditorData &GetState() { return m_Data; }
 
     private:
-
         void NewScene();
         void SaveScene();
         void SaveSceneAs();
-        bool SaveScene(const std::filesystem::path &filepath);
+        bool SaveScene(const std::filesystem::path &filepath) const;
         void OpenScene();
         bool OpenScene(const std::filesystem::path &filepath);
         
@@ -90,6 +91,7 @@ namespace ignite
         
         nvrhi::CommandListHandle m_CommandList;
         nvrhi::StagingTextureHandle m_EntityIDStagingTexture;
+        nvrhi::StagingTextureHandle m_ScreenshotStagingTexture;
             
         nvrhi::IDevice *m_Device = nullptr;
 

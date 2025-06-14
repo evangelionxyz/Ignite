@@ -35,7 +35,7 @@ namespace ignite
 
             m_GeometryPipeline = GraphicsPipeline::Create(params, &pci, Renderer::GetBindingLayout(GPipeline::MESH));
             m_GeometryPipeline->AddShader("default_mesh.vertex.hlsl", nvrhi::ShaderType::Vertex)
-                .AddShader("default_mesh.pixel.hlsl", nvrhi::ShaderType::Pixel, true)
+                .AddShader("default_mesh.pixel.hlsl", nvrhi::ShaderType::Pixel)
                 .Build();
         }
 
@@ -117,7 +117,7 @@ namespace ignite
 
     }
 
-    void SceneRenderer::Render(Scene *scene, ICamera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer)
+    void SceneRenderer::Render(Scene *scene, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer)
     {
         if (scene->sceneRenderer == nullptr)
             scene->sceneRenderer = this;
@@ -187,11 +187,7 @@ namespace ignite
         Renderer2D::End();
     }
 
-    void SceneRenderer::RenderOutline(ICamera *camera, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, const std::unordered_map<UUID, Entity> &selectedEntities)
-    {
-    }
-
-    void SceneRenderer::SetFillMode(nvrhi::RasterFillMode mode)
+    void SceneRenderer::SetFillMode(nvrhi::RasterFillMode mode) const
     {
         m_BatchQuadPipeline->GetParams().fillMode = mode;
         m_BatchQuadPipeline->ResetHandle();

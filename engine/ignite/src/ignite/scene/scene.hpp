@@ -39,8 +39,12 @@ namespace ignite
         void OnUpdateRuntimeSimulate(f32 deltaTime);
         void OnUpdateEdit(f32 deltaTime);
 
+        void OnResize(uint32_t width, uint32_t height);
+
         template<typename T>
         void OnComponentAdded(Entity entity, T &comp);
+
+        Entity GetPrimaryCamera();
 
         SceneRenderer *sceneRenderer = nullptr;
 
@@ -68,8 +72,8 @@ namespace ignite
         };
 
         glm::vec3 physicsGravity{ 0.0f, -9.8f, 0.0f };
-
         float timeInSeconds = 0.0f;
+        uint32_t viewportWidth = 1280, viewportHeight = 720;
     
     private:
         bool m_Playing = false;

@@ -8,4 +8,5 @@ Work in progress C++ Game Engine
 <p align="center">
   <img src="resources/examples/image_01.png" alt="Alt text" width="auto" height="fit" >
   <img src="resources/examples/image_02.png" alt="Alt text" width="auto" height="fit" >
+  <img src="resources/examples/image_03.png" alt="Alt text" width="auto" height="fit" >
 </p>

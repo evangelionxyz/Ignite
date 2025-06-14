@@ -41,6 +41,15 @@ namespace ignite
         // reset time
         timeInSeconds = 0.0f;
 
+        // resize
+        auto camView = registry->view<Camera>();
+        for (entt::entity entity : camView)
+        {
+            Camera &cam = camView.get<Camera>(entity);
+            cam.camera.SetSize(static_cast<float>(viewportWidth), static_cast<float>(viewportHeight));
+            cam.camera.UpdateProjectionMatrix();
+        }
+
         // play on start audio
         auto audioView = registry->view<AudioSource>();
         for (entt::entity e : audioView)
@@ -129,6 +138,17 @@ namespace ignite
             transform.translation,
             skew,
             perspective);
+
+        if (entity.HasComponent<Camera>())
+        {
+            Camera &cam = entity.GetComponent<Camera>();
+            if (cam.primary)
+            {
+                cam.camera.viewMatrix = glm::translate(glm::mat4(1.0f), transform.translation) * glm::toMat4(transform.rotation);
+                cam.camera.viewMatrix = glm::inverse(cam.camera.viewMatrix);
+                cam.camera.position = transform.translation;
+            }
+        }
         
         // Special logic for MeshRenderer (e.g., skeletal animation)
         if (entity.HasComponent<MeshRenderer>())
@@ -145,7 +165,9 @@ namespace ignite
                 Entity rootNodeEntity = SceneManager::GetEntity(this, meshRenderer.root);
                 
                 if (!rootNodeEntity.IsValid())
+                {
                     meshRenderer.root = UUID(0);
+                }
 
                 SkinnedMesh &skinnedMesh = rootNodeEntity.GetComponent<SkinnedMesh>();
                 
@@ -181,8 +203,33 @@ namespace ignite
     void Scene::OnUpdateEdit(f32 deltaTime)
     {
         timeInSeconds += deltaTime;
-
         UpdateTransforms(deltaTime);
+    }
+
+    void Scene::OnResize(uint32_t width, uint32_t height)
+    {
+        this->viewportWidth = width; this->viewportHeight = height;
+        
+        auto camView = registry->view<Camera>();
+        for (entt::entity entity : camView)
+        {
+            Camera &cam = camView.get<Camera>(entity);
+            cam.camera.SetSize(static_cast<float>(width), static_cast<float>(height));
+            cam.camera.UpdateProjectionMatrix();
+        }
+    }
+
+    Entity Scene::GetPrimaryCamera()
+    {
+        auto camView = registry->view<Camera>();
+        for (entt::entity entity : camView)
+        {
+            Camera &cam = camView.get<Camera>(entity);
+            if (cam.primary)
+                return Entity { entity, this };
+        }
+        
+        return Entity{};
     }
 
     void Scene::OnUpdateRuntimeSimulate(f32 deltaTime)
@@ -259,5 +306,23 @@ namespace ignite
     void Scene::OnComponentAdded<AudioSource>(Entity entity, AudioSource &comp)
     {
     }
-}
 
+    template<>
+    void Scene::OnComponentAdded<Camera>(Entity entity, Camera &comp)
+    {
+        comp.camera.projectionType = comp.projectionType;
+        switch (comp.projectionType)
+        {
+            case ICamera::Type::Perspective:
+            {
+                comp.camera.CreatePerspective(comp.fov, static_cast<float>(viewportWidth), static_cast<float>(viewportHeight), comp.nearClip, comp.farClip);
+                break;
+            }
+            case ICamera::Type::Orthographic:
+            {
+                comp.camera.CreateOrthographic(static_cast<float>(viewportWidth), static_cast<float>(viewportHeight), comp.zoom, comp.nearClip, comp.farClip);
+                break;
+            }
+        }
+    }
+}

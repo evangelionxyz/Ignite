@@ -59,8 +59,7 @@ namespace ignite {
                 if (isDirectory)
                 {
                     m_BackwardPathStack.push(m_CurrentDirectory);
-                    m_SelectedFileTree = filepath;
-                    m_CurrentDirectory = filepath;
+                    m_SelectedFileTree = m_CurrentDirectory = filepath;
                 }
             }
         }
@@ -110,6 +109,7 @@ namespace ignite {
         ImGui::SameLine();
         if (ImGui::Button("R", navbarBtSize))
         {
+            m_ActiveProject->ValidateAssetRegistry();
             PruneMissingNodes(0, Project::GetInstance()->GetAssetDirectory());
             RefreshAssetTree();
             CompactTree();
@@ -164,7 +164,7 @@ namespace ignite {
 
             ImGui::Columns(columnCount, nullptr, false);
 
-            for (const auto& [item, index] : node->children)
+            for (const auto& item : node->children | std::views::keys)
             {
                 std::string filenameStr = item.generic_string();
                 ImGui::PushID(filenameStr.c_str());
