@@ -15,6 +15,8 @@
 #include "ignite/audio/fmod_sound.hpp"
 #include "ignite/audio/fmod_dsp.hpp"
 
+#include "ignite/scripting/script_engine.hpp"
+
 #include "stb_image_write.h"
 
 #include <glm/glm.hpp>
@@ -24,18 +26,7 @@
 
 namespace ignite
 {
-    struct TestAudio
-    {
-        Ref<FmodReverb> reverb;
-        Ref<FmodDistortion> distortion;
-        Ref<FmodCompressor> compressor;
-        Ref<FmodSound> sound;
-
-        FMOD::ChannelGroup* reverbGroup;
-    };
-
-    TestAudio audio;
-    
+   
     EditorLayer::EditorLayer(const std::string &name)
         : Layer(name)
     {
@@ -75,38 +66,6 @@ namespace ignite
         // create render target framebuffer
         m_ScenePanel->GetRenderTarget()->CreateSingleFramebuffer();
         m_SceneRenderer.CreatePipelines(m_ScenePanel->GetRenderTarget()->GetCurrentFramebuffer());
-
-#if 0
-        // Test Audio
-
-        // Create reverb DSB
-        audio.reverb = FmodReverb::Create();
-        audio.reverb->SetDiffusion(25.0f);
-        audio.reverb->SetWetLevel(20.0f);
-        audio.reverb->SetDecayTime(500.0f);
-
-        // Create distortion DSP
-        audio.distortion = FmodDistortion::Create();
-        audio.distortion->SetDistortionLevel(0.1f);
-        audio.distortion->SetActive(false);
-
-        // Create compressor DSP
-        audio.compressor = FmodCompressor::Create();
-        audio.compressor->SetRatio(3.0f);
-        audio.compressor->SetRelease(100.0f);
-
-        // Create reverb group
-        audio.reverbGroup = FmodAudio::CreateChannelGroup("ReverbGroup");
-        audio.reverbGroup->setMode(FMOD_CHANNELCONTROL_DSP_TAIL);
-        audio.reverbGroup->addDSP(0, audio.distortion->GetFmodDsp()); // add dsp
-        audio.reverbGroup->addDSP(1, audio.reverb->GetFmodDsp()); // add dsp
-        audio.reverbGroup->addDSP(2, audio.compressor->GetFmodDsp());
-
-        // create sound
-        audio.sound = FmodSound::Create("music", "C:/Users/Evangelion Manuhutu/Downloads/Music/06. Mick Gordon - Hellwalker.flac");
-        audio.sound->AddToChannelGroup(audio.reverbGroup);
-        audio.sound->Play();
-#endif
     }
 
     void EditorLayer::OnDetach()
@@ -129,6 +88,7 @@ namespace ignite
 
         switch (m_Data.sceneState)
         {
+            case State::SceneSimulate:
             case State::ScenePlay:
             {
                 m_ActiveScene->OnUpdateRuntimeSimulate(deltaTime);
@@ -294,7 +254,7 @@ namespace ignite
 
                 CameraBuffer cameraBuffer = { camera->GetViewProjectionMatrix(), glm::vec4(camera->position, 1.0f) };
                 m_CommandList->writeBuffer(Renderer::GetCameraBufferHandle(), &cameraBuffer, sizeof(cameraBuffer));
-                m_SceneRenderer.Render(m_ActiveScene.get(), m_CommandList, viewportFramebuffer);
+                m_SceneRenderer.Render(m_ActiveScene.get(), m_CommandList, viewportFramebuffer, camera->projectionType == ICamera::Type::Perspective);
                 break;
             }
             }
@@ -684,6 +644,7 @@ namespace ignite
 
     bool EditorLayer::OpenProject(const std::filesystem::path &filepath)
     {
+
         Ref<Project> openedProject = ProjectSerializer::Deserialize(filepath);
         if (!openedProject)
         {
@@ -691,8 +652,18 @@ namespace ignite
         }
 
         m_ActiveProject = openedProject;
-
         m_ContentBrowserPanel->SetActiveProject(m_ActiveProject);
+
+        ScriptEngine::Init();
+
+        if (m_ActiveProject->GetInfo().defaultSceneHandle != AssetHandle(0))
+        {
+            Ref<Scene> activeScene = Project::GetAsset<Scene>(m_ActiveProject->GetInfo().defaultSceneHandle);
+            if (activeScene)
+            {
+                m_ActiveProject->SetActiveScene(activeScene);
+            }
+        }
 
         if (m_ActiveProject->GetActiveScene())
         {
@@ -713,6 +684,7 @@ namespace ignite
             // Create default scene
             NewScene();
         }
+
         return true;
     }
 

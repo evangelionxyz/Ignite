@@ -117,24 +117,28 @@ namespace ignite
 
     }
 
-    void SceneRenderer::Render(Scene *scene, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer)
+    void SceneRenderer::Render(Scene *scene, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, bool renderEnvironment)
     {
         if (scene->sceneRenderer == nullptr)
             scene->sceneRenderer = this;
 
-        if (m_Environment->isUpdatingTexture)
+        if (renderEnvironment)
         {
-            auto meshRendererView = scene->registry->view<MeshRenderer>();
-            for (entt::entity e : meshRendererView)
+            if (m_Environment->isUpdatingTexture)
             {
-                MeshRenderer &mr = meshRendererView.get<MeshRenderer>(e);
-                mr.mesh->CreateBindingSet();
+                auto meshRendererView = scene->registry->view<MeshRenderer>();
+                for (entt::entity e : meshRendererView)
+                {
+                    MeshRenderer &mr = meshRendererView.get<MeshRenderer>(e);
+                    mr.mesh->CreateBindingSet();
+                }
+
+                m_Environment->isUpdatingTexture = false;
             }
 
-            m_Environment->isUpdatingTexture = false;
+            m_Environment->Render(commandList, framebuffer, m_EnvironmentPipeline);
         }
-
-        m_Environment->Render(commandList, framebuffer, m_EnvironmentPipeline);
+        
 
         Renderer2D::Begin(commandList, framebuffer);
 

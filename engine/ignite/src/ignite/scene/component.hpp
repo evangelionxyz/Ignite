@@ -38,6 +38,7 @@ namespace ignite
         { "Box Collider", CompType_BoxCollider},
         { "Sphere Collider", CompType_SphereCollider},
         { "Audio Source", CompType_AudioSource},
+        { "C# Script", CompType_Script},
     };
 
     enum EntityType : u8
@@ -346,6 +347,16 @@ namespace ignite
         AudioSource() = default;
 
         static CompType StaticType() { return CompType_AudioSource; }
+        virtual CompType GetType() override { return StaticType(); }
+    };
+
+    class Script : public IComponent
+    {
+    public:
+        std::string className = "null";
+        Script() = default;
+
+        static CompType StaticType() { return CompType_Script; }
         virtual CompType GetType() override { return StaticType(); }
     };
 }

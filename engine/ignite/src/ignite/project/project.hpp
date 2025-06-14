@@ -17,6 +17,7 @@ namespace ignite
         std::filesystem::path filepath;
         std::filesystem::path assetFilepath = "Assets";
         std::filesystem::path assetRegistryFilename = "AssetRegistry.ixreg";
+        std::filesystem::path scriptModulePath = "bin/GameAssembly.dll";
     };
 
     class Project : public Asset
@@ -73,6 +74,11 @@ namespace ignite
         static std::filesystem::path GetActiveAssetDirectory()
         {
             return GetInstance()->GetAssetDirectory();
+        }
+
+        static std::filesystem::path GetActiveDirectory()
+        {
+            return GetInstance()->m_Info.filepath.parent_path();
         }
 
         AssetManager &GetAssetManager() { return m_AssetManager; }

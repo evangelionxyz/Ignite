@@ -21,6 +21,7 @@ namespace ignite
         CompType_BoxCollider,
         CompType_SphereCollider,
         CompType_AudioSource,
+        CompType_Script,
     };
 
     class IComponent
