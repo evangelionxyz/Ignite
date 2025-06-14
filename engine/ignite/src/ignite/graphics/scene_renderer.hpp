@@ -22,7 +22,7 @@ namespace ignite
         void ResizeRenderTarget(uint32_t width, uint32_t height);
 
         void CreatePipelines(nvrhi::IFramebuffer *framebuffer) const;
-        void Render(Scene *scene, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer);
+        void Render(Scene *scene, nvrhi::ICommandList *commandList, nvrhi::IFramebuffer *framebuffer, bool renderEnvironment = true);
 
         void SetFillMode(nvrhi::RasterFillMode mode) const;
 

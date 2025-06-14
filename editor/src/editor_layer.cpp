@@ -254,7 +254,7 @@ namespace ignite
 
                 CameraBuffer cameraBuffer = { camera->GetViewProjectionMatrix(), glm::vec4(camera->position, 1.0f) };
                 m_CommandList->writeBuffer(Renderer::GetCameraBufferHandle(), &cameraBuffer, sizeof(cameraBuffer));
-                m_SceneRenderer.Render(m_ActiveScene.get(), m_CommandList, viewportFramebuffer);
+                m_SceneRenderer.Render(m_ActiveScene.get(), m_CommandList, viewportFramebuffer, camera->projectionType == ICamera::Type::Perspective);
                 break;
             }
             }
@@ -644,6 +644,7 @@ namespace ignite
 
     bool EditorLayer::OpenProject(const std::filesystem::path &filepath)
     {
+
         Ref<Project> openedProject = ProjectSerializer::Deserialize(filepath);
         if (!openedProject)
         {
@@ -651,8 +652,18 @@ namespace ignite
         }
 
         m_ActiveProject = openedProject;
-
         m_ContentBrowserPanel->SetActiveProject(m_ActiveProject);
+
+        ScriptEngine::Init();
+
+        if (m_ActiveProject->GetInfo().defaultSceneHandle != AssetHandle(0))
+        {
+            Ref<Scene> activeScene = Project::GetAsset<Scene>(m_ActiveProject->GetInfo().defaultSceneHandle);
+            if (activeScene)
+            {
+                m_ActiveProject->SetActiveScene(activeScene);
+            }
+        }
 
         if (m_ActiveProject->GetActiveScene())
         {
@@ -673,8 +684,6 @@ namespace ignite
             // Create default scene
             NewScene();
         }
-
-        ScriptEngine::Init();
 
         return true;
     }

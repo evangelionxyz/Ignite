@@ -473,10 +473,11 @@ namespace ignite
 
     std::shared_ptr<ScriptClass> ScriptEngine::GetEntityClassesByName(const std::string &name)
     {
-        if (!scriptEngineData->entityClasses.contains(name))
-        {
+        if (!scriptEngineData)
             return nullptr;
-        }
+
+        if (!scriptEngineData->entityClasses.contains(name))
+            return nullptr;
 
         return scriptEngineData->entityClasses.at(name);
     }

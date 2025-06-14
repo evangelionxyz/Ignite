@@ -16,7 +16,7 @@ namespace ignite
         Float, 
         Double,
         Bool, 
-        Char, 
+        Char,
         Byte, 
         Short, 
         Int, 
