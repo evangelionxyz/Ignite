@@ -59,8 +59,7 @@ namespace ignite {
                 if (isDirectory)
                 {
                     m_BackwardPathStack.push(m_CurrentDirectory);
-                    m_SelectedFileTree = filepath;
-                    m_CurrentDirectory = filepath;
+                    m_SelectedFileTree = m_CurrentDirectory = filepath;
                 }
             }
         }

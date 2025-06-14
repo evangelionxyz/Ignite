@@ -35,7 +35,7 @@ namespace ignite
 
             m_GeometryPipeline = GraphicsPipeline::Create(params, &pci, Renderer::GetBindingLayout(GPipeline::MESH));
             m_GeometryPipeline->AddShader("default_mesh.vertex.hlsl", nvrhi::ShaderType::Vertex)
-                .AddShader("default_mesh.pixel.hlsl", nvrhi::ShaderType::Pixel, true)
+                .AddShader("default_mesh.pixel.hlsl", nvrhi::ShaderType::Pixel)
                 .Build();
         }
 

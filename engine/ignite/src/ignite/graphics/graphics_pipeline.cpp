@@ -80,7 +80,7 @@ namespace ignite {
             if (m_BindingLayout)
                 pipelineDesc.addBindingLayout(m_BindingLayout);
 
-            // create with the same framebuffer to be render
+            // create with the same framebuffer to be rendered
             nvrhi::IDevice* device = Application::GetRenderDevice();
 
             m_Handle = device->createGraphicsPipeline(pipelineDesc, framebuffer);
