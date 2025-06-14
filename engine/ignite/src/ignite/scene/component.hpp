@@ -120,6 +120,19 @@ namespace ignite
     {
     public:
         SceneCamera camera;
+        ICamera::Type projectionType = ICamera::Type::Perspective;
+
+        float fov = 45.0f;
+        float nearClip = 0.1f;
+        float farClip = 500.0f;
+        float zoom = 5.0f;
+        
+        bool primary = true;
+
+        Camera() = default;
+
+        static CompType StaticType() { return CompType_Camera; }
+        virtual CompType GetType() override { return StaticType(); }
     };
 
     class Transform : public IComponent

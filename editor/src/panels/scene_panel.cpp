@@ -197,7 +197,7 @@ namespace ignite
 
         if (ImGui::MenuItem("Camera"))
         {
-
+            entity = SetSelectedEntity(SceneManager::CreateCamera(m_Scene, "Camera"));
         }
 
         return entity;
@@ -506,6 +506,64 @@ namespace ignite
 
                     break;
                 }
+                case CompType_Camera:
+                    {
+                        RenderComponent<Camera>("Camera", selectedEntity, [&]()
+                        {
+                            Camera *c = comp->As<Camera>();
+
+                            static const char *projectionTypeStr[] = {"Ortho", "Perspective"};
+                            const char *currentProjectionTypeStr = projectionTypeStr[static_cast<int>(c->projectionType)];
+
+                            if (ImGui::BeginCombo("Projection", currentProjectionTypeStr))
+                            {
+                                for (size_t i = 0; i < std::size(projectionTypeStr); ++i)
+                                {
+                                    bool selected = false;
+                                    if (ImGui::Selectable(projectionTypeStr[i]))
+                                    {
+                                        c->projectionType = static_cast<ICamera::Type>(i);
+                                        c->camera.projectionType = c->projectionType;
+                                        c->camera.UpdateProjectionMatrix();
+
+                                        selected = true;
+                                    }
+                                    
+                                    if (selected)
+                                    {
+                                        ImGui::SetItemDefaultFocus();
+                                    }
+                                }
+                                ImGui::EndCombo();
+                            }
+
+                            bool modified = false;
+
+                            if (c->projectionType == ICamera::Type::Perspective)
+                            {
+                                modified |= ImGui::DragFloat("Fov", &c->fov, 0.025f, 0.0f, FLT_MAX);
+                            }
+                            else
+                            {
+                                modified |= ImGui::DragFloat("Zoom", &c->zoom, 0.025f, 0.0f, FLT_MAX);
+                            }
+                            
+                            modified |= ImGui::DragFloat("Near", &c->nearClip, 0.025f, 0.0f, FLT_MAX);
+                            modified |= ImGui::DragFloat("Far", &c->farClip, 0.025f, 0.0f, FLT_MAX);
+                            modified |= ImGui::Checkbox("Primary", &c->primary);
+
+                            if (modified)
+                            {
+                                c->camera.fov = c->fov;
+                                c->camera.nearClip = c->nearClip;
+                                c->camera.farClip = c->farClip;
+                                c->camera.zoom = c->zoom;
+                                c->camera.UpdateProjectionMatrix();
+                            }
+                        });
+
+                        break;
+                    }
                 case CompType_BoxCollider2D:
                 {
                     RenderComponent<BoxCollider2D>("Box Collider 2D", selectedEntity, [&]()
@@ -856,6 +914,9 @@ namespace ignite
                 {
                     switch (type)
                     {
+                    case CompType_Camera:
+                        entity.AddComponent<Camera>();
+                        break;
                     case CompType_Sprite2D:
                         entity.AddComponent<Sprite2D>();
                         break;
@@ -891,16 +952,16 @@ namespace ignite
                 {
                     for (const auto &[strName, type] : s_ComponentsName)
                     {
-                        bool isExists = false;
+                        bool found = false;
                         for (IComponent *comp : comps)
                         {
                             if (comp->GetType() == type)
                             {
-                                isExists = true;
+                                found = true;
                                 break;
                             }
                         }
-                        if (isExists)
+                        if (found)
                         {
                             continue;
                         }
@@ -953,7 +1014,6 @@ namespace ignite
         uint32_t vpWidth = static_cast<uint32_t>(m_ViewportData.rect.GetSize().x);
         uint32_t vpHeight = static_cast<uint32_t>(m_ViewportData.rect.GetSize().y);
 
-
         // Mouse position in screen space
         ImVec2 mousePos = ImGui::GetMousePos();
 
@@ -972,6 +1032,8 @@ namespace ignite
             {
                 m_RenderTarget->Resize(vpWidth, vpHeight);
                 m_RenderTarget->CreateSingleFramebuffer();
+
+                m_Scene->OnResize(vpWidth, vpHeight);
 
                 m_Camera.SetSize(static_cast<float>(vpWidth), static_cast<float>(vpHeight));
                 m_Camera.UpdateProjectionMatrix();

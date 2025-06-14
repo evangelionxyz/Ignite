@@ -100,7 +100,7 @@ namespace ignite
         Entity createdEntity;
 
         // prepare entity creation logic
-        std::function<void()> createFunc = [=, &createdEntity]() mutable
+        std::function createFunc = [=, &createdEntity]() mutable
         {
             createdEntity = CreateEntity(scene, name, EntityType_Node, uuid);
             createdEntity.AddComponent<Sprite2D>();
@@ -113,10 +113,9 @@ namespace ignite
         Scene *capturedScene = scene;
         UUID capturedUUID = createdEntity.GetComponent<ID>().uuid;
 
-        std::function<void()> destroyFunc = [capturedScene, capturedUUID]()
+        std::function destroyFunc = [capturedScene, capturedUUID]()
         {
-            Entity entityToDestroy = SceneManager::GetEntity(capturedScene, capturedUUID);
-            if (entityToDestroy)
+            if (Entity entityToDestroy = GetEntity(capturedScene, capturedUUID))
             {
                 DestroyEntity(capturedScene, entityToDestroy);
             }
@@ -144,6 +143,44 @@ namespace ignite
         scene->entities[uuid] = entity;
 
         return entity;
+    }
+
+    Entity SceneManager::CreateCamera(Scene* scene, const std::string& name, UUID uuid)
+    {
+        // create local storage for entity data
+        Entity createdEntity;
+
+        // prepare entity creation logic
+        std::function createFunc = [=, &createdEntity]() mutable
+        {
+            createdEntity = CreateEntity(scene, name, EntityType_Camera, uuid);
+            createdEntity.AddComponent<Camera>();
+        };
+
+        // immediately call createFunc to initialize createdEntity
+        createFunc();
+
+        // capture scene and entity by value to preserve the for undo
+        Scene *capturedScene = scene;
+        UUID capturedUUID = createdEntity.GetComponent<ID>().uuid;
+
+        std::function destroyFunc = [capturedScene, capturedUUID]()
+        {
+            if (Entity entityToDestroy = GetEntity(capturedScene, capturedUUID))
+            {
+                DestroyEntity(capturedScene, entityToDestroy);
+            }
+        };
+
+        CommandManager::AddCommand(
+            CreateScope<EntityManagerCommand>(
+                createFunc, 
+                destroyFunc, 
+                CommandState_Create
+            )
+        );
+       
+        return createdEntity;
     }
 
     void SceneManager::RenameEntity(Scene *scene, Entity entity, const std::string &newName)
@@ -353,6 +390,8 @@ namespace ignite
         // copy scene extra data
         newScene->handle = other->handle;
         newScene->sceneRenderer = other->sceneRenderer;
+        newScene->viewportWidth = other->viewportWidth;
+        newScene->viewportHeight = other->viewportHeight;
 
         // Do not copy entities (it is created when creating entity)
         // newScene->entities = other->entities;

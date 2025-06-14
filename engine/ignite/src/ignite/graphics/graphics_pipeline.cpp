@@ -106,7 +106,7 @@ namespace ignite {
                 nvrhi::ShaderType shaderType = GetNVRHIShaderType(context->GetType());
                 m_Shaders[shaderType] = device->createShader(shaderType, context->blob.data.data(), context->blob.dataSize());
 
-                LOG_ASSERT(m_Shaders[shaderType], "[Graphics Pipline] Failed to create shader");
+                LOG_ASSERT(m_Shaders[shaderType], "[Graphics Pipeline] Failed to create shader");
             }
 
             m_ShaderContexts.clear();

@@ -94,7 +94,7 @@ namespace ignite {
         sr.BeginSequence("Entities");
 
         // entities sequence
-        for (auto &[uuid, e] : m_Scene->entities)
+        for (auto& e : m_Scene->entities | std::views::values)
         {
             Entity entity = { e, m_Scene.get() };
             const ID &idComp = entity.GetComponent<ID>();
@@ -122,6 +122,23 @@ namespace ignite {
                         sr.AddKeyValue("LocalScale", comp.localScale);
 
                         sr.AddKeyValue("Visible", comp.visible);
+                    }
+                    sr.EndMap();
+                }
+
+                // Camera
+                if (entity.HasComponent<Camera>())
+                {
+                    const Camera &comp = entity.GetComponent<Camera>();
+                    sr.BeginMap("Camera");
+                    {
+                        int projectionType = static_cast<int>(comp.projectionType);
+                        sr.AddKeyValue("ProjectionType", projectionType);
+                        sr.AddKeyValue("NearClip", comp.nearClip);
+                        sr.AddKeyValue("FarClip", comp.farClip);
+                        sr.AddKeyValue("Zoom", comp.zoom);
+                        sr.AddKeyValue("Fov", comp.fov);
+                        sr.AddKeyValue("Primary", comp.primary);
                     }
                     sr.EndMap();
                 }
@@ -309,6 +326,18 @@ namespace ignite {
                 comp.localRotation = node["WorldRotation"].as<glm::quat>();
                 comp.localScale = node["WorldScale"].as<glm::vec3>();
                 comp.visible = node["Visible"].as<bool>();
+            }
+
+            // Camera component
+            if (YAML::Node node = entityNode["Camera"])
+            {
+                Camera &comp = desEntity.AddComponent<Camera>();
+                comp.projectionType = static_cast<ICamera::Type>(node["ProjectionType"].as<int>());
+                comp.nearClip = node["NearClip"].as<float>();
+                comp.farClip = node["FarClip"].as<float>();
+                comp.zoom = node["Zoom"].as<float>();
+                comp.fov = node["Fov"].as<float>();
+                comp.primary = node["Primary"].as<bool>();
             }
 
             // Sprite2D component

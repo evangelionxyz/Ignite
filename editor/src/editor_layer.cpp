@@ -274,11 +274,30 @@ namespace ignite
         
         if (m_ActiveScene)
         {
-            CameraBuffer cameraBuffer = { m_ScenePanel->GetViewportCamera().GetViewProjectionMatrix(), glm::vec4(m_ScenePanel->GetViewportCamera().position, 1.0f) };
-            m_CommandList->writeBuffer(Renderer::GetCameraBufferHandle(), &cameraBuffer, sizeof(cameraBuffer));
+            switch (m_Data.sceneState)
+            {
+            case State::SceneSimulate:
+            case State::SceneEdit:
+            {
+                CameraBuffer cameraBuffer = { m_ScenePanel->GetViewportCamera().GetViewProjectionMatrix(), glm::vec4(m_ScenePanel->GetViewportCamera().position, 1.0f) };
+                m_CommandList->writeBuffer(Renderer::GetCameraBufferHandle(), &cameraBuffer, sizeof(cameraBuffer));
+                m_SceneRenderer.Render(m_ActiveScene.get(), m_CommandList, viewportFramebuffer);
+                break;
+            }
+            case State::ScenePlay:
+            {
+                ICamera *camera = &m_ScenePanel->GetViewportCamera();
+                if (Entity primaryCam = m_ActiveScene->GetPrimaryCamera())
+                {
+                    camera = &primaryCam.GetComponent<Camera>().camera;
+                }
 
-            m_SceneRenderer.Render(m_ActiveScene.get(), &m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer);
-            // m_SceneRenderer.RenderOutline(&m_ScenePanel->GetViewportCamera(), m_CommandList, viewportFramebuffer, m_ScenePanel->GetSelectedEntities());
+                CameraBuffer cameraBuffer = { camera->GetViewProjectionMatrix(), glm::vec4(camera->position, 1.0f) };
+                m_CommandList->writeBuffer(Renderer::GetCameraBufferHandle(), &cameraBuffer, sizeof(cameraBuffer));
+                m_SceneRenderer.Render(m_ActiveScene.get(), m_CommandList, viewportFramebuffer);
+                break;
+            }
+            }
         }
 
         // Create staging texture for read-back
@@ -306,8 +325,7 @@ namespace ignite
         {
             // Map and read the pixel data
             size_t rowPitch = 0;
-            void *mappedData = m_Device->mapStagingTexture(m_ScreenshotStagingTexture, nvrhi::TextureSlice(), nvrhi::CpuAccessMode::Read, &rowPitch);
-            if (mappedData)
+            if (void *mappedData = m_Device->mapStagingTexture(m_ScreenshotStagingTexture, nvrhi::TextureSlice(), nvrhi::CpuAccessMode::Read, &rowPitch))
             {
                 const void *pixelData = reinterpret_cast<const void *>(mappedData);
                 std::string filepath = FileDialogs::SaveFile("PNG (*.png)\0*.png");
@@ -326,8 +344,7 @@ namespace ignite
         {
             // Map and read the pixel data
             size_t rowPitch = 0;
-            void *mappedData = m_Device->mapStagingTexture(m_EntityIDStagingTexture, nvrhi::TextureSlice(), nvrhi::CpuAccessMode::Read, &rowPitch);
-            if (mappedData) {
+            if (void *mappedData = m_Device->mapStagingTexture(m_EntityIDStagingTexture, nvrhi::TextureSlice(), nvrhi::CpuAccessMode::Read, &rowPitch)) {
                 uint32_t *pixelData = static_cast<uint32_t *>(mappedData);
 
                 glm::vec2 mousePos = m_ScenePanel->GetViewportMousePos();

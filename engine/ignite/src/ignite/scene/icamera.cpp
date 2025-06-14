@@ -55,7 +55,6 @@ namespace ignite
     {
         switch (projectionType)
         {
-            default:
             case Type::Orthographic:
             {
                 f32 orthoWidth = zoom * m_AspectRatio / 2.0f;
@@ -64,6 +63,7 @@ namespace ignite
                 break;
             }
             case Type::Perspective:
+            default:
             {
                 projectionMatrix = glm::perspectiveZO(glm::radians(fov), m_AspectRatio, nearClip, farClip);
                 break;
@@ -88,7 +88,7 @@ namespace ignite
 
     glm::vec2 ICamera::GetSize()
     {
-        return { width, height} ;
+        return { width, height };
     }
 
     glm::vec3 ICamera::GetUpDirection() const
