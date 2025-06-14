@@ -164,7 +164,7 @@ namespace ignite {
 
             ImGui::Columns(columnCount, nullptr, false);
 
-            for (const auto& [item, index] : node->children)
+            for (const auto& item : node->children | std::views::keys)
             {
                 std::string filenameStr = item.generic_string();
                 ImGui::PushID(filenameStr.c_str());

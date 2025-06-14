@@ -818,30 +818,30 @@ namespace ignite
             if (ImGui::BeginPopup("##add_component_context", ImGuiWindowFlags_NoDecoration))
             {
                 static char buffer[256] = { 0 };
-                static std::string compNameResult;
+                static std::string compNameFilterResultStr;
                 static std::set<std::pair<std::string, CompType>> filteredCompName;
 
                 ImGui::InputTextWithHint("##component_name", "Component", buffer, sizeof(buffer) + 1, ImGuiInputTextFlags_EscapeClearsAll | ImGuiInputTextFlags_NoHorizontalScroll);
 
-                compNameResult = std::string(buffer);
+                compNameFilterResultStr = std::string(buffer);
 
                 filteredCompName.clear();
 
-                if (!compNameResult.empty())
+                if (!compNameFilterResultStr.empty())
                 {
-                    std::string search = stringutils::ToLower(compNameResult);
+                    std::string search = stringutils::ToLower(compNameFilterResultStr);
                     for (const auto &[strName, type] : s_ComponentsName)
                     {
-                        bool isExists = false;
+                        bool found = false;
                         for (IComponent *comp : comps)
                         {
                             if (comp->GetType() == type)
                             {
-                                isExists = true;
+                                found = true;
                                 break;
                             }
                         }
-                        if (isExists)
+                        if (found)
                             continue;
 
                         std::string nameLower = stringutils::ToLower(strName);
@@ -852,7 +852,7 @@ namespace ignite
                     }
                 }
 
-                static std::function<void(Entity, CompType)> addCompFunc = [=](Entity entity, CompType type)
+                static std::function addCompFunc = [=](Entity entity, CompType type)
                 {
                     switch (type)
                     {
@@ -887,7 +887,7 @@ namespace ignite
                     }
                 };
 
-                if (compNameResult.empty())
+                if (compNameFilterResultStr.empty())
                 {
                     for (const auto &[strName, type] : s_ComponentsName)
                     {

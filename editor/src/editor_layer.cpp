@@ -544,29 +544,11 @@ namespace ignite
             if (Project *activeProject = Project::GetInstance())
             {
                 const auto &info = activeProject->GetInfo();
-
                 std::string projectName = info.name;
                 if (activeProject->IsDirty())
                     projectName += "*";
-
                 ImGui::Text("Name: %s", projectName.c_str());
-                
                 ImGui::Text("Filepath: %s", info.filepath.generic_string().c_str());
-
-                auto &assetManager = activeProject->GetAssetManager();
-                auto &assetRegistry = assetManager.GetAssetAssetRegistry();
-
-                if (!assetRegistry.empty())
-                {
-                    ImGui::Text("Registered assets:");
-
-                    for (const auto [handle, metadata] : assetRegistry)
-                    {
-                        ImGui::Text("Handle: %" PRIu64, static_cast<uint64_t>(handle));
-                        ImGui::Text("Type: %s", AssetTypeToString(metadata.type).c_str());
-                        ImGui::Text("Filepath: %s", metadata.filepath.generic_string().c_str());
-                    }
-                }
             }
 
             ImGui::End();
@@ -845,58 +827,136 @@ namespace ignite
 
         if (m_Data.assetRegistryWindow)
         {
-            static std::unordered_set<std::string> registryFilter;
+            AssetRegistry assetRegistry = m_ActiveProject->GetAssetManager().GetAssetAssetRegistry();
+
+            struct AssetPairCompare {
+                bool operator()(const std::pair<AssetHandle, AssetMetaData>& lhs,
+                                const std::pair<AssetHandle, AssetMetaData>& rhs) const {
+                    return lhs.first < rhs.first;
+                }
+            };
+
+            
+            static std::string assetRegistryFilterResultStr;
+            static std::set<std::pair<AssetHandle, AssetMetaData>, AssetPairCompare> filteredAssets;
+            
             static bool showFullPath = false;
             ImGui::Begin("Asset Registry", &m_Data.assetRegistryWindow);
 
-            static char buffer[256];
+            static char buffer[256] = { 0 };
             ImGui::Text("Filter");
             ImGui::SameLine();
-            ImGui::InputText("##filter", buffer, sizeof(buffer));
-            ImGui::SameLine();
+            
+            ImGui::InputTextWithHint("##asset_registry_filter", "AssetHandle, Type, Filepath", buffer, sizeof(buffer) + 1, ImGuiInputTextFlags_EscapeClearsAll | ImGuiInputTextFlags_NoHorizontalScroll);
+            assetRegistryFilterResultStr = std::string(buffer);
+            filteredAssets.clear();
 
+            if (!assetRegistryFilterResultStr.empty())
+            {
+                const std::string findKey = stringutils::ToLower(assetRegistryFilterResultStr);
+                for (const auto &[handle, metadata] : assetRegistry)
+                {
+                    const std::string &handleStr = std::to_string(handle);
+                    const std::string &typeStr = stringutils::ToLower(AssetTypeToString(metadata.type));
+                    const std::string &filepathStr = stringutils::ToLower(std::filesystem::absolute(m_ActiveProject->GetAssetFilepath(metadata.filepath)).generic_string());
+
+                    if (handleStr.find(findKey) != std::string::npos ||
+                        typeStr.find(findKey) != std::string::npos ||
+                        filepathStr.find(findKey) != std::string::npos)
+                    {
+                        filteredAssets.insert({handle, metadata});             
+                    }
+                }
+            }
+            
+            ImGui::SameLine();
             ImGui::Text("Full path");
             ImGui::SameLine();
             ImGui::Checkbox("##fullpath", &showFullPath);
 
-            auto assetRegistry = m_ActiveProject->GetAssetManager().GetAssetAssetRegistry();
             ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_ScrollX;
             if (ImGui::BeginTable("asset_registry_table", 3, tableFlags))
             {
-
                 // setup table 3 columns
                 // AssetHandle, Type, Filepath
                 ImGui::TableSetupScrollFreeze(0, 1);
-                ImGui::TableSetupColumn("UUID", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+                ImGui::TableSetupColumn("AssetHandle", ImGuiTableColumnFlags_WidthStretch, 1.0f);
                 ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthStretch, 0.5f);
                 ImGui::TableSetupColumn("Filepath", ImGuiTableColumnFlags_WidthStretch, 1.5f);
                 ImGui::TableHeadersRow();
 
-                for (auto &[handle, metadata] : assetRegistry)
+                if (filteredAssets.empty())
                 {
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("%llu", static_cast<uint64_t>(handle));
-
-                    ImGui::TableNextColumn();
-
-                    std::string assetTypeStr = AssetTypeToString(metadata.type);
-                    ImGui::TextWrapped("%s", assetTypeStr.c_str());
-
-                    ImGui::TableNextColumn();
-                    if (showFullPath)
+                    for (auto &[handle, metadata] : assetRegistry)
                     {
-                        std::string assetTypeStr = std::filesystem::absolute(m_ActiveProject->GetAssetFilepath(metadata.filepath)).generic_string();
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%llu", static_cast<uint64_t>(handle));
+
+                        ImGui::TableNextColumn();
+
+                        std::string assetTypeStr = AssetTypeToString(metadata.type);
                         ImGui::TextWrapped("%s", assetTypeStr.c_str());
-                    }
-                    else
-                    {
-                        std::string assetTypeStr = metadata.filepath.generic_string();
-                        ImGui::TextWrapped("%s", assetTypeStr.c_str());
+
+                        ImGui::TableNextColumn();
+                        if (showFullPath)
+                        {
+                            assetTypeStr = std::filesystem::absolute(m_ActiveProject->GetAssetFilepath(metadata.filepath)).generic_string();
+                            ImGui::TextWrapped("%s", assetTypeStr.c_str());
+                        }
+                        else
+                        {
+                            assetTypeStr = metadata.filepath.generic_string();
+                            ImGui::TextWrapped("%s", assetTypeStr.c_str());
+                        }
+
+                        if (metadata.type == AssetType::Scene)
+                        {
+                            ImGui::SameLine();
+                            if (ImGui::Button("Set as default"))
+                            {
+                                m_ActiveProject->GetInfo().defaultSceneHandle = handle;
+                                SaveProject();
+                            }
+                        }
                     }
                 }
+                else
+                {
+                    for (auto &[handle, metadata] : filteredAssets)
+                    {
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%llu", static_cast<uint64_t>(handle));
 
+                        ImGui::TableNextColumn();
 
+                        std::string assetTypeStr = AssetTypeToString(metadata.type);
+                        ImGui::TextWrapped("%s", assetTypeStr.c_str());
+
+                        ImGui::TableNextColumn();
+                        if (showFullPath)
+                        {
+                            assetTypeStr = std::filesystem::absolute(m_ActiveProject->GetAssetFilepath(metadata.filepath)).generic_string();
+                            ImGui::TextWrapped("%s", assetTypeStr.c_str());
+                        }
+                        else
+                        {
+                            assetTypeStr = metadata.filepath.generic_string();
+                            ImGui::TextWrapped("%s", assetTypeStr.c_str());
+                        }
+
+                        if (metadata.type == AssetType::Scene)
+                        {
+                            ImGui::SameLine();
+                            if (ImGui::Button("Set as default"))
+                            {
+                                m_ActiveProject->GetInfo().defaultSceneHandle = handle;
+                                SaveProject();
+                            }
+                        }
+                    }
+                }
                 ImGui::EndTable();
             }
             

@@ -40,7 +40,7 @@ namespace ignite
             return std::static_pointer_cast<T>(asset);
         }
 
-        const ProjectInfo &GetInfo() const { return m_Info; }
+        ProjectInfo &GetInfo() { return m_Info; }
 
         const Ref<Scene> &GetActiveScene() { return m_ActiveScene; }
 
