@@ -589,7 +589,7 @@ namespace ignite
         }
     }
 
-    bool EditorLayer::SaveScene(const std::filesystem::path &filepath)
+    bool EditorLayer::SaveScene(const std::filesystem::path &filepath) const
     {
         SceneSerializer serializer(m_ActiveScene);
         return serializer.Serialize(filepath);
@@ -823,19 +823,17 @@ namespace ignite
         }
 
         ImGui::End();
-
-
+        
         if (m_Data.assetRegistryWindow)
         {
             AssetRegistry assetRegistry = m_ActiveProject->GetAssetManager().GetAssetAssetRegistry();
 
             struct AssetPairCompare {
-                bool operator()(const std::pair<AssetHandle, AssetMetaData>& lhs,
-                                const std::pair<AssetHandle, AssetMetaData>& rhs) const {
+                bool operator()(const std::pair<AssetHandle, AssetMetaData>& lhs, const std::pair<AssetHandle, AssetMetaData>& rhs) const
+                {
                     return lhs.first < rhs.first;
                 }
             };
-
             
             static std::string assetRegistryFilterResultStr;
             static std::set<std::pair<AssetHandle, AssetMetaData>, AssetPairCompare> filteredAssets;
@@ -873,6 +871,12 @@ namespace ignite
             ImGui::Text("Full path");
             ImGui::SameLine();
             ImGui::Checkbox("##fullpath", &showFullPath);
+
+            ImGui::SameLine();
+            if (ImGui::Button("Refresh"))
+            {
+                Project::GetInstance()->ValidateAssetRegistry();
+            }
 
             ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_ScrollX;
             if (ImGui::BeginTable("asset_registry_table", 3, tableFlags))

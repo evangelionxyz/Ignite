@@ -61,7 +61,7 @@ namespace ignite
         void NewScene();
         void SaveScene();
         void SaveSceneAs();
-        bool SaveScene(const std::filesystem::path &filepath);
+        bool SaveScene(const std::filesystem::path &filepath) const;
         void OpenScene();
         bool OpenScene(const std::filesystem::path &filepath);
         

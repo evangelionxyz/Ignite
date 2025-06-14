@@ -110,6 +110,7 @@ namespace ignite {
         ImGui::SameLine();
         if (ImGui::Button("R", navbarBtSize))
         {
+            m_ActiveProject->ValidateAssetRegistry();
             PruneMissingNodes(0, Project::GetInstance()->GetAssetDirectory());
             RefreshAssetTree();
             CompactTree();
