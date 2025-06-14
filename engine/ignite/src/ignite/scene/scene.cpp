@@ -1,6 +1,7 @@
  #include "scene.hpp"
 #include <entt/entt.hpp>
 
+#include "ignite/audio/fmod_sound.hpp"
 #include "ignite/graphics/mesh.hpp"
 #include "ignite/graphics/renderer.hpp"
 #include "ignite/graphics/renderer_2d.hpp"
@@ -9,13 +10,12 @@
 #include "ignite/physics/jolt/jolt_physics.hpp"
 #include "ignite/math/math.hpp"
 #include "scene_manager.hpp"
+#include "ignite/scripting/script_engine.hpp"
 #include "entity.hpp"
 #include "ignite/core/application.hpp"
 #include "ignite/animation/animation_system.hpp"
 
 #include "ignite/project/project.hpp"
-
-#include "ignite/audio/fmod_sound.hpp"
 
 #include <ranges>
 
@@ -38,6 +38,10 @@ namespace ignite
 
     void Scene::OnStart()
     {
+        m_Playing = true;
+
+        ScriptEngine::SetSceneContext(this);
+
         // reset time
         timeInSeconds = 0.0f;
 
@@ -68,13 +72,20 @@ namespace ignite
             }
         }
 
-        m_Playing = true;
+        registry->view<Script>().each([this](entt::entity e, Script &script)
+        {
+            Entity entity{ e, this };
+            ScriptEngine::OnCreateEntity(entity);
+        });
+
         physics2D->SimulationStart();
         physics->SimulationStart();
     }
 
     void Scene::OnStop()
     {
+        m_Playing = false;
+
         timeInSeconds = 0.0f;
 
         // play on start audio
@@ -89,7 +100,7 @@ namespace ignite
             }
         }
 
-        m_Playing = false;
+        ScriptEngine::ClearSceneContext();
         
         physics2D->SimulationStop();
         physics->SimulationStop();
@@ -203,6 +214,7 @@ namespace ignite
     void Scene::OnUpdateEdit(f32 deltaTime)
     {
         timeInSeconds += deltaTime;
+        
         UpdateTransforms(deltaTime);
     }
 
@@ -235,6 +247,12 @@ namespace ignite
     void Scene::OnUpdateRuntimeSimulate(f32 deltaTime)
     {
         timeInSeconds += deltaTime;
+
+        registry->view<Script>().each([this, deltaTime](entt::entity e, Script &sc)
+        {
+            Entity entity{ e, this };
+            ScriptEngine::OnUpdateEntity(entity, deltaTime);
+        });
 
         UpdateTransforms(deltaTime);
 
@@ -304,6 +322,11 @@ namespace ignite
 
     template<>
     void Scene::OnComponentAdded<AudioSource>(Entity entity, AudioSource &comp)
+    {
+    }
+
+    template<>
+    void Scene::OnComponentAdded<Script>(Entity entity, Script &comp)
     {
     }
 

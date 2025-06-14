@@ -23,10 +23,12 @@ includedirs {
     "%{IncludeDir.IMGUI}",
     "%{IncludeDir.IMGUIZMO}",
     "%{IncludeDir.SPDLOG}",
+    "%{IncludeDir.MONO}",
     "%{IncludeDir.NVRHI}",
     "%{IncludeDir.STB}",
     "%{IncludeDir.NVRHI_VULKAN_HPP}",
     "%{IncludeDir.VULKAN_SDK}",
+    "%{IncludeDir.FILEWATCHER}",
     "%{IncludeDir.SHADERMAKE}",
     "%{IncludeDir.ASSIMP}",
     "%{IncludeDir.YAMLCPP}",
@@ -110,6 +112,7 @@ filter "system:windows"
         "%{Library.winversion}",
         "%{Library.bcrypt}",
         "%{Library.vulkan}",
+        "%{Library.mono}",
         "%{Library.FMOD}",
     }
     defines {

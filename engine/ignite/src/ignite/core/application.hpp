@@ -12,6 +12,7 @@
 #include "input/input.hpp"
 #include "command.hpp"
 
+#include <queue>
 #include <filesystem>
 
 namespace ignite
@@ -74,9 +75,11 @@ namespace ignite
         static void WindowIconify();
         static void WindowMaximize();
         static void WindowRestore();
+        static void SubmitToMainThread(const std::function<bool()> func);
 
     private:
         void UpdateAverageTimeTime(f64 elapsedTime);
+        void ProcessMainThreadSubmissons();
 
     protected:
         ApplicationCreateInfo m_CreateInfo;
@@ -95,6 +98,8 @@ namespace ignite
         const f64 m_AverageTimeUpdateInterval = 0.5;
         i32 m_NumberOfAccumulatedFrames = 0;
         i32 m_FrameIndex = 0;
+
+        std::queue<std::function<bool()>> m_ThreadFuncs;
     };
 
     Application *CreateApplication(ApplicationCommandLineArgs args);

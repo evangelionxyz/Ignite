@@ -21,6 +21,7 @@ namespace ignite
         Rigibody,
         BoxCollider,
         AudioSource,
+        Script,
         SphereCollider
     >; 
 }
