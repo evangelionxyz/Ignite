@@ -18,6 +18,8 @@ IncludeDir["ASSIMP"] = "%{THIRDPARTY_DIR}/ASSIMP/include"
 IncludeDir["YAMLCPP"] = "%{THIRDPARTY_DIR}/YAML/include"
 IncludeDir["FMOD"] = "%{THIRDPARTY_DIR}/FMOD/include"
 IncludeDir["JOLT"] = "%{THIRDPARTY_DIR}/JOLT"
+IncludeDir["MONO"] = "%{THIRDPARTY_DIR}/Mono/include"
+IncludeDir["FILEWATCHER"] = "%{THIRDPARTY_DIR}/Filewatcher/include"
 
 --library dirs
 LibraryDir = {}
@@ -30,6 +32,7 @@ Library["winmm"]      = "winmm.lib"
 Library["winversion"] = "version.lib"
 Library["bcrypt"]     = "bcrypt.lib"
 Library["vulkan"]     = "%{LibraryDir.VULKAN_SDK}/vulkan-1.lib"
+Library["mono"]       = "%{THIRDPARTY_DIR}/Mono/lib/windows/libmono-static-sgen.lib"
 
 Library["FMOD"]                        = "%{THIRDPARTY_DIR}/FMOD/lib/windows/x64/fmod_vc.lib"
 

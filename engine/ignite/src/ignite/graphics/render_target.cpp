@@ -226,6 +226,7 @@ namespace ignite {
 
     void RenderTarget::Create()
     {
+        
         // create framebuffer
         if (!m_Created)
         {

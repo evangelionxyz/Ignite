@@ -290,6 +290,20 @@ namespace ignite
         return Entity{};
     }
 
+    Entity SceneManager::GetEntity(Scene *scene, const std::string &name)
+    {
+        auto view = scene->registry->view<ID>();
+        for (entt::entity e : view)
+        {
+            const ID &id = view.get<ID>(e);
+            if (id.name == name)
+            {
+                return Entity{ e, scene };
+            }
+        }
+        return Entity{};
+    }
+
     void SceneManager::AddChild(Scene *scene, Entity destination, Entity source)
     {
         scene->SetDirtyFlag(true);

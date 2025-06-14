@@ -29,6 +29,7 @@ includedirs {
     "%{IncludeDir.IMGUI}",
     "%{IncludeDir.FMOD}",
     "%{IncludeDir.IMGUIZMO}",
+    "%{IncludeDir.MONO}",
     "%{IncludeDir.SPDLOG}",
     "%{IncludeDir.NVRHI}",
     "%{IncludeDir.STB}",
@@ -36,6 +37,7 @@ includedirs {
     "%{IncludeDir.VULKAN_SDK}",
     "%{IncludeDir.SHADERMAKE}",
     "%{IncludeDir.ASSIMP}",
+    "%{IncludeDir.FILEWATCHER}",
     "%{IncludeDir.YAMLCPP}",
 }
 

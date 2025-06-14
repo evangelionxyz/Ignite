@@ -86,6 +86,22 @@ namespace ignite
         }
     }
 
+    void Application::ProcessMainThreadSubmissons()
+    {
+        while (!m_ThreadFuncs.empty())
+        {
+            auto func = m_ThreadFuncs.front();
+            if (func())
+            {
+                m_ThreadFuncs.pop();
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
     void Application::PushLayer(Layer *layer)
     {
         layer->OnAttach();
@@ -108,6 +124,8 @@ namespace ignite
 
             const f64 currTime = glfwGetTime();
             m_DeltaTime = static_cast<float>(currTime - m_PreviousTime);
+
+            ProcessMainThreadSubmissons();
 
             FmodAudio::Update(m_DeltaTime);
 
@@ -227,6 +245,11 @@ namespace ignite
     void Application::WindowRestore()
     {
         GetInstance()->m_Window->Restore();
+    }
+
+    void Application::SubmitToMainThread(const std::function<bool()> func)
+    {
+        GetInstance()->m_ThreadFuncs.push(func);
     }
 
     CommandManager *Application::GetCommandManager()
