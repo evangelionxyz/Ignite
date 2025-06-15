@@ -11,6 +11,9 @@
 #include "ignite/graphics/environment.hpp"
 #include "ignite/graphics/mesh_loader.hpp"
 #include "ignite/graphics/mesh.hpp"
+#include "ignite/animation/skeleton.hpp"
+
+#include "ignite/serializer/binary_serializer.hpp"
 
 #include "ignite/scene/scene.hpp"
 #include "ignite/scene/component.hpp"
@@ -99,15 +102,25 @@ namespace ignite {
             return;
         }
 
-        skinnedMesh.skeleton = CreateRef<Skeleton>();
-
         if (assimpScene->HasAnimations())
         {
             MeshLoader::LoadAnimation(assimpScene, skinnedMesh.animations);
 
-            // Process Skeleton
-            MeshLoader::ExtractSkeleton(assimpScene, skinnedMesh.skeleton);
-            MeshLoader::SortJointsHierarchically(skinnedMesh.skeleton);
+            std::filesystem::path skeletonFilepath = filepath.parent_path() / (filepath.stem().generic_string() + ".skeleton");
+            if (std::filesystem::exists(skeletonFilepath))
+            {
+                skinnedMesh.skeleton = BinarySerializer::DeserializeSkeleton(skeletonFilepath);
+            }
+            else
+            {
+                // Process Skeleton
+                MeshLoader::ExtractSkeleton(assimpScene, skinnedMesh.skeleton);
+                MeshLoader::SortJointsHierarchically(skinnedMesh.skeleton);
+
+                std::vector<std::byte> bytes = BinarySerializer::SerializeSkeleton(skinnedMesh.skeleton);
+                std::ofstream of(skeletonFilepath, std::ios::binary);
+                of.write(reinterpret_cast<const char *>(bytes.data()), bytes.size());
+            }
         }
 
         std::vector<Ref<Mesh>> meshes;
@@ -177,15 +190,15 @@ namespace ignite {
             }
 
             // Extract skeleton joints into entity
-            for (size_t i = 0; i < skinnedMesh.skeleton->joints.size(); ++i)
+            for (size_t i = 0; i < skinnedMesh.skeleton.joints.size(); ++i)
             {
-                const std::string &name = skinnedMesh.skeleton->joints[i].name;
+                const std::string &name = skinnedMesh.skeleton.joints[i].name;
                 for (auto [uuid, e] : scene->entities)
                 {
                     Entity jointEntity = { e, scene };
                     if (jointEntity.GetName() == name)
                     {
-                        skinnedMesh.skeleton->jointEntityMap[static_cast<i32>(i)] = uuid;
+                        skinnedMesh.skeleton.jointEntityMap[static_cast<i32>(i)] = uuid;
                         jointEntity.GetComponent<ID>().type = EntityType_Joint;
                         break;
                     }

@@ -8,10 +8,10 @@
 
 namespace ignite {
 
+    struct FmodSound;
     class Environment;
     class GraphicsPipeline;
     class Scene;
-    struct FmodSound;
 
     class AssetImporter
     {

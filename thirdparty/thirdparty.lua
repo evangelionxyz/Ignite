@@ -20,6 +20,7 @@ IncludeDir["FMOD"] = "%{THIRDPARTY_DIR}/FMOD/include"
 IncludeDir["JOLT"] = "%{THIRDPARTY_DIR}/JOLT"
 IncludeDir["MONO"] = "%{THIRDPARTY_DIR}/Mono/include"
 IncludeDir["FILEWATCHER"] = "%{THIRDPARTY_DIR}/Filewatcher/include"
+IncludeDir["ZLIB"] = "%{THIRDPARTY_DIR}/ZLIB"
 
 --library dirs
 LibraryDir = {}
@@ -62,6 +63,7 @@ include "imgui.lua"
 include "stb.lua"
 include "assimp.lua"
 include "yaml-cpp.lua"
+include "zlib.lua"
 group ""
 
 group "NVIDIA"

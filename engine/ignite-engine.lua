@@ -30,6 +30,7 @@ includedirs {
     "%{IncludeDir.VULKAN_SDK}",
     "%{IncludeDir.FILEWATCHER}",
     "%{IncludeDir.SHADERMAKE}",
+    "%{IncludeDir.ZLIB}",
     "%{IncludeDir.ASSIMP}",
     "%{IncludeDir.YAMLCPP}",
 }
@@ -45,6 +46,7 @@ links {
     "ASSIMP",
     "NVRHI",
     "NVRHI_VULKAN",
+    "ZLIB",
     "YAMLCPP",
 }
 

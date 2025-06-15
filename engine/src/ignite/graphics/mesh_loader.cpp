@@ -11,6 +11,7 @@
 #include "ignite/core/application.hpp"
 #include "ignite/graphics/environment.hpp"
 #include "ignite/graphics/graphics_pipeline.hpp"
+#include "ignite/animation/skeleton.hpp"
 
 #include <queue>
 #include <stb_image.h>
@@ -20,7 +21,7 @@ namespace ignite
     static std::unordered_map<std::string, Material::TextureData> textureCache;
     
     // Mesh loader
-    void MeshLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::filesystem::path &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Ref<Skeleton> &skeleton, i32 parentNodeID)
+    void MeshLoader::ProcessNode(const aiScene *scene, aiNode *node, const std::filesystem::path &filepath, std::vector<Ref<Mesh>> &meshes, std::vector<NodeInfo> &nodes, const Skeleton &skeleton, i32 parentNodeID)
     {
         // Create a node entry and get its index
         NodeInfo nodeInfo;
@@ -53,8 +54,8 @@ namespace ignite
             {
                 // Go up 
                 NodeInfo parentNode = nodes[nodeInfo.parentID];
-                auto it = skeleton->nameToJointMap.find(parentNode.name);
-                if (it != skeleton->nameToJointMap.end())
+                auto it = skeleton.nameToJointMap.find(parentNode.name);
+                if (it != skeleton.nameToJointMap.end())
                 {
                     meshes[meshIndex]->nodeParentID = nodeInfo.parentID;
                 }
@@ -87,7 +88,7 @@ namespace ignite
         }
     }
 
-    void MeshLoader::LoadSingleMesh(const aiScene *scene, aiMesh *mesh, const uint32_t meshIndex, MeshData &outMeshData, const Ref<Skeleton> &skeleton, AABB &outAABB)
+    void MeshLoader::LoadSingleMesh(const aiScene *scene, aiMesh *mesh, const uint32_t meshIndex, MeshData &outMeshData, const Skeleton &skeleton, AABB &outAABB)
     {
         // vertices;
         VertexMesh vertex;
@@ -135,16 +136,16 @@ namespace ignite
         }
     }
 
-    void MeshLoader::ProcessBoneWeights(aiMesh *assimpMesh, MeshData &outMeshData, std::vector<BoneInfo> &outBoneInfo, std::unordered_map<std::string, uint32_t> &outBoneMapping, const Ref<Skeleton> &skeleton)
+    void MeshLoader::ProcessBoneWeights(aiMesh *assimpMesh, MeshData &outMeshData, std::vector<BoneInfo> &outBoneInfo, std::unordered_map<std::string, uint32_t> &outBoneMapping, const Skeleton &skeleton)
     {
         outBoneMapping.clear();
-        outBoneInfo.resize(skeleton->joints.size());
+        outBoneInfo.resize(skeleton.joints.size());
 
         // Copy bone offset from skeleton
-        for (size_t i = 0; i < skeleton->joints.size(); ++i)
+        for (size_t i = 0; i < skeleton.joints.size(); ++i)
         {
-            outBoneInfo[i].offsetMatrix = skeleton->joints[i].inverseBindPose;
-            outBoneMapping[skeleton->joints[i].name] = static_cast<i32>(i);
+            outBoneInfo[i].offsetMatrix = skeleton.joints[i].inverseBindPose;
+            outBoneMapping[skeleton.joints[i].name] = static_cast<i32>(i);
         }
 
         for (uint32_t boneIndex = 0; boneIndex < assimpMesh->mNumBones; ++boneIndex)
@@ -153,8 +154,8 @@ namespace ignite
             std::string boneName = bone->mName.C_Str();
 
             // Get bone ID from skeleton
-            auto it = skeleton->nameToJointMap.find(boneName);
-            if (it == skeleton->nameToJointMap.end())
+            auto it = skeleton.nameToJointMap.find(boneName);
+            if (it == skeleton.nameToJointMap.end())
             {
                 LOG_WARN("[Model Loader]: Bone {} not found in skeleton!", boneName);
                 continue;
@@ -200,7 +201,7 @@ namespace ignite
         }
     }
 
-    void MeshLoader::ExtractSkeleton(const aiScene *scene, Ref<Skeleton> &skeleton)
+    void MeshLoader::ExtractSkeleton(const aiScene *scene, Skeleton &skeleton)
     {
         // count the number of joints
         std::unordered_set<std::string> uniqueJointNames;
@@ -213,7 +214,7 @@ namespace ignite
             }
         }
 
-        skeleton->joints.reserve(uniqueJointNames.size());
+        skeleton.joints.reserve(uniqueJointNames.size());
         // create joints map and collect inverse bind matrices
         std::unordered_map<std::string, glm::mat4> inverseBindMatrices;
         for (uint32_t m = 0; m < scene->mNumMeshes; ++m)
@@ -231,7 +232,7 @@ namespace ignite
         ExtractSkeletonRecursive(scene->mRootNode, -1, skeleton, inverseBindMatrices);
     }
 
-    void MeshLoader::ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Ref<Skeleton> &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices)
+    void MeshLoader::ExtractSkeletonRecursive(aiNode *node, i32 parentJointId, Skeleton &skeleton, const std::unordered_map<std::string, glm::mat4> &inverseBindMatrices)
     {
         std::string nodeName = node->mName.C_Str();
         bool isJoint = inverseBindMatrices.contains(nodeName);
@@ -241,14 +242,14 @@ namespace ignite
             // Add this node as a joint
             Joint joint;
             joint.name = nodeName;
-            joint.id = static_cast<i32>(skeleton->joints.size());
+            joint.id = static_cast<i32>(skeleton.joints.size());
             joint.parentJointId = parentJointId;
             joint.inverseBindPose = inverseBindMatrices.at(nodeName);
             joint.localTransform = Math::AssimpToGlmMatrix(node->mTransformation);
 
             currentJointId = joint.id;
-            skeleton->nameToJointMap[nodeName] = currentJointId;
-            skeleton->joints.push_back(joint);
+            skeleton.nameToJointMap[nodeName] = currentJointId;
+            skeleton.joints.push_back(joint);
         }
 
         // process child (use parent id if this node is not a joint)
@@ -259,16 +260,16 @@ namespace ignite
         }
     }
 
-    void MeshLoader::SortJointsHierarchically(Ref<Skeleton> &skeleton)
+    void MeshLoader::SortJointsHierarchically(Skeleton &skeleton)
     {
         std::vector<Joint> sortedJoints;
-        sortedJoints.reserve(skeleton->joints.size());
+        sortedJoints.reserve(skeleton.joints.size());
         // use a queue to process joints level by level
         std::queue<i32> queue;
         // start with root joints
-        for (size_t i = 0; i < skeleton->joints.size(); ++i)
+        for (size_t i = 0; i < skeleton.joints.size(); ++i)
         {
-            if (skeleton->joints[i].parentJointId == -1)
+            if (skeleton.joints[i].parentJointId == -1)
                 queue.push(i);
         }
         // BFS traversal to ensure parents are processed before children
@@ -276,13 +277,13 @@ namespace ignite
         {
             i32 jointIdx = queue.front();
             queue.pop();
-            sortedJoints.push_back(skeleton->joints[jointIdx]);
+            sortedJoints.push_back(skeleton.joints[jointIdx]);
             i32 newIdx = static_cast<int>(sortedJoints.size()) - 1;
             // Update joint indices in the new array
             if (sortedJoints[newIdx].parentJointId != -1)
             {
                 // Find new parent index
-                std::string parentName = skeleton->joints[sortedJoints[newIdx].parentJointId].name;
+                std::string parentName = skeleton.joints[sortedJoints[newIdx].parentJointId].name;
                 for (i32 j = 0; j < newIdx; ++j)
                 {
                     if (sortedJoints[j].name == parentName)
@@ -293,22 +294,22 @@ namespace ignite
                 }
             }
             // Add children to queue
-            for (size_t i = 0; i < skeleton->joints.size(); ++i)
+            for (size_t i = 0; i < skeleton.joints.size(); ++i)
             {
-                if (skeleton->joints[i].parentJointId == jointIdx)
+                if (skeleton.joints[i].parentJointId == jointIdx)
                 {
                     queue.push(i);
                 }
             }
         }
         // Update name to joint name
-        skeleton->nameToJointMap.clear();
+        skeleton.nameToJointMap.clear();
         for (size_t i = 0; i < sortedJoints.size(); ++i)
         {
             sortedJoints[i].id = i;
-            skeleton->nameToJointMap[sortedJoints[i].name] = i;
+            skeleton.nameToJointMap[sortedJoints[i].name] = i;
         }
-        skeleton->joints = std::move(sortedJoints);
+        skeleton.joints = std::move(sortedJoints);
     }
 
     void MeshLoader::LoadMaterial(const aiScene *scene, aiMaterial *assimpMaterial, Material &material, const std::filesystem::path &filepath)

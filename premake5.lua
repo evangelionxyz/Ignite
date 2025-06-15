@@ -22,6 +22,6 @@ include "thirdparty/thirdparty.lua"
 
 group "Engine"
     include "editor/ignite-editor.lua"
-    include "engine/ignite/ignite-engine.lua"
+    include "engine/ignite-engine.lua"
     include "scriptcore/ignite-script.lua"
 group ""

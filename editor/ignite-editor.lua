@@ -20,7 +20,7 @@ links {
 
 includedirs {
     "src",
-    "%{wks.location}/engine/ignite/src",
+    "%{wks.location}/engine/src",
     "%{IncludeDir.GLFW}",
     "%{IncludeDir.BOX2D}",
     "%{IncludeDir.ENTT}",
@@ -38,6 +38,7 @@ includedirs {
     "%{IncludeDir.SHADERMAKE}",
     "%{IncludeDir.ASSIMP}",
     "%{IncludeDir.FILEWATCHER}",
+    "%{IncludeDir.ZLIB}",
     "%{IncludeDir.YAMLCPP}",
 }
 

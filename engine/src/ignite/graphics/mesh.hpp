@@ -23,24 +23,6 @@ namespace ignite {
     class GraphicsPipeline;
     class Scene;
 
-    struct Joint
-    {
-        std::string name;
-        i32 id; // index in joints array
-        i32 parentJointId; // parent in skeleton hierarchy (-1 for root)
-        glm::mat4 inverseBindPose; // inverse bind pose matrix
-        glm::mat4 localTransform; // current local transform
-        glm::mat4 globalTransform; // current global transform
-    };
-
-    struct Skeleton
-    {
-        std::vector<Joint> joints;
-        std::unordered_map<std::string, i32> nameToJointMap; // for fast lookup by name
-
-        std::unordered_map<i32, UUID> jointEntityMap;
-    };
-
     struct NodeInfo
     {
         i32 id = -1;

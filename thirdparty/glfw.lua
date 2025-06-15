@@ -60,10 +60,15 @@ defines {
 }
 
 filter "configurations:Debug"
-runtime "debug"
-symbols "on"
+  runtime "Debug"
+  symbols "on"
 
 filter "configurations:Release"
-runtime "release"
-symbols "off"
-optimize "on"
+  runtime "Release"
+  symbols "on"
+  optimize "on"
+
+filter "configurations:Dist"
+  runtime "Release"
+  symbols "off"
+  optimize "on"

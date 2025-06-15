@@ -8,6 +8,7 @@
 #include "ignite/math/aabb.hpp"
 #include "ignite/graphics/vertex_data.hpp"
 #include "ignite/animation/skeletal_animation.hpp"
+#include "ignite/animation/skeleton.hpp"
 #include "scene_camera.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -238,7 +239,7 @@ namespace ignite
      class SkinnedMesh : public IComponent
      {
      public:
-         Ref<Skeleton> skeleton;
+         Skeleton skeleton;
          std::vector<glm::mat4> boneTransforms;
          std::vector<SkeletalAnimation> animations;
          i32 activeAnimIndex = 0;

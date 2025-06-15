@@ -22,8 +22,6 @@
 
 namespace ignite
 {
-#define SCRIPTING_ADD_INTERNAL_CALLS(method) mono_add_internal_call("Ignite.InternalCalls::"#method, reinterpret_cast<const void*>(method))
-
     namespace Utils
     {
         std::string MonoStringToString(MonoString *string)
@@ -86,8 +84,6 @@ namespace ignite
 
     static void Entity_SetVisibility(UUID entityID, bool value)
     {
-        
-
         Scene *scene = ScriptEngine::GetSceneContext();
         LOG_ASSERT(scene, "[ScriptGlue] Invalid Scene");
 
@@ -251,7 +247,7 @@ namespace ignite
         ([]()
             {
                 std::string_view typeName = typeid(Component).name();
-#ifdef OGN_PLATFORM_LINUX
+#ifdef IGN_PLATFORM_LINUX
                 int status = 0;
                 char *demangledName = abi::__cxa_demangle(typeName.data(), nullptr, nullptr, &status);
                 if (status == 0 && demangledName != nullptr)
@@ -281,7 +277,7 @@ namespace ignite
 
                 s_EntityHasComponentFuncs[managedType] = [](Entity entity) { return entity.HasComponent<Component>(); };
                 s_EntityAddComponentFuncs[managedType] = [](Entity entity) { entity.AddOrReplaceComponent<Component>(); };
-#ifdef OGN_PLATFORM_LINUX
+#ifdef IGN_PLATFORM_LINUX
                 free(demangledName);
 #endif
 
@@ -299,6 +295,8 @@ namespace ignite
         s_EntityHasComponentFuncs.clear();
         RegisterComponent(AllComponents{});
     }
+
+#define SCRIPTING_ADD_INTERNAL_CALLS(method) mono_add_internal_call("Ignite.InternalCalls::"#method, reinterpret_cast<const void*>(method))
 
     void ScriptGlue::RegisterFunctions()
     {
