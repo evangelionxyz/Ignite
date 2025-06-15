@@ -104,16 +104,40 @@ namespace ignite {
 
         if (assimpScene->HasAnimations())
         {
-            MeshLoader::LoadAnimation(assimpScene, skinnedMesh.animations);
+            std::filesystem::path containerDirectory = filepath.parent_path() / filepath.stem().generic_string();
+            if (!std::filesystem::exists(containerDirectory))
+                std::filesystem::create_directory(containerDirectory);
 
-            std::filesystem::path skeletonFilepath = filepath.parent_path() / (filepath.stem().generic_string() + ".skeleton");
+            // Load animation
+            // MeshLoader::LoadAnimation(assimpScene, skinnedMesh.animations);
+            skinnedMesh.animations.resize(assimpScene->mNumAnimations);
+            for (uint32_t i = 0; i < assimpScene->mNumAnimations; ++i)
+            {
+                aiAnimation *anim = assimpScene->mAnimations[i];
+                std::string animName = anim->mName.data;
+
+                std::filesystem::path animationFilepath = containerDirectory / (filepath.stem().generic_string() + "_" + animName + ".anim");
+                if (std::filesystem::exists(animationFilepath))
+                {
+                    skinnedMesh.animations[i] = BinarySerializer::DeserializeAnimation(animationFilepath);
+                }
+                else
+                {
+                    skinnedMesh.animations[i] = SkeletalAnimation(anim);
+                    std::vector<std::byte> bytes = BinarySerializer::SerializeAnimation(anim);
+                    std::ofstream of(animationFilepath, std::ios::binary);
+                    of.write(reinterpret_cast<const char *>(bytes.data()), bytes.size());
+                }
+            }
+
+            // Process Skeleton
+            std::filesystem::path skeletonFilepath = containerDirectory / (filepath.stem().generic_string() + ".skeleton");
             if (std::filesystem::exists(skeletonFilepath))
             {
                 skinnedMesh.skeleton = BinarySerializer::DeserializeSkeleton(skeletonFilepath);
             }
             else
             {
-                // Process Skeleton
                 MeshLoader::ExtractSkeleton(assimpScene, skinnedMesh.skeleton);
                 MeshLoader::SortJointsHierarchically(skinnedMesh.skeleton);
 

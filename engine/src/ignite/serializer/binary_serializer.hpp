@@ -3,6 +3,7 @@
 #include <vector>
 #include <cinttypes>
 
+#include "ignite/animation/keyframes.hpp"
 #include "ignite/animation/skeleton.hpp"
 
 namespace ignite
@@ -38,13 +39,194 @@ namespace ignite
             out.insert(out.end(), raw, raw + sizeof(T));
         }
 
+        static std::vector<std::byte> SerializeAnimation(const SkeletalAnimation &anim)
+        {
+            std::vector<std::byte> buffer;
+
+            // write animation duration and ticks per second
+            AppendRaw(buffer, anim.duration);
+            AppendRaw(buffer, anim.ticksPerSeconds);
+
+            // write name size and name
+            std::string nameCopy = anim.name;
+            nameCopy += '\0';
+            uint32_t nameSize = static_cast<uint32_t>(nameCopy.size());
+            AppendRaw(buffer, nameSize);
+
+            buffer.insert(buffer.end(),
+                reinterpret_cast<const std::byte *>(nameCopy.data()),
+                reinterpret_cast<const std::byte *>(nameCopy.data() + nameSize)
+            );
+
+            // write channels
+            uint32_t channelCount = static_cast<uint32_t>(anim.channels.size());
+            AppendRaw(buffer, channelCount);
+
+            for (const auto &[channelName, channel] : anim.channels)
+            {
+                // write uint32_t name size
+                nameCopy = channelName;
+                nameCopy += '\0';
+                uint32_t channelNameSize = static_cast<uint32_t>(nameCopy.size());
+                AppendRaw(buffer, channelNameSize);
+
+                buffer.insert(buffer.end(),
+                    reinterpret_cast<const std::byte *>(nameCopy.data()),
+                    reinterpret_cast<const std::byte *>(nameCopy.data() + channelNameSize));
+
+                uint32_t translationFrameCount = static_cast<uint32_t>(channel.translationKeys.frames.size());
+                uint32_t rotationFrameCount = static_cast<uint32_t>(channel.rotationKeys.frames.size());
+                uint32_t scaleFrameCountFrameCount = static_cast<uint32_t>(channel.scaleKeys.frames.size());
+
+                // write total frame data size for validation
+                uint32_t framesDataSize = 
+                      translationFrameCount * sizeof(KeyFrame<glm::vec3>)
+                    + rotationFrameCount * sizeof(KeyFrame<glm::quat>)
+                    + scaleFrameCountFrameCount * sizeof(KeyFrame<glm::vec3>);
+
+                AppendRaw(buffer, framesDataSize);
+
+                // Write Translation frames
+                AppendRaw(buffer, translationFrameCount);
+
+                for (const auto &frame : channel.translationKeys.frames)
+                {
+                    AppendRaw(buffer, frame.Value);
+                    AppendRaw(buffer, frame.Timestamp);
+                }
+
+                // Write Rotation frames
+                AppendRaw(buffer, rotationFrameCount);
+
+                for (const auto &frame : channel.rotationKeys.frames)
+                {
+                    AppendRaw(buffer, frame.Value);
+                    AppendRaw(buffer, frame.Timestamp);
+                }
+
+                // Write Scale frames
+                AppendRaw(buffer, scaleFrameCountFrameCount);
+
+                for (const auto &frame : channel.scaleKeys.frames)
+                {
+                    AppendRaw(buffer, frame.Value);
+                    AppendRaw(buffer, frame.Timestamp);
+                }
+
+            }
+
+            return buffer;
+        }
+
+        static SkeletalAnimation DeserializeAnimation(const std::filesystem::path &filepath)
+        {
+            SkeletalAnimation anim;
+
+            std::ifstream inFile(filepath, std::ios::binary);
+
+            if (!inFile)
+            {
+                throw std::runtime_error("Cannot open animation file " + filepath.string());
+            }
+
+            // read animation duration and ticks per second
+            inFile.read(reinterpret_cast<char *>(&anim.duration), sizeof(anim.duration));
+            inFile.read(reinterpret_cast<char *>(&anim.ticksPerSeconds), sizeof(anim.ticksPerSeconds));
+
+            // read name size and name
+            uint32_t nameSize = 0;
+            inFile.read(reinterpret_cast<char *>(&nameSize), sizeof(nameSize));
+            std::vector<char> stringBytes(nameSize); // owns the bytes
+            inFile.read(stringBytes.data(), nameSize);
+            anim.name = std::string(stringBytes.data());
+
+            // read channel count
+            uint32_t channelCount = 0;
+            inFile.read(reinterpret_cast<char *>(&channelCount), sizeof(channelCount));
+
+            anim.channels.reserve(channelCount);
+
+            for (uint32_t channelIdx = 0; channelIdx < channelCount; ++channelIdx)
+            {
+                // read channel name
+                inFile.read(reinterpret_cast<char *>(&nameSize), sizeof(nameSize));
+                stringBytes.resize(nameSize);
+                inFile.read(stringBytes.data(), nameSize);
+                std::string channelName = std::string(stringBytes.data());
+
+                AnimationChannel channel{};
+
+
+                // read total frame data in bytes (translation + rotation + scale) for validation
+                uint32_t expectedTotalSize = 0;
+                inFile.read(reinterpret_cast<char *>(&expectedTotalSize), sizeof(expectedTotalSize));
+                uint32_t totalChannelByteSize = 0;
+
+                // process translation keys
+                uint32_t translationFrameCount = 0;
+                inFile.read(reinterpret_cast<char *>(&translationFrameCount), sizeof(translationFrameCount));
+
+                channel.translationKeys.frames.reserve(translationFrameCount);
+                for (uint32_t frameIdx = 0; frameIdx < translationFrameCount; ++frameIdx)
+                {
+                    KeyFrame<glm::vec3> frame{};
+
+                    inFile.read(reinterpret_cast<char *>(&frame.Value.x), sizeof(frame.Value));
+                    inFile.read(reinterpret_cast<char *>(&frame.Timestamp), sizeof(frame.Timestamp));
+                    totalChannelByteSize += sizeof(frame);
+
+                    channel.translationKeys.frames.push_back(frame);
+                }
+
+                // process rotation keys
+                uint32_t rotationFrameCount = 0;
+                inFile.read(reinterpret_cast<char *>(&rotationFrameCount), sizeof(rotationFrameCount));
+
+                channel.rotationKeys.frames.reserve(rotationFrameCount);
+                for (uint32_t frameIdx = 0; frameIdx < rotationFrameCount; ++frameIdx)
+                {
+                    KeyFrame<glm::quat> frame{};
+
+                    inFile.read(reinterpret_cast<char *>(&frame.Value.x), sizeof(frame.Value));
+                    inFile.read(reinterpret_cast<char *>(&frame.Timestamp), sizeof(frame.Timestamp));
+                    totalChannelByteSize += sizeof(frame);
+
+                    channel.rotationKeys.frames.push_back(frame);
+                }
+
+                // process rotation keys
+                uint32_t scaleFrameCount = 0;
+                inFile.read(reinterpret_cast<char *>(&scaleFrameCount), sizeof(scaleFrameCount));
+
+                channel.scaleKeys.frames.reserve(scaleFrameCount);
+                for (uint32_t frameIdx = 0; frameIdx < scaleFrameCount; ++frameIdx)
+                {
+                    KeyFrame<glm::vec3> frame{};
+
+                    inFile.read(reinterpret_cast<char *>(&frame.Value.x), sizeof(frame.Value));
+                    inFile.read(reinterpret_cast<char *>(&frame.Timestamp), sizeof(frame.Timestamp));
+                    totalChannelByteSize += sizeof(frame);
+
+                    channel.scaleKeys.frames.push_back(frame);
+                }
+
+                LOG_ASSERT(expectedTotalSize == totalChannelByteSize,
+                    "Corrupt animation data expected channel size {}, got {}",
+                    expectedTotalSize, totalChannelByteSize);
+
+                anim.channels[channelName] = channel;
+            }
+
+            return anim;
+        }
+
         static std::vector<std::byte> SerializeSkeleton(const Skeleton &skeleton)
         {
             std::vector<std::byte> buffer;
 
             // write joint count
-            uint32_t jountCount = static_cast<uint32_t>(skeleton.joints.size());
-            AppendRaw(buffer, jountCount);
+            uint32_t jointCount = static_cast<uint32_t>(skeleton.joints.size());
+            AppendRaw(buffer, jointCount);
 
             // build the string table and map: joint name -> offset in string table
             std::string stringTable;
@@ -99,10 +281,6 @@ namespace ignite
                 throw std::runtime_error("Cannot open skeleton file " + filepath.string());
             }
 
-            // inFile.seekg(0, std::ios::end);
-            // size_t fileSize = inFile.tellg();
-            // inFile.seekg(0, std::ios::beg);
-
             // read joint count
             uint32_t jointCount = 0;
             inFile.read(reinterpret_cast<char *>(&jointCount), sizeof(uint32_t));
@@ -117,7 +295,6 @@ namespace ignite
 
             std::vector<char> stringTable(stringTableSize); // owns the bytes
             inFile.read(stringTable.data(), stringTableSize);
-
 
             skeleton.joints.reserve(jointCount);
 
