@@ -1376,6 +1376,8 @@ namespace ignite
         // trigger resize
         if (vpWidth > 0 && vpHeight > 0 && (vpWidth != m_RenderTarget->GetWidth() || vpHeight != m_RenderTarget->GetHeight()))
         {
+            // prevent resizing each frame
+            // just when the mouse is not resizing
             if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
                 m_RenderTarget->Resize(vpWidth, vpHeight);
@@ -1383,12 +1385,12 @@ namespace ignite
 
                 m_Camera.SetSize(static_cast<float>(vpWidth), static_cast<float>(vpHeight));
                 m_Camera.UpdateProjectionMatrix();
-
-                if (m_Scene)
-                {
-                    m_Scene->OnResize(vpWidth, vpHeight);
-                }
             }
+        }
+
+        if (m_Scene && (m_Scene->viewportWidth != vpWidth || m_Scene->viewportHeight != vpHeight))
+        {
+            m_Scene->OnResize(vpWidth, vpHeight);
         }
 
         const ImTextureID imguiTex = reinterpret_cast<ImTextureID>(m_RenderTarget->GetColorAttachment(0).Get());
