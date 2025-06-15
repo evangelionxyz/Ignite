@@ -33,7 +33,7 @@ namespace ignite {
 
     Ref<Asset> AssetImporter::Import(AssetHandle handle, const AssetMetaData &metadata)
     {
-        Project *activeProject = Project::GetInstance();
+        Project *activeProject = Project::GetActive();
 
         // should be always importing with full filepath
         AssetMetaData metadataCopy = metadata;
@@ -84,7 +84,7 @@ namespace ignite {
         LOG_ASSERT(std::filesystem::exists(filepath), "[Mesh Loader] File does not exists!");
 
         SkinnedMesh &skinnedMesh = outEntity.GetComponent<SkinnedMesh>();
-        skinnedMesh.filepath = Project::GetInstance()->GetAssetRelativeFilepath(filepath);
+        skinnedMesh.filepath = Project::GetActive()->GetAssetRelativeFilepath(filepath);
 
         Assimp::Importer importer;
         const aiScene *assimpScene = importer.ReadFile(filepath.generic_string(), ASSIMP_IMPORTER_FLAGS);

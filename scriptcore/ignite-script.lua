@@ -1,5 +1,4 @@
--- Copyright (c) 2022-present Evangelion Manuhutu | ORigin Engine
-project "ScriptCore"
+project "IgniteScript"
     kind "SharedLib"
     language "C#"
     dotnetframework "4.8"
@@ -10,6 +9,7 @@ project "ScriptCore"
     files {
         "src/**.cs",
         "properties/**.cs",
+        "**.cs",
     }
 
     filter "configurations:Debug"
@@ -23,4 +23,3 @@ project "ScriptCore"
     filter "configurations:Dist"
         optimize "Full"
         symbols "Off"
-

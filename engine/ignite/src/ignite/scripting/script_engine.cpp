@@ -194,7 +194,7 @@ namespace ignite
 
     void ScriptEngine::Init()
     {
-        const auto appAssemblyPath = Project::GetActiveDirectory() / Project::GetInstance()->GetInfo().scriptModulePath;
+        const auto appAssemblyPath = Project::GetActive()->GetDirectory() / Project::GetActive()->GetInfo().scriptModuleFilepath;
 
         if (scriptEngineData)
         {
@@ -209,8 +209,8 @@ namespace ignite
         ScriptGlue::RegisterFunctions();
 
         // Script Core Assembly
-        LOG_ASSERT(std::filesystem::exists("ScriptCore.dll"), "[Script Engine] Script core assembly not found!");
-        LoadAssembly("ScriptCore.dll");
+        LOG_ASSERT(std::filesystem::exists("IgniteScript.dll"), "[Script Engine] Script core assembly not found!");
+        LoadAssembly("IgniteScript.dll");
         LoadAppAssembly(appAssemblyPath);
         LoadAssemblyClasses();
 
@@ -288,11 +288,10 @@ namespace ignite
     {
         if (!exists(filepath))
         {
-            std::filesystem::path buildScriptPath = Project::GetInstance()->GetActiveDirectory() / "build.bat";
-            std::string command = std::format("{}", buildScriptPath.generic_string());
-            std::system(command.c_str());
-
-            LOG_ASSERT(exists(filepath), "[Script Engine] Failed to generate project file");
+            if (!Project::GetActive()->BuildSolution())
+            {
+                return false;
+            }
         }
 
         scriptEngineData->appAssemblyFilepath = filepath;

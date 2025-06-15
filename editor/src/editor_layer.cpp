@@ -212,6 +212,9 @@ namespace ignite
     {
         Layer::OnRender(mainFramebuffer);
 
+        if (!m_ActiveScene)
+            return;
+
         nvrhi::IFramebuffer *viewportFramebuffer = m_ScenePanel->GetRenderTarget()->GetCurrentFramebuffer();
 
         // main scene rendering
@@ -232,36 +235,33 @@ namespace ignite
             0 // stencil
         );
         
-        if (m_ActiveScene)
+        switch (m_Data.sceneState)
         {
-            switch (m_Data.sceneState)
+        case State::SceneSimulate:
+        case State::SceneEdit:
+        {
+            CameraBuffer cameraBuffer = { m_ScenePanel->GetViewportCamera().GetViewProjectionMatrix(), glm::vec4(m_ScenePanel->GetViewportCamera().position, 1.0f) };
+            m_CommandList->writeBuffer(Renderer::GetCameraBufferHandle(), &cameraBuffer, sizeof(cameraBuffer));
+            m_SceneRenderer.Render(m_ActiveScene.get(), m_CommandList, viewportFramebuffer);
+            break;
+        }
+        case State::ScenePlay:
+        {
+            ICamera *camera = &m_ScenePanel->GetViewportCamera();
+            if (Entity primaryCam = m_ActiveScene->GetPrimaryCamera())
             {
-            case State::SceneSimulate:
-            case State::SceneEdit:
-            {
-                CameraBuffer cameraBuffer = { m_ScenePanel->GetViewportCamera().GetViewProjectionMatrix(), glm::vec4(m_ScenePanel->GetViewportCamera().position, 1.0f) };
-                m_CommandList->writeBuffer(Renderer::GetCameraBufferHandle(), &cameraBuffer, sizeof(cameraBuffer));
-                m_SceneRenderer.Render(m_ActiveScene.get(), m_CommandList, viewportFramebuffer);
-                break;
+                camera = &primaryCam.GetComponent<Camera>().camera;
             }
-            case State::ScenePlay:
-            {
-                ICamera *camera = &m_ScenePanel->GetViewportCamera();
-                if (Entity primaryCam = m_ActiveScene->GetPrimaryCamera())
-                {
-                    camera = &primaryCam.GetComponent<Camera>().camera;
-                }
 
-                CameraBuffer cameraBuffer = { camera->GetViewProjectionMatrix(), glm::vec4(camera->position, 1.0f) };
-                m_CommandList->writeBuffer(Renderer::GetCameraBufferHandle(), &cameraBuffer, sizeof(cameraBuffer));
-                m_SceneRenderer.Render(m_ActiveScene.get(), m_CommandList, viewportFramebuffer, camera->projectionType == ICamera::Type::Perspective);
-                break;
-            }
-            }
+            CameraBuffer cameraBuffer = { camera->GetViewProjectionMatrix(), glm::vec4(camera->position, 1.0f) };
+            m_CommandList->writeBuffer(Renderer::GetCameraBufferHandle(), &cameraBuffer, sizeof(cameraBuffer));
+            m_SceneRenderer.Render(m_ActiveScene.get(), m_CommandList, viewportFramebuffer, camera->projectionType == ICamera::Type::Perspective);
+            break;
+        }
         }
 
         // Create staging texture for read-back
-        if (m_Data.isPickingEntity && m_ActiveScene)
+        if (m_Data.isPickingEntity)
         {
             nvrhi::TextureDesc stagingDesc = m_ScenePanel->GetRenderTarget()->GetColorAttachment(1)->getDesc();
             stagingDesc.initialState = nvrhi::ResourceStates::CopyDest;
@@ -270,7 +270,7 @@ namespace ignite
             m_CommandList->copyTexture(m_EntityIDStagingTexture, nvrhi::TextureSlice(), m_ScenePanel->GetRenderTarget()->GetColorAttachment(1), nvrhi::TextureSlice());
         }
 
-        if (m_Data.takeScreenshot && m_ActiveScene)
+        if (m_Data.takeScreenshot)
         {
             nvrhi::TextureDesc stagingDesc = m_ScenePanel->GetRenderTarget()->GetColorAttachment(0)->getDesc();
             stagingDesc.initialState = nvrhi::ResourceStates::CopyDest;
@@ -281,7 +281,7 @@ namespace ignite
         m_CommandList->close();
         m_Device->executeCommandList(m_CommandList);
 
-        if (m_Data.takeScreenshot && m_ActiveScene)
+        if (m_Data.takeScreenshot)
         {
             // Map and read the pixel data
             size_t rowPitch = 0;
@@ -300,7 +300,7 @@ namespace ignite
             m_Data.takeScreenshot = false;
         }
 
-        if (m_Data.isPickingEntity && m_ActiveScene)
+        if (m_Data.isPickingEntity)
         {
             // Map and read the pixel data
             size_t rowPitch = 0;
@@ -472,10 +472,43 @@ namespace ignite
 
                     if (newProject)
                     {
-                        ProjectSerializer serializer(newProject);
+                        m_ActiveProject = newProject;
+
+                        ProjectSerializer serializer(m_ActiveProject);
                         serializer.Serialize(m_Data.projectCreateInfo.filepath);
 
-                        m_ActiveProject = newProject;
+                        m_ContentBrowserPanel->SetActiveProject(m_ActiveProject);
+
+                        ScriptEngine::Init();
+
+                        if (m_ActiveProject->GetInfo().defaultSceneHandle != AssetHandle(0))
+                        {
+                            Ref<Scene> activeScene = Project::GetAsset<Scene>(m_ActiveProject->GetInfo().defaultSceneHandle);
+                            if (activeScene)
+                            {
+                                m_ActiveProject->SetActiveScene(activeScene);
+                            }
+                        }
+
+                        if (m_ActiveProject->GetActiveScene())
+                        {
+                            Ref<Scene> scene = m_ActiveProject->GetActiveScene();
+
+                            m_EditorScene = SceneManager::Copy(scene);
+                            m_EditorScene->SetDirtyFlag(false);
+
+                            m_ActiveScene = m_EditorScene;
+                            m_ScenePanel->SetActiveScene(m_ActiveScene.get(), true);
+
+                            AssetMetaData metadata = Project::GetActive()->GetAssetManager().GetMetaData(scene->handle);
+                            auto scenePath = Project::GetActive()->GetAssetFilepath(metadata.filepath);
+                            m_CurrentSceneFilePath = scenePath;
+                        }
+                        else
+                        {
+                            // Create default scene
+                            NewScene();
+                        }
                     }
 
                     m_Data.projectCreateInfo.filepath.clear();
@@ -518,7 +551,7 @@ namespace ignite
 
             ImGui::Begin("Project");
 
-            if (Project *activeProject = Project::GetInstance())
+            if (Project *activeProject = Project::GetActive())
             {
                 const auto &info = activeProject->GetInfo();
                 std::string projectName = info.name;
@@ -644,7 +677,6 @@ namespace ignite
 
     bool EditorLayer::OpenProject(const std::filesystem::path &filepath)
     {
-
         Ref<Project> openedProject = ProjectSerializer::Deserialize(filepath);
         if (!openedProject)
         {
@@ -675,8 +707,8 @@ namespace ignite
             m_ActiveScene = m_EditorScene;
             m_ScenePanel->SetActiveScene(m_ActiveScene.get(), true);
 
-            AssetMetaData metadata = Project::GetInstance()->GetAssetManager().GetMetaData(scene->handle);
-            auto scenePath = Project::GetInstance()->GetAssetFilepath(metadata.filepath);
+            AssetMetaData metadata = Project::GetActive()->GetAssetManager().GetMetaData(scene->handle);
+            auto scenePath = Project::GetActive()->GetAssetFilepath(metadata.filepath);
             m_CurrentSceneFilePath = scenePath;
         }
         else
@@ -864,7 +896,7 @@ namespace ignite
             ImGui::SameLine();
             if (ImGui::Button("Refresh"))
             {
-                Project::GetInstance()->ValidateAssetRegistry();
+                Project::GetActive()->ValidateAssetRegistry();
             }
 
             ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_ScrollX;
