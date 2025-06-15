@@ -10,7 +10,6 @@ namespace ignite {
     ContentBrowserPanel::ContentBrowserPanel(const char *windowTitle)
         : IPanel(windowTitle)
     {
-        m_TreeNodes.emplace_back(".", AssetHandle(0));
 
         TextureCreateInfo createInfo;
         createInfo.format = nvrhi::Format::RGBA8_UNORM;
@@ -24,13 +23,18 @@ namespace ignite {
 
         if (m_ActiveProject)
         {
-            m_BaseDirectory = m_ActiveProject->GetAssetDirectory();
+            // clear directories
+            m_PathEntryList.clear();
+            m_TreeNodes.clear();
+
+            m_TreeNodes.emplace_back(".", AssetHandle(0));
             
+            m_BaseDirectory = m_ActiveProject->GetAssetDirectory();
             m_PathEntryList.push_back(m_BaseDirectory);
+
             m_CurrentDirectory = m_ActiveProject->GetAssetDirectory();
             RefreshAssetTree();
         }
-
     }
 
     void ContentBrowserPanel::RenderFileTree(FileTreeNode *node)
@@ -38,7 +42,7 @@ namespace ignite {
         if (node->path.empty())
             return;
 
-        const std::filesystem::path &filepath = Project::GetActive()->GetAssetFilepath(node->path);
+        const std::filesystem::path &filepath = m_ActiveProject->GetAssetFilepath(node->path);
         const std::string filename = filepath.filename().string();
         const bool isDirectory = std::filesystem::is_directory(filepath);
 
@@ -110,7 +114,7 @@ namespace ignite {
         if (ImGui::Button("R", navbarBtSize))
         {
             m_ActiveProject->ValidateAssetRegistry();
-            PruneMissingNodes(0, Project::GetActive()->GetAssetDirectory());
+            PruneMissingNodes(0, m_ActiveProject->GetAssetDirectory());
             RefreshAssetTree();
             CompactTree();
         }
@@ -322,7 +326,7 @@ namespace ignite {
                     if (!std::filesystem::is_directory(path) && path.has_extension())
                     {
                         std::string relPath = relativePath.generic_string();
-                        assetHandle = Project::GetActive()->GetAssetManager().GetAssetHandle(relPath);
+                        assetHandle = m_ActiveProject->GetAssetManager().GetAssetHandle(relPath);
                         
                         // not registered yet
                         // (insert the metadata and generate the asset handle)
@@ -332,7 +336,7 @@ namespace ignite {
                             AssetMetaData metadata;
                             metadata.type = GetAssetTypeFromExtension(relativePath.extension().generic_string());
                             metadata.filepath = relPath;
-                            Project::GetActive()->GetAssetManager().InsertMetaData(assetHandle, metadata);
+                            m_ActiveProject->GetAssetManager().InsertMetaData(assetHandle, metadata);
                         }
                     }
 

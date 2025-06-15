@@ -100,7 +100,6 @@ namespace {PROJECT_NAME}
 
     Project::~Project()
     {
-        s_ActiveProject = nullptr;
     }
 
     std::filesystem::path Project::GetAssetRelativeFilepath(const std::filesystem::path &filepath) const
