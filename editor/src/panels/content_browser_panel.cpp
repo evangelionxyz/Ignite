@@ -10,7 +10,6 @@ namespace ignite {
     ContentBrowserPanel::ContentBrowserPanel(const char *windowTitle)
         : IPanel(windowTitle)
     {
-
         TextureCreateInfo createInfo;
         createInfo.format = nvrhi::Format::RGBA8_UNORM;
         m_Icons["folder"] = Texture::Create("resources/ui/ic_folder.png", createInfo);

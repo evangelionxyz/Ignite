@@ -275,9 +275,10 @@ namespace ignite
                 MonoType *managedType = mono_reflection_type_from_name(managedTypename.data(), ScriptEngine::GetCoreAssemblyImage());
                 if (!managedType)
                 {
-                    LOG_ERROR("[Script Glue] Could not find component type {}", managedTypename);
+                    // LOG_ERROR("[Script Glue] Could not find component type {}", managedTypename);
                     return;
                 }
+
                 s_EntityHasComponentFuncs[managedType] = [](Entity entity) { return entity.HasComponent<Component>(); };
                 s_EntityAddComponentFuncs[managedType] = [](Entity entity) { entity.AddOrReplaceComponent<Component>(); };
 #ifdef OGN_PLATFORM_LINUX

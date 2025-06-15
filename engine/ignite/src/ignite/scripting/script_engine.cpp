@@ -138,6 +138,8 @@ namespace ignite
         MonoImage *appAssemblyImage = nullptr;
 
         ScriptClass entityClass;
+        ScriptClass serializeFieldClass;
+
         std::vector<std::string> entityScriptStorage;
 
         std::filesystem::path coreAssemblyFilepath;
@@ -171,6 +173,7 @@ namespace ignite
 
         const char *mono_version = mono_get_runtime_build_info();
         LOG_WARN("[Script Engine] MONO Version: {}", mono_version);
+
     }
 
     void ScriptEngine::ShutdownMono()
@@ -206,13 +209,13 @@ namespace ignite
         scriptEngineData = new ScriptEngineData();
 
         InitMono();
-        ScriptGlue::RegisterFunctions();
 
         // Script Core Assembly
         LOG_ASSERT(std::filesystem::exists("IgniteScript.dll"), "[Script Engine] Script core assembly not found!");
         LoadAssembly("IgniteScript.dll");
+
         LoadAppAssembly(appAssemblyPath);
-        LoadAssemblyClasses();
+        LoadAppAssemblyClasses();
 
         // storing classes name into storage
         for (auto &it : scriptEngineData->entityClasses)
@@ -220,9 +223,6 @@ namespace ignite
             LOG_INFO("Script '{}' loaded", it.first);
             scriptEngineData->entityScriptStorage.emplace_back(it.first);
         }
-
-        scriptEngineData->entityClass = ScriptClass("Ignite", "Entity", true);
-        ScriptGlue::RegisterComponents();
 
         LOG_WARN("[Script Engine] Initialized");
     }
@@ -244,6 +244,15 @@ namespace ignite
         LOG_WARN("[Script Engine] Shutdown");
     }
 
+    void ScriptEngine::RegisterCoreClassesAndFunctions()
+    {
+        scriptEngineData->entityClass = ScriptClass("Ignite", "Entity", true);
+        scriptEngineData->serializeFieldClass = ScriptClass("Ignite", "SerializeFieldAttribute", true);
+
+        ScriptGlue::RegisterFunctions();
+        ScriptGlue::RegisterComponents();
+    }
+
     bool ScriptEngine::LoadAssembly(const std::filesystem::path &filepath)
     {
         char *domain_name = new char[20];
@@ -262,6 +271,9 @@ namespace ignite
         }
 
         scriptEngineData->coreAssemblyImage = mono_assembly_get_image(scriptEngineData->coreAssembly);
+
+        RegisterCoreClassesAndFunctions();
+
         return true;
     }
 
@@ -318,7 +330,7 @@ namespace ignite
 
         if (LoadAppAssembly(scriptEngineData->appAssemblyFilepath))
         {
-            LoadAssemblyClasses();
+            LoadAppAssemblyClasses();
 
             // storing classes name into storage
             scriptEngineData->entityScriptStorage.clear();
@@ -328,11 +340,7 @@ namespace ignite
                 scriptEngineData->entityScriptStorage.emplace_back(it.first);
             }
 
-            // retrieve entity class
-            scriptEngineData->entityClass = ScriptClass("Ignite", "Entity", true);
-            ScriptGlue::RegisterComponents();
-
-            LOG_WARN("[Script Engine] Assembly Reloaded");
+            LOG_INFO("[Script Engine] Aap Assembly Reloaded '{}'", scriptEngineData->appAssemblyFilepath.generic_string());
         }
     }
 
@@ -345,6 +353,22 @@ namespace ignite
     {
         scriptEngineData->scene = nullptr;
         scriptEngineData->entityInstances.clear();
+    }
+
+    bool ScriptEngine::FieldIsExposed(MonoClass *owner, MonoClassField *field, MonoClass *serializeFieldAttrClass)
+    {
+        // public field are always exposed
+        if (mono_field_get_flags(field) & FIELD_ATTRIBUTE_PUBLIC)
+            return true;
+
+        // otherwise look for [SerializeField] (or any other attribute you care about)
+        MonoCustomAttrInfo *attrs = mono_custom_attrs_from_field(owner, field);
+        if (!attrs)
+            return false;
+
+        bool hasAttr = mono_custom_attrs_has_attr(attrs, serializeFieldAttrClass) != 0;
+        mono_custom_attrs_free(attrs);
+        return hasAttr;
     }
 
     bool ScriptEngine::EntityClassExists(const std::string &fullClassName)
@@ -417,7 +441,7 @@ namespace ignite
                         }
 
                         // Create new instance
-                        MonoObject *entityInstance = ScriptEngine::InstantiateObject(scriptEngineData->entityClass.m_MonoClass);
+                        MonoObject *entityInstance = ScriptEngine::InstantiateObject(scriptEngineData->entityClass.GetMonoClass());
                         if (!entityInstance)
                         {
                             LOG_ERROR("[Script Engine] Failed to create Entity instance. {}", name);
@@ -548,7 +572,7 @@ namespace ignite
         return instance;
     }
 
-    void ScriptEngine::LoadAssemblyClasses()
+    void ScriptEngine::LoadAppAssemblyClasses()
     {
         scriptEngineData->entityClasses.clear();
 
@@ -585,21 +609,23 @@ namespace ignite
                 continue;
             }
 
-            const auto script_class = std::make_shared<ScriptClass>(nameSpace, className);
-            scriptEngineData->entityClasses[fullName] = script_class;
+            // Create class
+            const Ref<ScriptClass> scriptClass = CreateRef<ScriptClass>(nameSpace, className);
 
-            void *iterator = nullptr;
-
-            while (MonoClassField *field = mono_class_get_fields(monoClass, &iterator))
+            // Register PUBLIC fields
+            void *iter = nullptr;
+            while (MonoClassField *field = mono_class_get_fields(monoClass, &iter))
             {
+                if (!FieldIsExposed(monoClass, field, scriptEngineData->serializeFieldClass.GetMonoClass()))
+                    continue; // skip private fields without [SerializeField]
+
                 const char *fieldName = mono_field_get_name(field);
-                if (const uint32_t flags = mono_field_get_flags(field); flags & FIELD_ATTRIBUTE_PUBLIC)
-                {
-                    MonoType *type = mono_field_get_type(field);
-                    const ScriptFieldType fieldType = Utils::MonoTypeToScriptFieldType(type);
-                    script_class->m_Fields[fieldName] = { fieldType, fieldName, field };
-                }
+                MonoType *type = mono_field_get_type(field);
+                const ScriptFieldType fieldType = Utils::MonoTypeToScriptFieldType(type);
+                scriptClass->InsertField(fieldName, ScriptField{ fieldType, fieldName, field });
             }
+
+            scriptEngineData->entityClasses[fullName] = scriptClass;
         }
 
         auto &entityClasses = scriptEngineData->entityClasses;

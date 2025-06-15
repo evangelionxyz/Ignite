@@ -61,6 +61,13 @@ namespace ignite
             mono_free((void *)stackTrace);
 
         }
+
         mono_free((void *)message);
     }
+
+    void ScriptClass::InsertField(const std::string &fieldName, const ScriptField &field)
+    {
+        m_Fields[fieldName] = field;
+    }
+
 }

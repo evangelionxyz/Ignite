@@ -28,11 +28,14 @@ namespace ignite
         static void Init();
         static void Shutdown();
 
+        static void RegisterCoreClassesAndFunctions();
+
         static bool LoadAssembly(const std::filesystem::path &filepath);
         static bool LoadAppAssembly(const std::filesystem::path &filepath);
         static void ReloadAssembly();
         static void SetSceneContext(Scene *scene);
         static void ClearSceneContext();
+        static bool FieldIsExposed(MonoClass *owner, MonoClassField *field, MonoClass *serializeFieldAttrClass);
 
         static bool EntityClassExists(const std::string &fullClassName);
 
@@ -58,7 +61,7 @@ namespace ignite
         static void ShutdownMono();
 
         static MonoObject *InstantiateObject(MonoClass *monoClass);
-        static void LoadAssemblyClasses();
+        static void LoadAppAssemblyClasses();
 
         friend class ScriptClass;
     };
