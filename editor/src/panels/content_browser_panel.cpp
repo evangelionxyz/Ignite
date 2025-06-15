@@ -38,7 +38,7 @@ namespace ignite {
         if (node->path.empty())
             return;
 
-        const std::filesystem::path &filepath = Project::GetInstance()->GetAssetFilepath(node->path);
+        const std::filesystem::path &filepath = Project::GetActive()->GetAssetFilepath(node->path);
         const std::string filename = filepath.filename().string();
         const bool isDirectory = std::filesystem::is_directory(filepath);
 
@@ -110,7 +110,7 @@ namespace ignite {
         if (ImGui::Button("R", navbarBtSize))
         {
             m_ActiveProject->ValidateAssetRegistry();
-            PruneMissingNodes(0, Project::GetInstance()->GetAssetDirectory());
+            PruneMissingNodes(0, Project::GetActive()->GetAssetDirectory());
             RefreshAssetTree();
             CompactTree();
         }
@@ -322,7 +322,7 @@ namespace ignite {
                     if (!std::filesystem::is_directory(path) && path.has_extension())
                     {
                         std::string relPath = relativePath.generic_string();
-                        assetHandle = Project::GetInstance()->GetAssetManager().GetAssetHandle(relPath);
+                        assetHandle = Project::GetActive()->GetAssetManager().GetAssetHandle(relPath);
                         
                         // not registered yet
                         // (insert the metadata and generate the asset handle)
@@ -332,7 +332,7 @@ namespace ignite {
                             AssetMetaData metadata;
                             metadata.type = GetAssetTypeFromExtension(relativePath.extension().generic_string());
                             metadata.filepath = relPath;
-                            Project::GetInstance()->GetAssetManager().InsertMetaData(assetHandle, metadata);
+                            Project::GetActive()->GetAssetManager().InsertMetaData(assetHandle, metadata);
                         }
                     }
 

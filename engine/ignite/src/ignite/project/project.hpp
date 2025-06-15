@@ -14,16 +14,21 @@ namespace ignite
     {
         std::string name;
         AssetHandle defaultSceneHandle = AssetHandle(0);
-        std::filesystem::path filepath;
-        std::filesystem::path assetFilepath = "Assets";
-        std::filesystem::path assetRegistryFilename = "AssetRegistry.ixreg";
-        std::filesystem::path scriptModulePath = "bin/GameAssembly.dll";
+
+        std::filesystem::path filepath; // the actual project file (.ixproj)
+        std::filesystem::path scriptModuleFilepath;
+        std::filesystem::path assetDirectory = "Assets";
+        std::filesystem::path scriptsDirectory = "Scripts";
+        std::filesystem::path assetRegistryFilepath = "AssetRegistry.ixreg";
+        std::filesystem::path premakeFilepath = "premake5.lua";
+        std::filesystem::path batchScriptFilepath = "build.bat";
     };
 
     class Project : public Asset
     {
     public:
         Project() = default;
+
         Project(const ProjectInfo &info);
 
         ~Project() override;
@@ -33,64 +38,70 @@ namespace ignite
         std::filesystem::path GetRelativeFilepath(const std::filesystem::path &filepath) const;
         
         void SetActiveScene(const Ref<Scene> &scene);
-        
-        std::vector<std::pair<AssetHandle, AssetMetaData>> ValidateAssetRegistry()
-        {
-            std::vector<std::pair<AssetHandle, AssetMetaData>> invalidRegistry;
-            AssetRegistry &assetRegistry = GetAssetManager().GetAssetAssetRegistry();
+        bool BuildSolution();
+        std::vector<std::pair<AssetHandle, AssetMetaData>> ValidateAssetRegistry();
 
-            for (auto it = assetRegistry.begin(); it != assetRegistry.end();)
-            {
-                const std::filesystem::path &filepath = GetAssetFilepath(it->second.filepath);
-                if (!std::filesystem::exists(filepath))
-                {
-                    invalidRegistry.emplace_back(it->first, it->second);
-                    it = assetRegistry.erase(it);
-                }
-                else
-                {
-                    ++it;
-                }
-            }
-            
-            return invalidRegistry;
+
+        std::filesystem::path GetDirectory() const
+        {
+            return m_Info.filepath.parent_path();
+        }
+
+        std::filesystem::path GetSolutionFilepath() const
+        {
+            return GetDirectory() / std::string(m_Info.name + ".sln");
+        }
+
+        std::filesystem::path GetAssetDirectory() const
+        {
+            return GetDirectory() / m_Info.assetDirectory;
+        }
+
+        std::filesystem::path GetScriptsDirectory() const
+        {
+            return GetDirectory() / m_Info.scriptsDirectory;
+        }
+
+        // Static methods
+        static std::filesystem::path GetActiveScriptsDirectory()
+        {
+            return GetActive()->GetScriptsDirectory();
+        }
+
+        static std::filesystem::path GetActiveSolutionFilepath()
+        {
+            return GetActive()->GetSolutionFilepath();
+        }
+
+        static std::filesystem::path GetActiveAssetDirectory()
+        {
+            return GetActive()->GetAssetDirectory();
+        }
+
+        static std::filesystem::path GetActiveProjectDirectory()
+        {
+            return GetActive()->GetDirectory();
         }
 
         template<typename T>
         static Ref<T> GetAsset(AssetHandle handle)
         {
-            Ref<Asset> asset = GetInstance()->GetAssetManager().GetAsset(handle);
+            Ref<Asset> asset = GetActive()->GetAssetManager().GetAsset(handle);
             return std::static_pointer_cast<T>(asset);
-        }
-
-
-        const Ref<Scene> &GetActiveScene() { return m_ActiveScene; }
-
-        std::filesystem::path GetAssetDirectory() const
-        {
-            return m_Info.filepath.parent_path() / m_Info.assetFilepath;
-        }
-
-        static std::filesystem::path GetActiveAssetDirectory()
-        {
-            return GetInstance()->GetAssetDirectory();
-        }
-
-        static std::filesystem::path GetActiveDirectory()
-        {
-            return GetInstance()->m_Info.filepath.parent_path();
         }
 
         AssetManager &GetAssetManager() { return m_AssetManager; }
         ProjectInfo &GetInfo() { return m_Info; }
+        const Ref<Scene> &GetActiveScene() { return m_ActiveScene; }
 
-        static Project *GetInstance();
+        static Project *GetActive();
         static Ref<Project> Create(const ProjectInfo &info);
 
         static AssetType GetStaticType() { return AssetType::Project; }
         virtual AssetType GetType() override { return GetStaticType(); }
 
     private:
+        void GenerateProject();
         void SerializeAssetRegistry();
 
         Ref<Scene> m_ActiveScene; // current active scene in editor

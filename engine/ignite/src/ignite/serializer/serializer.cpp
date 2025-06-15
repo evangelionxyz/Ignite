@@ -541,8 +541,8 @@ namespace ignite {
 
         projectSr.AddKeyValue("Version", ENGINE_VERSION);
         projectSr.AddKeyValue("Name", projectInfo.name);
-        projectSr.AddKeyValue("AssetPath", projectInfo.assetFilepath.generic_string());
-        projectSr.AddKeyValue("AssetRegistry", projectInfo.assetRegistryFilename.generic_string());
+        projectSr.AddKeyValue("AssetPath", projectInfo.assetDirectory.generic_string());
+        projectSr.AddKeyValue("AssetRegistry", projectInfo.assetRegistryFilepath.generic_string());
         projectSr.AddKeyValue("DefaultSceneHandle", projectInfo.defaultSceneHandle);
 
         projectSr.EndMap();
@@ -559,7 +559,7 @@ namespace ignite {
         auto &assetRegistry = assetManager.GetAssetAssetRegistry();
 
         {
-            const std::filesystem::path assetRegFilepath = filepath.parent_path() / projectInfo.assetRegistryFilename;
+            const std::filesystem::path assetRegFilepath = filepath.parent_path() / projectInfo.assetRegistryFilepath;
             Serializer assetSr(assetRegFilepath);
 
             assetSr.BeginMap(); // Start
@@ -603,8 +603,8 @@ namespace ignite {
         ProjectInfo info;
         info.name = projectNode["Name"].as<std::string>();
         info.filepath = filepath;
-        info.assetFilepath = projectNode["AssetPath"].as<std::string>();
-        info.assetRegistryFilename = projectNode["AssetRegistry"].as<std::string>();
+        info.assetDirectory = projectNode["AssetPath"].as<std::string>();
+        info.assetRegistryFilepath = projectNode["AssetRegistry"].as<std::string>();
         info.defaultSceneHandle = AssetHandle(projectNode["DefaultSceneHandle"].as<uint64_t>());
 
         Ref<Project> project = Project::Create(info);
@@ -612,10 +612,10 @@ namespace ignite {
         auto &assetManager = project->GetAssetManager();
 
         // import registry
-        if (!info.assetRegistryFilename.empty())
+        if (!info.assetRegistryFilepath.empty())
         {
             // project filepath / asset filename (.ixreg)
-            std::filesystem::path assetRegFilepath = filepath.parent_path() / info.assetRegistryFilename;
+            std::filesystem::path assetRegFilepath = filepath.parent_path() / info.assetRegistryFilepath;
             YAML::Node assetRegFileNode = Serializer::Deserialize(assetRegFilepath);
             YAML::Node assetRegNode = assetRegFileNode["AssetRegistry"];
 

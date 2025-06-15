@@ -637,7 +637,7 @@ namespace ignite
                                         AssetHandle *handle = static_cast<AssetHandle *>(payload->Data);
                                         if (handle && *handle != AssetHandle(0))
                                         {
-                                            AssetMetaData metadata = Project::GetInstance()->GetAssetManager().GetMetaData(*handle);
+                                            AssetMetaData metadata = Project::GetActive()->GetAssetManager().GetMetaData(*handle);
                                             if (metadata.type == AssetType::Audio)
                                             {
                                                 c->handle = *handle;
@@ -1072,7 +1072,7 @@ namespace ignite
                                         AssetHandle *handle = static_cast<AssetHandle *>(payload->Data);
                                         if (handle && *handle != AssetHandle(0))
                                         {
-                                            AssetMetaData metadata = Project::GetInstance()->GetAssetManager().GetMetaData(*handle);
+                                            AssetMetaData metadata = Project::GetActive()->GetAssetManager().GetMetaData(*handle);
                                             if (metadata.type == AssetType::Texture)
                                             {
                                                 Ref<Texture> texture = Project::GetAsset<Texture>(*handle);
@@ -1403,10 +1403,10 @@ namespace ignite
                     AssetHandle *handle = static_cast<AssetHandle *>(payload->Data);
                     if (handle && *handle != AssetHandle(0))
                     {
-                        AssetMetaData metadata = Project::GetInstance()->GetAssetManager().GetMetaData(*handle);
+                        AssetMetaData metadata = Project::GetActive()->GetAssetManager().GetMetaData(*handle);
                         if (metadata.type == AssetType::Scene)
                         {
-                            std::filesystem::path filepath = Project::GetInstance()->GetAssetFilepath(metadata.filepath);
+                            std::filesystem::path filepath = Project::GetActive()->GetAssetFilepath(metadata.filepath);
                             m_Editor->OpenScene(filepath);
                         }
                     }
